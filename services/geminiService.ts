@@ -61,6 +61,12 @@ export const generateImage = async (prompt: string): Promise<string> => {
       contents: {
         parts: [{ text: prompt }]
       },
+      // Explicitly configure aspect ratio to 16:9 to match the UI and download expectations
+      config: {
+        imageConfig: {
+          aspectRatio: "16:9"
+        }
+      }
     });
 
     // Extract image
