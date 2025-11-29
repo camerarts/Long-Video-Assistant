@@ -32,7 +32,8 @@ import {
   Images,
   Lock,
   Hand,
-  Search
+  Search,
+  AlertCircle
 } from 'lucide-react';
 
 // --- Canvas & Layout Types ---
@@ -253,6 +254,11 @@ const ProjectWorkspace: React.FC = () => {
   const handleGenerateScript = async () => {
     if (!project) return;
     
+    if (!prompts.SCRIPT) {
+        setError("提示词模版正在加载或加载失败，请刷新页面重试。");
+        return;
+    }
+
     setNodeLoading('script', true);
     setError(null);
     try {
@@ -261,8 +267,9 @@ const ProjectWorkspace: React.FC = () => {
       
       const updated = { ...project, script, status: ProjectStatus.IN_PROGRESS };
       await saveWork(updated);
-    } catch (e) {
-      setError("生成脚本失败，请检查配置或重试。");
+    } catch (e: any) {
+      console.error("Generate Script Error:", e);
+      setError(`生成脚本失败: ${e.message || '未知错误'}`);
     } finally {
       setNodeLoading('script', false);
     }
@@ -271,6 +278,11 @@ const ProjectWorkspace: React.FC = () => {
   const handleGenerateStoryboardText = async () => {
     if (!project || !project.script) return;
     
+    if (!prompts.STORYBOARD_TEXT) {
+        setError("提示词模版尚未就绪，请稍后。");
+        return;
+    }
+
     setNodeLoading('sb_text', true);
     setError(null);
     try {
@@ -287,12 +299,13 @@ const ProjectWorkspace: React.FC = () => {
         id: crypto.randomUUID(),
         sceneNumber: i + 1,
         description: f.description,
-        imagePrompt: interpolatePrompt(prompts.IMAGE_GEN.template, { description: f.description })
+        imagePrompt: interpolatePrompt(prompts.IMAGE_GEN?.template || '', { description: f.description })
       }));
 
       const updated = { ...project, storyboard: newFrames };
       await saveWork(updated);
-    } catch (e) {
+    } catch (e: any) {
+      console.error("Generate Storyboard Error:", e);
       setError("生成分镜文案失败，请重试。");
     } finally {
       setNodeLoading('sb_text', false);
@@ -302,7 +315,13 @@ const ProjectWorkspace: React.FC = () => {
   const handleGenerateTitles = async () => {
     if (!project || !project.script) return;
     
+    if (!prompts.TITLES) {
+        setError("提示词模版错误。");
+        return;
+    }
+
     setNodeLoading('titles', true);
+    setError(null);
     try {
       const promptText = interpolatePrompt(prompts.TITLES.template, { 
           ...project.inputs,
@@ -328,8 +347,9 @@ const ProjectWorkspace: React.FC = () => {
     if (!project || !project.script) return;
     
     setNodeLoading('summary', true);
+    setError(null);
     try {
-      const promptText = interpolatePrompt(prompts.SUMMARY.template, { script: project.script });
+      const promptText = interpolatePrompt(prompts.SUMMARY?.template || '', { script: project.script });
       const summary = await gemini.generateText(promptText);
       
       const updated = { ...project, summary };
@@ -345,8 +365,9 @@ const ProjectWorkspace: React.FC = () => {
     if (!project || !project.script) return;
     
     setNodeLoading('cover', true);
+    setError(null);
     try {
-      const promptText = interpolatePrompt(prompts.COVER_GEN.template, { 
+      const promptText = interpolatePrompt(prompts.COVER_GEN?.template || '', { 
           ...project.inputs,
           script: project.script
       });
@@ -546,6 +567,19 @@ const ProjectWorkspace: React.FC = () => {
   return (
     <div className="flex h-full bg-[#F8F9FC] overflow-hidden relative font-sans select-none">
       
+      {/* Error Alert Banner */}
+      {error && (
+        <div className="absolute top-6 left-1/2 -translate-x-1/2 z-50 animate-fade-in-down w-auto max-w-lg">
+          <div className="bg-rose-50 border border-rose-100 text-rose-700 px-6 py-4 rounded-xl shadow-xl flex items-center gap-3">
+             <AlertCircle className="w-5 h-5 flex-shrink-0 text-rose-500" />
+             <p className="text-sm font-bold">{error}</p>
+             <button onClick={() => setError(null)} className="ml-4 p-1 hover:bg-rose-100 rounded-full transition-colors">
+                <X className="w-4 h-4" />
+             </button>
+          </div>
+        </div>
+      )}
+
       {/* Initial Project Setup Modal */}
       {showInitModal && (
         <div className="absolute inset-0 z-[100] bg-white/60 backdrop-blur-md flex items-center justify-center p-6 animate-in fade-in duration-300">
