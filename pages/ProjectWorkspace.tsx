@@ -458,6 +458,13 @@ const ProjectWorkspace: React.FC = () => {
     }
   };
 
+  // Handle clicking the background to deselect nodes
+  const handleCanvasClick = (e: React.MouseEvent) => {
+     if (!isPanning && !draggingId) {
+         setSelectedNodeId(null);
+     }
+  };
+
   const handleWheel = (e: React.WheelEvent) => {
     if (isSpacePressed) {
         // Zoom Logic
@@ -477,6 +484,19 @@ const ProjectWorkspace: React.FC = () => {
     }
     e.stopPropagation(); // Stop bubbling so we don't pan
     setDraggingId(nodeId);
+  };
+
+  // Handle clicking a node to select it
+  const handleNodeClick = (e: React.MouseEvent, nodeId: string) => {
+    e.stopPropagation(); // Stop bubbling to canvas click (which deselects)
+    const disabled = isNodeDisabled(nodeId);
+    if (disabled) {
+        alert("请先完成前置步骤（如生成视频文案）后再操作此模块。");
+        return;
+    }
+    if (!draggingId) {
+        setSelectedNodeId(nodeId);
+    }
   };
 
   const handleMouseMove = (e: React.MouseEvent) => {
@@ -755,6 +775,7 @@ const ProjectWorkspace: React.FC = () => {
       <div 
         className={`flex-1 h-full overflow-hidden relative bg-[#F8F9FC] ${isPanning ? 'cursor-grabbing' : isSpacePressed ? 'cursor-grab' : 'cursor-default'}`}
         onMouseDown={handleCanvasMouseDown}
+        onClick={handleCanvasClick}
         onMouseMove={handleMouseMove}
         onMouseUp={handleMouseUp}
         onMouseLeave={handleMouseUp}
@@ -875,6 +896,7 @@ const ProjectWorkspace: React.FC = () => {
                         <div
                             key={node.id}
                             onMouseDown={(e) => handleNodeMouseDown(e, node.id)}
+                            onClick={(e) => handleNodeClick(e, node.id)}
                             className={`absolute flex flex-col bg-white rounded-2xl transition-all duration-300 group overflow-hidden select-none
                                 ${status === 'completed' 
                                     ? 'border-emerald-500 border-2 shadow-lg shadow-emerald-500/10' 
@@ -891,13 +913,6 @@ const ProjectWorkspace: React.FC = () => {
                                 width: NODE_WIDTH,
                                 height: NODE_HEIGHT,
                                 transition: draggingId === node.id ? 'none' : 'box-shadow 0.3s, transform 0.2s, border-color 0.2s'
-                            }}
-                            onClick={() => {
-                                if (disabled) {
-                                    alert("请先完成前置步骤（如生成视频文案）后再操作此模块。");
-                                    return;
-                                }
-                                !draggingId && setSelectedNodeId(node.id)
                             }}
                         >
                             <div className="p-4 flex-1 flex flex-col justify-between relative z-10">
