@@ -1,4 +1,3 @@
-
 import { GoogleGenAI } from "@google/genai";
 
 // Helper to get the client instance safely at runtime
@@ -7,9 +6,9 @@ const getClient = () => {
   // The build tool (Vite) replaces this with the actual string value
   const apiKey = process.env.API_KEY;
   
-  if (!apiKey) {
+  if (!apiKey || apiKey === 'undefined' || apiKey === '') {
     console.error("API Key check failed. Value is:", apiKey);
-    throw new Error("API Key is missing. Please check your environment configuration in Cloudflare Pages.");
+    throw new Error("API Key is missing. Please check your environment configuration in Cloudflare Pages (Settings > Environment variables).");
   }
   
   return new GoogleGenAI({ apiKey });
@@ -40,7 +39,12 @@ export const generateJSON = async <T>(prompt: string, schema?: any): Promise<T> 
         responseSchema: schema
       }
     });
-    const text = response.text || '{}';
+    
+    let text = response.text || '{}';
+    
+    // Clean Markdown formatting if present (common issue with AI responses)
+    text = text.replace(/^```json\s*/i, '').replace(/^```\s*/i, '').replace(/\s*```$/i, '');
+    
     return JSON.parse(text) as T;
   } catch (error: any) {
     console.error("JSON generation error:", error);
