@@ -1,56 +1,52 @@
-import React from 'react';
-import ReactDOM from 'react-dom/client';
-import App from './App';
-
-class ErrorBoundary extends React.Component<{children: React.ReactNode}, {hasError: boolean, error: Error | null}> {
-  constructor(props: any) {
-    super(props);
-    this.state = { hasError: false, error: null };
-  }
-
-  static getDerivedStateFromError(error: any) {
-    return { hasError: true, error };
-  }
-
-  componentDidCatch(error: any, errorInfo: any) {
-    console.error("Uncaught error:", error, errorInfo);
-  }
-
-  render() {
-    if (this.state.hasError) {
-      return (
-        <div className="flex items-center justify-center min-h-screen bg-slate-50 text-slate-800 p-8">
-            <div className="max-w-md text-center bg-white p-10 rounded-3xl shadow-xl border border-slate-100">
-                <h1 className="text-3xl font-extrabold text-rose-500 mb-4">应用遇到错误</h1>
-                <p className="text-slate-500 mb-6 font-medium">抱歉，发生了一个意外错误，导致页面无法渲染。</p>
-                <div className="bg-slate-50 p-4 rounded-xl text-left overflow-auto max-h-40 mb-6 border border-slate-200">
-                    <code className="text-xs font-mono text-slate-600">{this.state.error?.message}</code>
-                </div>
-                <button 
-                    onClick={() => window.location.reload()}
-                    className="bg-slate-900 text-white px-6 py-3 rounded-xl font-bold hover:bg-slate-800 transition-colors"
-                >
-                    重新加载页面
-                </button>
-            </div>
-        </div>
-      );
-    }
-
-    return this.props.children;
+<!DOCTYPE html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>长视频助手</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+      /* Custom scrollbar for webkit */
+      ::-webkit-scrollbar {
+        width: 6px;
+        height: 6px;
+      }
+      ::-webkit-scrollbar-track {
+        background: transparent; 
+      }
+      ::-webkit-scrollbar-thumb {
+        background: #cbd5e1; 
+        border-radius: 10px;
+      }
+      ::-webkit-scrollbar-thumb:hover {
+        background: #94a3b8; 
+      }
+      
+      .glass-panel {
+        background: rgba(255, 255, 255, 0.7);
+        backdrop-filter: blur(10px);
+        -webkit-backdrop-filter: blur(10px);
+      }
+    </style>
+  <script type="importmap">
+{
+  "imports": {
+    "react/": "https://aistudiocdn.com/react@^19.2.0/",
+    "react": "https://aistudiocdn.com/react@^19.2.0",
+    "lucide-react": "https://aistudiocdn.com/lucide-react@^0.555.0",
+    "react-dom/": "https://aistudiocdn.com/react-dom@^19.2.0/",
+    "@google/genai": "https://aistudiocdn.com/@google/genai@^1.30.0",
+    "react-router-dom": "https://aistudiocdn.com/react-router-dom@^7.9.6",
+    "jszip": "https://aistudiocdn.com/jszip@^3.10.1",
+    "@vitejs/plugin-react": "https://aistudiocdn.com/@vitejs/plugin-react@^5.1.1",
+    "vite": "https://aistudiocdn.com/vite@^7.2.4"
   }
 }
-
-const rootElement = document.getElementById('root');
-if (!rootElement) {
-  throw new Error("Could not find root element to mount to");
-}
-
-const root = ReactDOM.createRoot(rootElement);
-root.render(
-  <React.StrictMode>
-    <ErrorBoundary>
-        <App />
-    </ErrorBoundary>
-  </React.StrictMode>
-);
+</script>
+</head>
+  <body class="bg-slate-50 text-slate-800 antialiased selection:bg-violet-500 selection:text-white font-sans">
+    <div id="root"></div>
+    <!-- CRITICAL: Entry point for the application -->
+    <script type="module" src="/index.tsx"></script>
+  </body>
+</html>
