@@ -1,9 +1,10 @@
+
 import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { ProjectData, StoryboardFrame, PromptTemplate } from '../types';
 import * as storage from '../services/storageService';
 import * as gemini from '../services/geminiService';
-import { ArrowLeft, Download, Loader2, Sparkles, Image as ImageIcon, RefreshCw, X, AlertCircle, Maximize2 } from 'lucide-react';
+import { ArrowLeft, Download, Loader2, Sparkles, Image as ImageIcon, RefreshCw, X, AlertCircle, Maximize2, Save as SaveIcon } from 'lucide-react';
 import JSZip from 'jszip';
 
 const StoryboardImages: React.FC = () => {
@@ -16,8 +17,8 @@ const StoryboardImages: React.FC = () => {
   const [generating, setGenerating] = useState(false);
   const [currentGenIds, setCurrentGenIds] = useState<Set<string>>(new Set());
   
-  // State for Status Bar
-  const [progress, setProgress] = useState({ total: 0, planned: 0, success: 0, failed: 0 });
+  // State for Batch Progress (Internal)
+  const [batchProgress, setBatchProgress] = useState({ planned: 0, completed: 0, failed: 0 });
   
   // State for Downloads and UI
   const [downloading, setDownloading] = useState(false);
@@ -29,12 +30,6 @@ const StoryboardImages: React.FC = () => {
             const p = await storage.getProject(id);
             if (p) {
                 setProject(p);
-                // Initialize progress
-                if (p.storyboard) {
-                    const total = p.storyboard.length;
-                    const success = p.storyboard.filter(f => !!f.imageUrl).length;
-                    setProgress({ total, planned: 0, success, failed: 0 });
-                }
             } else {
                 navigate('/');
             }
@@ -82,7 +77,7 @@ const StoryboardImages: React.FC = () => {
     if (!project) return;
     
     setGenerating(true);
-    setProgress(prev => ({ ...prev, planned: framesToGenerate.length, failed: 0 }));
+    setBatchProgress({ planned: framesToGenerate.length, completed: 0, failed: 0 });
 
     // Track active IDs for UI spinners
     const ids = new Set(framesToGenerate.map(f => f.id));
@@ -100,39 +95,39 @@ const StoryboardImages: React.FC = () => {
         });
 
         if (base64) {
-             // Update Success Counter
-             setProgress(prev => ({ ...prev, success: prev.success + 1 }));
-             
              // Update Project Data Immediately (Optimistic per frame)
              setProject(prev => {
                 if (!prev || !prev.storyboard) return prev;
                 const newSb = prev.storyboard.map(f => 
                     f.id === frame.id ? { ...f, imageUrl: base64 } : f
                 );
-                // Note: In a heavy parallel batch, frequently saving to DB/LocalStorage might be heavy.
-                // We might debounce the save, but for now we save to ensure data safety.
+                // Save to ensure data safety
                 const updated = { ...prev, storyboard: newSb };
                 storage.saveProject(updated);
                 return updated;
              });
+             setBatchProgress(prev => ({ ...prev, completed: prev.completed + 1 }));
         } else {
-             // Update Failed Counter
-             setProgress(prev => ({ ...prev, failed: prev.failed + 1 }));
+             setBatchProgress(prev => ({ ...prev, failed: prev.failed + 1 }));
         }
     });
 
     await Promise.all(promises);
     setGenerating(false);
-    // Reset planned count after batch finishes
-    setProgress(prev => ({ ...prev, planned: 0 }));
   };
 
   const handleGenerateAll = () => {
       if (!project || !project.storyboard) return;
-      // Generate ALL frames (overwrite existing?) -> Usually "Generate All" implies running the workflow.
-      // Or we can only generate missing ones. Let's assume regenerate ALL or generate missing.
-      // Given the requirement "All images start immediately", we target all.
-      handleBatchGenerate(project.storyboard);
+      
+      // Filter: Only generate frames that DO NOT have an image yet
+      const missingFrames = project.storyboard.filter(f => !f.imageUrl);
+      
+      if (missingFrames.length === 0) {
+          alert("所有分镜都已生成图片。如需重新生成特定图片，请点击图片右上角的刷新按钮。");
+          return;
+      }
+
+      handleBatchGenerate(missingFrames);
   };
 
   const handleRetryFailed = () => {
@@ -184,36 +179,71 @@ const StoryboardImages: React.FC = () => {
     }
   };
 
+  // Calculate Project Stats
+  const totalScenes = project?.storyboard?.length || 0;
+  const generatedCount = project?.storyboard?.filter(f => !!f.imageUrl).length || 0;
+  const unGeneratedCount = totalScenes - generatedCount;
+  // In this system, generated images are auto-saved to state/storage immediately, so Saved ~= Generated
+  const savedCount = generatedCount;
+
   if (!project) return <div className="flex h-full items-center justify-center"><Loader2 className="animate-spin text-fuchsia-500 w-8 h-8" /></div>;
 
   return (
     <div className="flex flex-col h-full bg-[#F8F9FC] relative">
-        {/* Status Bar (Conditional) */}
-        <div className="bg-slate-900 text-white px-8 py-2 flex items-center justify-between text-xs font-medium z-20 shadow-md">
-            <div className="flex items-center gap-6">
-                <span className="text-slate-400">分镜画面: <strong className="text-white">{progress.total}</strong> 个</span>
-                {generating && (
-                    <span className="text-blue-400 flex items-center gap-1.5">
-                        <Loader2 className="w-3 h-3 animate-spin" />
-                        计划生成: <strong>{progress.planned}</strong> 个
-                    </span>
-                )}
-                <span className="text-emerald-400">已生成: <strong>{progress.success}</strong> 个</span>
-                {progress.failed > 0 && (
-                    <span className="text-rose-400 flex items-center gap-1.5">
-                        <AlertCircle className="w-3.5 h-3.5" />
-                        失败: <strong>{progress.failed}</strong> 个
-                    </span>
+        {/* Top Status Bar (Centered, Large Bold Metrics) */}
+        <div className="bg-slate-900 text-white shadow-md z-20 border-b border-slate-800">
+            <div className="max-w-7xl mx-auto px-4 py-4 flex flex-wrap items-center justify-center gap-x-8 gap-y-2">
+                
+                <div className="flex items-baseline gap-2">
+                    <span className="text-slate-400 text-sm font-medium">共</span>
+                    <strong className="text-2xl text-white font-extrabold tracking-tight">{totalScenes}</strong>
+                    <span className="text-slate-400 text-sm font-medium">个分镜</span>
+                </div>
+
+                <div className="hidden md:block w-px h-8 bg-slate-700 mx-2"></div>
+
+                <div className="flex items-baseline gap-2">
+                    <span className="text-slate-400 text-sm font-medium">已生图</span>
+                    <strong className="text-2xl text-emerald-400 font-extrabold tracking-tight">{generatedCount}</strong>
+                    <span className="text-slate-400 text-sm font-medium">个</span>
+                </div>
+
+                <div className="hidden md:block w-px h-8 bg-slate-700 mx-2"></div>
+
+                <div className="flex items-baseline gap-2">
+                    <span className="text-slate-400 text-sm font-medium">未生图</span>
+                    <strong className="text-2xl text-amber-400 font-extrabold tracking-tight">{unGeneratedCount}</strong>
+                    <span className="text-slate-400 text-sm font-medium">个</span>
+                </div>
+
+                <div className="hidden md:block w-px h-8 bg-slate-700 mx-2"></div>
+
+                <div className="flex items-baseline gap-2">
+                    <span className="text-slate-400 text-sm font-medium">已保存图片</span>
+                    <strong className="text-2xl text-blue-400 font-extrabold tracking-tight">{savedCount}</strong>
+                    <span className="text-slate-400 text-sm font-medium">个</span>
+                </div>
+
+                {/* Batch Failure Retry */}
+                {batchProgress.failed > 0 && !generating && (
+                    <button 
+                        onClick={handleRetryFailed}
+                        className="ml-4 bg-rose-600 hover:bg-rose-500 text-white px-4 py-1.5 rounded-full text-xs font-bold transition-all flex items-center gap-1.5 animate-pulse shadow-lg shadow-rose-900/50 border border-rose-400"
+                    >
+                        <RefreshCw className="w-3.5 h-3.5" /> 失败 {batchProgress.failed} 个 - 点击重试
+                    </button>
                 )}
             </div>
             
-            {progress.failed > 0 && !generating && (
-                <button 
-                    onClick={handleRetryFailed}
-                    className="bg-rose-600 hover:bg-rose-500 text-white px-3 py-1 rounded-md text-xs font-bold transition-colors flex items-center gap-1.5 animate-pulse"
-                >
-                    <RefreshCw className="w-3 h-3" /> 失败画面重新生图
-                </button>
+            {/* Generating Progress Bar Overlay */}
+            {generating && (
+                <div className="h-1 w-full bg-slate-800 relative overflow-hidden">
+                    <div className="absolute inset-0 bg-slate-800"></div>
+                     <div 
+                        className="h-full bg-gradient-to-r from-fuchsia-500 to-pink-500 transition-all duration-300 relative z-10" 
+                        style={{ width: `${batchProgress.planned > 0 ? ((batchProgress.completed + batchProgress.failed) / batchProgress.planned) * 100 : 0}%` }}
+                    ></div>
+                </div>
             )}
         </div>
 
@@ -235,11 +265,11 @@ const StoryboardImages: React.FC = () => {
             <div className="flex items-center gap-4">
                 <button
                     onClick={handleGenerateAll}
-                    disabled={generating}
+                    disabled={generating || unGeneratedCount === 0}
                     className="flex items-center gap-2 px-6 py-2.5 bg-gradient-to-r from-fuchsia-600 to-pink-600 text-white rounded-xl font-bold shadow-lg shadow-fuchsia-500/30 hover:shadow-fuchsia-500/40 hover:-translate-y-0.5 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                     {generating ? <Loader2 className="w-4 h-4 animate-spin"/> : <Sparkles className="w-4 h-4" />}
-                    立刻生图
+                    {unGeneratedCount === 0 ? '已全部生成' : '立刻生图'}
                 </button>
                 <button
                     onClick={handleDownloadAll}
@@ -332,9 +362,6 @@ const StoryboardImages: React.FC = () => {
                                                                 storage.saveProject(updated);
                                                                 return updated;
                                                              });
-                                                             setProgress(prev => ({ ...prev, success: prev.success + 1 }));
-                                                        } else {
-                                                             setProgress(prev => ({ ...prev, failed: prev.failed + 1 }));
                                                         }
                                                         setCurrentGenIds(prev => {
                                                             const next = new Set(prev);
