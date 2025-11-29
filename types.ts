@@ -14,6 +14,16 @@ export interface StoryboardFrame {
   imagePrompt?: string;
 }
 
+export interface TitleItem {
+  title: string;
+  type: string; // e.g., "悬念型", "数字型"
+}
+
+export interface CoverOption {
+  visual: string; // Scene description
+  copy: string;   // Text on image
+}
+
 export interface ProjectData {
   id: string;
   title: string;
@@ -34,9 +44,10 @@ export interface ProjectData {
   // Outputs
   script?: string;
   storyboard?: StoryboardFrame[];
-  titles?: string[];
+  titles?: TitleItem[]; // Structured titles
   summary?: string;
-  coverText?: string; // New field for Cover Text Description/Copy
+  coverText?: string; // Legacy field
+  coverOptions?: CoverOption[]; // New structured cover options
   coverImage?: {
     imageUrl: string;
     title: string;
@@ -100,8 +111,17 @@ export const DEFAULT_PROMPTS: Record<string, PromptTemplate> = {
 要求：
 1. 标题必须紧扣脚本的核心内容。
 2. 要有冲击力，引发好奇心或情感共鸣（可以使用悬念、数字、反差等技巧）。
-3. 包含核心关键词。
-请以简单的无序列表形式返回，每行一个标题。`
+
+请返回一个 JSON 数组，数组中每个对象包含两个字段：
+- "title": 具体的标题文本
+- "type": 标题的类型风格（例如：悬念型、直击痛点、数字盘点、情绪共鸣等）
+
+示例格式：
+[
+  {"title": "普通人如何利用AI在30天内赚到第一桶金？", "type": "悬念利益型"},
+  {"title": "揭秘OpenAI内部：你不知道的5个真相", "type": "揭秘型"}
+]
+`
   },
   SUMMARY: {
     id: 'summary',
@@ -127,15 +147,20 @@ export const DEFAULT_PROMPTS: Record<string, PromptTemplate> = {
     id: 'cover_gen',
     name: '封面文字策划',
     description: '基于脚本内容生成封面方案',
-    template: `请基于以下视频脚本，策划一个高点击率的封面（Thumbnail）方案。
+    template: `请基于以下视频脚本，策划 3 个高点击率的封面（Thumbnail）方案。
     
 脚本内容:
 {{script}}
 
-请提供 3 个不同的封面方案，每个方案包含：
-1. 画面描述（Visual）：详细描述画面主体、背景、表情、动作和色彩氛围。
-2. 封面文字（Copy）：封面图片上醒目的大字文案（通常少于8个字，极具冲击力）。
+请返回一个 JSON 数组，数组中每个对象包含两个字段：
+- "visual": 详细的画面描述（包含主体、表情、背景颜色、氛围）。
+- "copy": 封面上的醒目大字文案（Copywriting），通常少于8个字，极具冲击力。
 
-请直接返回文本方案。`
+示例格式：
+[
+  {"visual": "极度震惊的表情特写，背景是燃烧的红色火焰", "copy": "彻底崩盘！"},
+  {"visual": "左右分屏对比，左边是贫穷的街道，右边是未来城市", "copy": "逆袭翻身"}
+]
+`
   }
 };
