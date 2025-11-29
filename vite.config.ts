@@ -1,4 +1,3 @@
-
 import { defineConfig, loadEnv } from 'vite';
 import react from '@vitejs/plugin-react';
 
@@ -9,7 +8,8 @@ export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), '');
   
   // Get API key from .env files OR system environment variables (Cloudflare)
-  const apiKey = env.API_KEY || process.env.API_KEY;
+  // Default to empty string to prevent build-time JSON.stringify(undefined)
+  const apiKey = env.API_KEY || process.env.API_KEY || '';
 
   return {
     plugins: [react()],
