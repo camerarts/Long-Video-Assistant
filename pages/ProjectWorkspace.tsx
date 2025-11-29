@@ -1,6 +1,7 @@
+
 import React, { useEffect, useState, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ProjectData, StoryboardFrame, ProjectStatus, PromptTemplate } from '../types';
+import { ProjectData, StoryboardFrame, ProjectStatus, PromptTemplate, TitleItem, CoverOption } from '../types';
 import * as storage from '../services/storageService';
 import * as gemini from '../services/geminiService';
 import { 
@@ -336,13 +337,19 @@ const ProjectWorkspace: React.FC = () => {
           script: project.script 
       });
       
-      const rawText = await gemini.generateText(promptText);
-      const titles = rawText.split('\n')
-        .map(t => t.replace(/^[-*•\d\.]+\s+/, '').trim())
-        .filter(t => t.length > 5)
-        .slice(0, 10);
+      // Use generateJSON to get structured output
+      const titles = await gemini.generateJSON<TitleItem[]>(promptText, {
+        type: "ARRAY",
+        items: {
+            type: "OBJECT",
+            properties: {
+                title: { type: "STRING" },
+                type: { type: "STRING" }
+            }
+        }
+      });
       
-      const updated = { ...project, titles };
+      const updated = { ...project, titles: titles };
       await saveWork(updated);
     } catch (e: any) {
       setError(`生成标题失败: ${e.message}`);
@@ -390,11 +397,21 @@ const ProjectWorkspace: React.FC = () => {
           script: project.script
       });
       
-      const coverText = await gemini.generateText(promptText);
+      // Use generateJSON for structured cover options
+      const coverOptions = await gemini.generateJSON<CoverOption[]>(promptText, {
+          type: "ARRAY",
+          items: {
+              type: "OBJECT",
+              properties: {
+                  visual: { type: "STRING" },
+                  copy: { type: "STRING" }
+              }
+          }
+      });
       
       const updated = { 
         ...project, 
-        coverText: coverText, 
+        coverOptions: coverOptions, 
         status: ProjectStatus.COMPLETED 
       };
       await saveWork(updated);
@@ -532,10 +549,10 @@ const ProjectWorkspace: React.FC = () => {
     switch (nodeId) {
       case 'input': return project.inputs.topic ? 'completed' : 'pending';
       case 'script': return project.script ? 'completed' : 'pending';
-      case 'titles': return project.titles?.length ? 'completed' : 'pending';
+      case 'titles': return (project.titles?.length || 0) > 0 ? 'completed' : 'pending';
       case 'summary': return project.summary ? 'completed' : 'pending';
       case 'sb_text': return project.storyboard?.length ? 'completed' : 'pending';
-      case 'cover': return project.coverText ? 'completed' : 'pending';
+      case 'cover': return (project.coverOptions?.length || 0) > 0 || !!project.coverText ? 'completed' : 'pending';
       case 'image_gen': return project.storyboard?.some(f => !!f.imageUrl) ? 'completed' : 'pending';
       default: return 'pending';
     }
@@ -577,6 +594,44 @@ const ProjectWorkspace: React.FC = () => {
             </div>
         </div>
     );
+  };
+
+  // Table Component for Structured Data
+  const TableResultBox = ({ 
+    headers, 
+    data, 
+    renderRow 
+  }: { 
+    headers: string[], 
+    data: any[], 
+    renderRow: (item: any, index: number) => React.ReactNode 
+  }) => {
+      if (!data || data.length === 0) {
+          return (
+             <div className="text-center py-12 text-slate-400 border-2 border-dashed border-slate-200 rounded-2xl bg-slate-50/30">
+                 <p>点击上方按钮生成内容</p>
+             </div>
+          );
+      }
+
+      return (
+        <div className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
+            <div className="overflow-x-auto">
+                <table className="w-full text-left border-collapse">
+                    <thead>
+                        <tr className="bg-slate-50 border-b border-slate-100">
+                            {headers.map((h, i) => (
+                                <th key={i} className="py-3 px-5 text-xs font-bold text-slate-400 uppercase tracking-wider">{h}</th>
+                            ))}
+                        </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-50">
+                        {data.map((item, index) => renderRow(item, index))}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+      );
   };
 
   if (!project) return <div className="flex h-full items-center justify-center"><Loader2 className="animate-spin text-violet-500 w-8 h-8" /></div>;
@@ -1067,32 +1122,30 @@ const ProjectWorkspace: React.FC = () => {
                                 </button>
                             </div>
 
-                            {/* Text Library for Titles */}
-                            <TextResultBox 
-                                title="标题列表库" 
-                                copyLabel="复制所有标题"
-                                content={project.titles?.join('\n') || ''} 
+                            {/* STRUCTURED TABLE VIEW */}
+                            <TableResultBox 
+                                headers={["#", "标题文本", "类型/风格"]}
+                                data={project.titles || []}
+                                renderRow={(item: TitleItem | string, index) => {
+                                    const isObj = typeof item === 'object';
+                                    const title = isObj ? (item as TitleItem).title : (item as string);
+                                    const type = isObj ? (item as TitleItem).type : "默认";
+                                    return (
+                                        <tr key={index} className="hover:bg-blue-50/30 transition-colors group">
+                                            <td className="py-3 px-5 text-sm font-bold text-slate-300 w-12 text-center">{index + 1}</td>
+                                            <td className="py-3 px-5 text-sm font-medium text-slate-800 relative">
+                                                {title}
+                                                <button onClick={() => navigator.clipboard.writeText(title)} className="absolute right-2 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 p-1.5 text-blue-500 bg-white border border-blue-100 rounded hover:bg-blue-50 transition-all" title="复制">
+                                                    <Copy className="w-3.5 h-3.5" />
+                                                </button>
+                                            </td>
+                                            <td className="py-3 px-5 text-xs text-slate-500">
+                                                <span className="bg-slate-100 text-slate-600 px-2 py-1 rounded border border-slate-200">{type}</span>
+                                            </td>
+                                        </tr>
+                                    )
+                                }}
                             />
-
-                            <div className="space-y-3">
-                                {project.titles?.map((title, i) => (
-                                    <div key={i} className="bg-white p-4 rounded-xl border border-slate-100 flex items-center gap-4 text-sm text-slate-800 shadow-sm hover:shadow-md hover:border-blue-100 transition-all group">
-                                        <span className="w-6 h-6 bg-blue-50 text-blue-600 rounded-lg text-xs flex items-center justify-center font-bold">{i+1}</span>
-                                        <span className="flex-1 font-medium">{title}</span>
-                                        <button 
-                                            onClick={() => {navigator.clipboard.writeText(title)}}
-                                            className="opacity-0 group-hover:opacity-100 p-2 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-all"
-                                        >
-                                            <Copy className="w-4 h-4" />
-                                        </button>
-                                    </div>
-                                ))}
-                                {(!project.titles || project.titles.length === 0) && (
-                                     <div className="text-center py-12 text-slate-400 border-2 border-dashed border-slate-200 rounded-2xl">
-                                         <p>点击上方按钮生成高点击率标题</p>
-                                     </div>
-                                )}
-                            </div>
                         </div>
                     )}
 
@@ -1132,22 +1185,42 @@ const ProjectWorkspace: React.FC = () => {
                                 </button>
                             </div>
 
-                             {/* Text Library for Cover */}
-                             <TextResultBox 
-                                title="封面文案与描述库" 
-                                copyLabel="复制文案"
-                                content={project.coverText || ''} 
-                            />
-
-                             <div className="space-y-3">
-                                <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">编辑结果</label>
-                                <textarea 
-                                    value={project.coverText || ''} 
-                                    onChange={(e) => setProject({...project, coverText: e.target.value})}
-                                    className="w-full h-64 bg-white border border-slate-200 rounded-2xl p-6 text-sm text-slate-800 resize-none outline-none focus:ring-2 focus:ring-rose-500/20 focus:border-rose-200"
-                                    placeholder="生成的封面方案将显示在这里..."
+                             {/* STRUCTURED TABLE VIEW */}
+                             {project.coverOptions && project.coverOptions.length > 0 ? (
+                                <TableResultBox 
+                                    headers={["方案", "画面描述 (Visual)", "大字文案 (Copy)"]}
+                                    data={project.coverOptions}
+                                    renderRow={(item: CoverOption, index) => (
+                                        <tr key={index} className="hover:bg-rose-50/30 transition-colors group">
+                                            <td className="py-4 px-5 text-sm font-bold text-slate-300 w-16 text-center">#{index + 1}</td>
+                                            <td className="py-4 px-5 text-sm text-slate-700 leading-relaxed w-[60%] align-top">
+                                                {item.visual}
+                                            </td>
+                                            <td className="py-4 px-5 align-top">
+                                                <div className="relative">
+                                                    <div className="bg-rose-50 text-rose-700 font-extrabold text-xl p-3 rounded-lg border border-rose-100 shadow-sm text-center transform -rotate-2 group-hover:rotate-0 transition-transform duration-300">
+                                                        {item.copy}
+                                                    </div>
+                                                    <button onClick={() => navigator.clipboard.writeText(item.copy)} className="absolute -right-2 -top-2 opacity-0 group-hover:opacity-100 bg-white border border-slate-200 p-1.5 rounded-full shadow-sm hover:text-rose-600 transition-all" title="复制文案">
+                                                        <Copy className="w-3 h-3" />
+                                                    </button>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    )}
                                 />
-                             </div>
+                             ) : (
+                                 /* Legacy Text View Fallback */
+                                 <div className="space-y-3">
+                                    <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">编辑结果 (文本模式)</label>
+                                    <textarea 
+                                        value={project.coverText || ''} 
+                                        onChange={(e) => setProject({...project, coverText: e.target.value})}
+                                        className="w-full h-64 bg-white border border-slate-200 rounded-2xl p-6 text-sm text-slate-800 resize-none outline-none focus:ring-2 focus:ring-rose-500/20 focus:border-rose-200"
+                                        placeholder="生成的封面方案将显示在这里..."
+                                    />
+                                 </div>
+                             )}
                         </div>
                     )}
                 </div>
