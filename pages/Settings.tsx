@@ -1,7 +1,8 @@
+
 import React, { useState, useEffect } from 'react';
 import { PromptTemplate } from '../types';
 import * as storage from '../services/storageService';
-import { Save, RefreshCw, AlertTriangle, ClipboardPaste } from 'lucide-react';
+import { Save, RefreshCw, AlertTriangle, ClipboardPaste, Check } from 'lucide-react';
 
 const Settings: React.FC = () => {
   const [prompts, setPrompts] = useState<Record<string, PromptTemplate>>({});
@@ -19,12 +20,17 @@ const Settings: React.FC = () => {
   ];
 
   useEffect(() => {
-    setPrompts(storage.getPrompts());
+    loadPrompts();
   }, []);
 
-  const handleSave = () => {
+  const loadPrompts = async () => {
+    const data = await storage.getPrompts();
+    setPrompts(data);
+  };
+
+  const handleSave = async () => {
     setLoading(true);
-    storage.savePrompts(prompts);
+    await storage.savePrompts(prompts);
     setTimeout(() => {
       setLoading(false);
       setMessage("提示词保存成功！");
@@ -32,10 +38,11 @@ const Settings: React.FC = () => {
     }, 500);
   };
 
-  const handleReset = () => {
+  const handleReset = async () => {
     if (window.confirm("确定要重置所有提示词为默认值吗？此操作无法撤销。")) {
-      storage.resetPrompts();
-      setPrompts(storage.getPrompts());
+      await storage.resetPrompts();
+      const defaults = await storage.getPrompts();
+      setPrompts(defaults);
       setMessage("已恢复默认设置。");
       setTimeout(() => setMessage(null), 3000);
     }
@@ -165,21 +172,3 @@ const Settings: React.FC = () => {
 };
 
 export default Settings;
-function Check(props: any) {
-    return (
-      <svg
-        {...props}
-        xmlns="http://www.w3.org/2000/svg"
-        width="24"
-        height="24"
-        viewBox="0 0 24 24"
-        fill="none"
-        stroke="currentColor"
-        strokeWidth="2"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      >
-        <polyline points="20 6 9 17 4 12" />
-      </svg>
-    )
-  }
