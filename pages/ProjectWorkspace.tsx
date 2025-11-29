@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { ProjectData, StoryboardFrame, ProjectStatus, PromptTemplate } from '../types';
@@ -113,21 +112,30 @@ const ProjectWorkspace: React.FC = () => {
   useEffect(() => {
     const init = async () => {
         if (id) {
-            const p = await storage.getProject(id);
-            if (p) {
-                setProject(p);
-                if (!p.inputs.topic) {
-                    setShowInitModal(true);
-                    setInitFormData({ topic: '', corePoint: '' });
-                } else {
-                    setShowInitModal(false);
-                }
-            } else {
-                navigate('/');
+            try {
+              const p = await storage.getProject(id);
+              if (p) {
+                  setProject(p);
+                  if (!p.inputs.topic) {
+                      setShowInitModal(true);
+                      setInitFormData({ topic: '', corePoint: '' });
+                  } else {
+                      setShowInitModal(false);
+                  }
+              } else {
+                  navigate('/');
+              }
+            } catch (e) {
+              console.error("Failed to load project", e);
+              setError("加载项目失败，请返回列表重试");
             }
         }
-        const loadedPrompts = await storage.getPrompts();
-        setPrompts(loadedPrompts);
+        try {
+          const loadedPrompts = await storage.getPrompts();
+          setPrompts(loadedPrompts);
+        } catch (e) {
+          console.error("Failed to load prompts", e);
+        }
     };
     init();
   }, [id, navigate]);
@@ -255,7 +263,7 @@ const ProjectWorkspace: React.FC = () => {
     if (!project) return;
     
     if (!prompts.SCRIPT) {
-        setError("提示词模版正在加载或加载失败，请刷新页面重试。");
+        setError("提示词模版未加载，请刷新页面。");
         return;
     }
 
@@ -279,7 +287,7 @@ const ProjectWorkspace: React.FC = () => {
     if (!project || !project.script) return;
     
     if (!prompts.STORYBOARD_TEXT) {
-        setError("提示词模版尚未就绪，请稍后。");
+        setError("提示词模版错误。");
         return;
     }
 
@@ -306,7 +314,7 @@ const ProjectWorkspace: React.FC = () => {
       await saveWork(updated);
     } catch (e: any) {
       console.error("Generate Storyboard Error:", e);
-      setError("生成分镜文案失败，请重试。");
+      setError(`生成分镜失败: ${e.message}`);
     } finally {
       setNodeLoading('sb_text', false);
     }
@@ -336,8 +344,8 @@ const ProjectWorkspace: React.FC = () => {
       
       const updated = { ...project, titles };
       await saveWork(updated);
-    } catch (e) {
-      setError("生成标题失败。");
+    } catch (e: any) {
+      setError(`生成标题失败: ${e.message}`);
     } finally {
       setNodeLoading('titles', false);
     }
@@ -346,16 +354,21 @@ const ProjectWorkspace: React.FC = () => {
   const handleGenerateSummary = async () => {
     if (!project || !project.script) return;
     
+    if (!prompts.SUMMARY) {
+      setError("提示词模版错误。");
+      return;
+    }
+
     setNodeLoading('summary', true);
     setError(null);
     try {
-      const promptText = interpolatePrompt(prompts.SUMMARY?.template || '', { script: project.script });
+      const promptText = interpolatePrompt(prompts.SUMMARY.template, { script: project.script });
       const summary = await gemini.generateText(promptText);
       
       const updated = { ...project, summary };
       await saveWork(updated);
-    } catch (e) {
-      setError("生成总结失败。");
+    } catch (e: any) {
+      setError(`生成总结失败: ${e.message}`);
     } finally {
       setNodeLoading('summary', false);
     }
@@ -364,10 +377,15 @@ const ProjectWorkspace: React.FC = () => {
   const handleGenerateCover = async () => {
     if (!project || !project.script) return;
     
+    if (!prompts.COVER_GEN) {
+      setError("提示词模版错误。");
+      return;
+    }
+
     setNodeLoading('cover', true);
     setError(null);
     try {
-      const promptText = interpolatePrompt(prompts.COVER_GEN?.template || '', { 
+      const promptText = interpolatePrompt(prompts.COVER_GEN.template, { 
           ...project.inputs,
           script: project.script
       });
@@ -380,8 +398,8 @@ const ProjectWorkspace: React.FC = () => {
         status: ProjectStatus.COMPLETED 
       };
       await saveWork(updated);
-    } catch (e) {
-      setError("生成封面方案失败。");
+    } catch (e: any) {
+      setError(`生成封面方案失败: ${e.message}`);
     } finally {
       setNodeLoading('cover', false);
     }
@@ -393,8 +411,7 @@ const ProjectWorkspace: React.FC = () => {
     e.stopPropagation();
     
     if (isNodeDisabled(nodeId)) {
-        alert("请先生成视频文案（脚本）后再执行此步骤。");
-        return;
+        return; // Don't trigger if disabled (UI should also reflect this)
     }
 
     if (nodeId === 'image_gen') {
