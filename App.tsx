@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { HashRouter, Routes, Route, Navigate } from 'react-router-dom';
 import Layout from './components/Layout';
@@ -5,6 +6,7 @@ import Dashboard from './pages/Dashboard';
 import ProjectWorkspace from './pages/ProjectWorkspace';
 import Settings from './pages/Settings';
 import StoryboardImages from './pages/StoryboardImages';
+import ImageWorkshopList from './pages/ImageWorkshopList';
 import AuthGuard from './components/AuthGuard';
 
 const App: React.FC = () => {
@@ -14,6 +16,7 @@ const App: React.FC = () => {
         <Layout>
           <Routes>
             <Route path="/" element={<Dashboard />} />
+            <Route path="/images" element={<ImageWorkshopList />} />
             <Route path="/project/:id" element={<ProjectWorkspace />} />
             <Route path="/project/:id/images" element={<StoryboardImages />} />
             <Route path="/settings" element={<Settings />} />
