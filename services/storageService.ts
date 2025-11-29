@@ -3,27 +3,61 @@ import { ProjectData, PromptTemplate, DEFAULT_PROMPTS, ProjectStatus } from '../
 
 // API Endpoints
 const API_BASE = '/api';
+const LOCAL_KEY_PROJECTS = 'lva_projects';
+const LOCAL_KEY_PROMPTS = 'lva_prompts';
 
-export const getProjects = async (): Promise<ProjectData[]> => {
+// --- LocalStorage Helpers ---
+
+const getLocalProjects = (): ProjectData[] => {
   try {
-    const res = await fetch(`${API_BASE}/projects`);
-    if (!res.ok) throw new Error('Failed to fetch projects');
-    return await res.json();
-  } catch (error) {
-    console.error("API Error:", error);
+    const data = localStorage.getItem(LOCAL_KEY_PROJECTS);
+    return data ? JSON.parse(data) : [];
+  } catch (e) {
+    console.warn("LocalStorage Read Error", e);
     return [];
   }
 };
 
+const saveLocalProjects = (projects: ProjectData[]) => {
+  try {
+    localStorage.setItem(LOCAL_KEY_PROJECTS, JSON.stringify(projects));
+  } catch (e) {
+    console.warn("LocalStorage Write Error", e);
+  }
+};
+
+// --- Service Methods ---
+
+export const getProjects = async (): Promise<ProjectData[]> => {
+  // Strategy: Try API first, fallback to LocalStorage
+  try {
+    const res = await fetch(`${API_BASE}/projects`);
+    if (res.ok) {
+      const data = await res.json();
+      // Sync API data down to local for future offline usage
+      saveLocalProjects(data);
+      return data;
+    }
+    throw new Error(`API returned ${res.status}`);
+  } catch (error) {
+    console.warn("API Unavailable (getProjects), using LocalStorage fallback:", error);
+    return getLocalProjects();
+  }
+};
+
 export const getProject = async (id: string): Promise<ProjectData | undefined> => {
+  // Strategy: Try API first, fallback to LocalStorage
   try {
     const res = await fetch(`${API_BASE}/projects/${id}`);
+    if (res.ok) {
+      return await res.json();
+    }
     if (res.status === 404) return undefined;
-    if (!res.ok) throw new Error('Failed to fetch project');
-    return await res.json();
+    throw new Error(`API returned ${res.status}`);
   } catch (error) {
-    console.error("API Error:", error);
-    return undefined;
+    console.warn("API Unavailable (getProject), using LocalStorage fallback:", error);
+    const projects = getLocalProjects();
+    return projects.find(p => p.id === id);
   }
 };
 
@@ -33,6 +67,19 @@ export const saveProject = async (project: ProjectData): Promise<void> => {
     updatedAt: Date.now()
   };
   
+  // Strategy: Write to LocalStorage IMMEDIATELY (Sync), then try API (Async)
+  
+  // 1. Local Update
+  const projects = getLocalProjects();
+  const index = projects.findIndex(p => p.id === payload.id);
+  if (index >= 0) {
+    projects[index] = payload;
+  } else {
+    projects.push(payload);
+  }
+  saveLocalProjects(projects);
+
+  // 2. API Update (Fire and forget-ish, but catch errors)
   try {
     await fetch(`${API_BASE}/projects`, {
       method: 'POST',
@@ -40,13 +87,10 @@ export const saveProject = async (project: ProjectData): Promise<void> => {
       body: JSON.stringify(payload)
     });
   } catch (error) {
-    console.error("API Save Error:", error);
-    // Optional: Fallback to localstorage or offline queue could go here
+    console.warn("API Save Failed (Offline mode active):", error);
   }
 };
 
-// Note: Create is now async because we might want to ensure backend knows about it, 
-// but for UX speed, we generate ID client side and save async.
 export const createProject = async (): Promise<string> => {
   const newProject: ProjectData = {
     id: crypto.randomUUID(),
@@ -63,11 +107,18 @@ export const createProject = async (): Promise<string> => {
       language: '中文'
     }
   };
+  
   await saveProject(newProject);
   return newProject.id;
 };
 
 export const deleteProject = async (id: string): Promise<void> => {
+  // 1. Local Delete
+  const projects = getLocalProjects();
+  const filtered = projects.filter(p => p.id !== id);
+  saveLocalProjects(filtered);
+
+  // 2. API Delete
   try {
     await fetch(`${API_BASE}/projects/${id}`, { method: 'DELETE' });
   } catch (error) {
@@ -76,20 +127,36 @@ export const deleteProject = async (id: string): Promise<void> => {
 };
 
 export const getPrompts = async (): Promise<Record<string, PromptTemplate>> => {
+  // Strategy: Try API -> Try LocalStorage -> Return Defaults
   try {
     const res = await fetch(`${API_BASE}/prompts`);
-    if (!res.ok) throw new Error('Failed to fetch prompts');
-    const stored = await res.json();
-    
-    if (!stored) return DEFAULT_PROMPTS;
-    return { ...DEFAULT_PROMPTS, ...stored };
+    if (res.ok) {
+      const stored = await res.json();
+      if (stored) {
+        localStorage.setItem(LOCAL_KEY_PROMPTS, JSON.stringify(stored));
+        return { ...DEFAULT_PROMPTS, ...stored };
+      }
+    }
   } catch (error) {
-    console.error("API Prompts Error:", error);
-    return DEFAULT_PROMPTS;
+    console.warn("API Unavailable (getPrompts), checking local:", error);
   }
+
+  // Fallback to local
+  try {
+    const local = localStorage.getItem(LOCAL_KEY_PROMPTS);
+    if (local) {
+      return { ...DEFAULT_PROMPTS, ...JSON.parse(local) };
+    }
+  } catch (e) { /* ignore */ }
+
+  return DEFAULT_PROMPTS;
 };
 
 export const savePrompts = async (prompts: Record<string, PromptTemplate>): Promise<void> => {
+  // 1. Local Save
+  localStorage.setItem(LOCAL_KEY_PROMPTS, JSON.stringify(prompts));
+
+  // 2. API Save
   try {
     await fetch(`${API_BASE}/prompts`, {
       method: 'POST',
@@ -102,6 +169,5 @@ export const savePrompts = async (prompts: Record<string, PromptTemplate>): Prom
 };
 
 export const resetPrompts = async (): Promise<void> => {
-  // We can just save the defaults to reset
   await savePrompts(DEFAULT_PROMPTS);
 };
