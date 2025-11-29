@@ -1,9 +1,9 @@
 
 interface Env {
-  DB: D1Database;
+  DB: any;
 }
 
-export const onRequestGet: PagesFunction<Env> = async (context) => {
+export const onRequestGet = async (context: any) => {
   try {
     const { results } = await context.env.DB.prepare(
       "SELECT * FROM projects ORDER BY updated_at DESC"
@@ -16,12 +16,12 @@ export const onRequestGet: PagesFunction<Env> = async (context) => {
     });
 
     return Response.json(projects);
-  } catch (err) {
+  } catch (err: any) {
     return Response.json({ error: err.message }, { status: 500 });
   }
 };
 
-export const onRequestPost: PagesFunction<Env> = async (context) => {
+export const onRequestPost = async (context: any) => {
   try {
     const project = await context.request.json() as any;
     
@@ -44,7 +44,7 @@ export const onRequestPost: PagesFunction<Env> = async (context) => {
     ).run();
 
     return Response.json({ success: true });
-  } catch (err) {
+  } catch (err: any) {
     return Response.json({ error: err.message }, { status: 500 });
   }
 };
