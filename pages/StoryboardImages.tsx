@@ -1,6 +1,7 @@
+
 import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ProjectData, StoryboardFrame } from '../types';
+import { ProjectData, StoryboardFrame, PromptTemplate } from '../types';
 import * as storage from '../services/storageService';
 import * as gemini from '../services/geminiService';
 import { ArrowLeft, Download, Loader2, Sparkles, Image as ImageIcon, RefreshCw } from 'lucide-react';
@@ -10,35 +11,40 @@ const StoryboardImages: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const [project, setProject] = useState<ProjectData | null>(null);
+  const [prompts, setPrompts] = useState<Record<string, PromptTemplate>>({});
   const [generating, setGenerating] = useState(false);
   const [downloading, setDownloading] = useState(false);
   const [currentGenId, setCurrentGenId] = useState<string | null>(null);
 
-  // Template for image prompt
-  const prompts = storage.getPrompts();
-
   useEffect(() => {
-    if (id) {
-      const p = storage.getProject(id);
-      if (p) {
-        setProject(p);
-      } else {
-        navigate('/');
-      }
-    }
+    const init = async () => {
+        if (id) {
+            const p = await storage.getProject(id);
+            if (p) {
+                setProject(p);
+            } else {
+                navigate('/');
+            }
+        }
+        const loadedPrompts = await storage.getPrompts();
+        setPrompts(loadedPrompts);
+    };
+    init();
   }, [id, navigate]);
 
-  const saveProject = (updatedProject: ProjectData) => {
-    storage.saveProject(updatedProject);
+  const saveProject = async (updatedProject: ProjectData) => {
+    await storage.saveProject(updatedProject);
     setProject(updatedProject);
   };
 
-  const handlePromptChange = (frameId: string, newPrompt: string) => {
+  const handlePromptChange = async (frameId: string, newPrompt: string) => {
     if (!project || !project.storyboard) return;
     const updatedSb = project.storyboard.map(f => 
         f.id === frameId ? { ...f, imagePrompt: newPrompt } : f
     );
-    saveProject({ ...project, storyboard: updatedSb });
+    const updated = { ...project, storyboard: updatedSb };
+    setProject(updated); // Optimistic UI
+    await storage.saveProject(updated); // Background save
   };
 
   const interpolatePrompt = (template: string, data: Record<string, string>) => {
@@ -47,7 +53,7 @@ const StoryboardImages: React.FC = () => {
 
   const generateSingleImage = async (frame: StoryboardFrame): Promise<string | null> => {
       try {
-        const prompt = frame.imagePrompt || interpolatePrompt(prompts.IMAGE_GEN.template, { description: frame.description });
+        const prompt = frame.imagePrompt || interpolatePrompt(prompts.IMAGE_GEN?.template || '', { description: frame.description });
         // Update prompt if it was empty in data
         if (!frame.imagePrompt) {
             handlePromptChange(frame.id, prompt);
@@ -65,15 +71,7 @@ const StoryboardImages: React.FC = () => {
     
     const frames = [...project.storyboard];
     
-    // Process sequentially to avoid rate limits and allow UI updates
     for (const frame of frames) {
-        // If image exists, skip unless we force (for now we assume "Generate Now" means generate missing or all? 
-        // User said "Batch generate based on column 2". Let's assume re-generation if user clicks.
-        // But for safety and cost, let's only generate if no image, or if we want to add a specific 'regenerate' button per row.
-        // The prompt implies "Click button -> immediately batch generate". I'll generate ALL to ensure they match prompts.
-        // Actually, to be safe, let's only generate missing ones OR create a flag? 
-        // Let's generate ALL for the "Immediately Generate" button as it implies a full action.
-        
         setCurrentGenId(frame.id);
         const base64 = await generateSingleImage(frame);
         
@@ -195,7 +193,7 @@ const StoryboardImages: React.FC = () => {
                                 <td className="py-6 px-6 align-top">
                                     <div className="space-y-2">
                                         <textarea
-                                            value={frame.imagePrompt || interpolatePrompt(prompts.IMAGE_GEN.template, { description: frame.description })}
+                                            value={frame.imagePrompt || interpolatePrompt(prompts.IMAGE_GEN?.template || '', { description: frame.description })}
                                             onChange={(e) => handlePromptChange(frame.id, e.target.value)}
                                             className="w-full h-32 bg-slate-50 border border-slate-200 rounded-xl p-4 text-sm text-slate-700 resize-none outline-none focus:ring-2 focus:ring-fuchsia-500/20 focus:border-fuchsia-300 transition-all font-mono leading-relaxed"
                                             placeholder="输入提示词..."
@@ -231,9 +229,6 @@ const StoryboardImages: React.FC = () => {
                                         <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
                                              <button 
                                                 onClick={() => {
-                                                    // Trigger single generation logic here if needed, 
-                                                    // For now reusing the batch logic by just forcing state update or extracting the function.
-                                                    // Let's manually trigger a small localized update.
                                                     const doGen = async () => {
                                                         setCurrentGenId(frame.id);
                                                         const base64 = await generateSingleImage(frame);
@@ -241,8 +236,9 @@ const StoryboardImages: React.FC = () => {
                                                              setProject(prev => {
                                                                 if (!prev || !prev.storyboard) return prev;
                                                                 const newSb = prev.storyboard.map(f => f.id === frame.id ? { ...f, imageUrl: base64 } : f);
-                                                                storage.saveProject({ ...prev, storyboard: newSb });
-                                                                return { ...prev, storyboard: newSb };
+                                                                const updated = { ...prev, storyboard: newSb };
+                                                                storage.saveProject(updated);
+                                                                return updated;
                                                              });
                                                         }
                                                         setCurrentGenId(null);
