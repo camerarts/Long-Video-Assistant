@@ -1,11 +1,11 @@
 
 interface Env {
-  DB: D1Database;
+  DB: any;
 }
 
 const KEY = 'global_prompts';
 
-export const onRequestGet: PagesFunction<Env> = async (context) => {
+export const onRequestGet = async (context: any) => {
   try {
     const result = await context.env.DB.prepare(
       "SELECT data FROM prompts WHERE id = ?"
@@ -16,12 +16,12 @@ export const onRequestGet: PagesFunction<Env> = async (context) => {
     }
 
     return Response.json(JSON.parse(result.data as string));
-  } catch (err) {
+  } catch (err: any) {
     return Response.json({ error: err.message }, { status: 500 });
   }
 };
 
-export const onRequestPost: PagesFunction<Env> = async (context) => {
+export const onRequestPost = async (context: any) => {
   try {
     const prompts = await context.request.json();
     
@@ -31,7 +31,7 @@ export const onRequestPost: PagesFunction<Env> = async (context) => {
     ).bind(KEY, JSON.stringify(prompts)).run();
 
     return Response.json({ success: true });
-  } catch (err) {
+  } catch (err: any) {
     return Response.json({ error: err.message }, { status: 500 });
   }
 };
