@@ -1,9 +1,9 @@
 
 interface Env {
-  DB: D1Database;
+  DB: any;
 }
 
-export const onRequestGet: PagesFunction<Env> = async (context) => {
+export const onRequestGet = async (context: any) => {
   const id = context.params.id;
   
   try {
@@ -17,12 +17,12 @@ export const onRequestGet: PagesFunction<Env> = async (context) => {
 
     const project = JSON.parse(result.data as string);
     return Response.json(project);
-  } catch (err) {
+  } catch (err: any) {
     return Response.json({ error: err.message }, { status: 500 });
   }
 };
 
-export const onRequestDelete: PagesFunction<Env> = async (context) => {
+export const onRequestDelete = async (context: any) => {
   const id = context.params.id;
   
   try {
@@ -31,7 +31,7 @@ export const onRequestDelete: PagesFunction<Env> = async (context) => {
     ).bind(id).run();
 
     return Response.json({ success: true });
-  } catch (err) {
+  } catch (err: any) {
     return Response.json({ error: err.message }, { status: 500 });
   }
 };
