@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { LayoutDashboard, Settings, Video, Plus, Image as ImageIcon } from 'lucide-react';
@@ -18,8 +19,8 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
 
   const isWorkspace = location.pathname.startsWith('/project/');
 
-  const handleCreateProject = () => {
-    const newId = storage.createProject();
+  const handleCreateProject = async () => {
+    const newId = await storage.createProject();
     navigate(`/project/${newId}`);
   };
 
