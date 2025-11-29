@@ -1,9 +1,8 @@
-
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ProjectData, ProjectStatus } from '../types';
+import { ProjectData } from '../types';
 import * as storage from '../services/storageService';
-import { Calendar, Trash2, Plus, Sparkles, Loader2, Image as ImageIcon } from 'lucide-react';
+import { Calendar, Loader2, Image as ImageIcon, AlertCircle, CheckCircle2 } from 'lucide-react';
 
 const ImageWorkshopList: React.FC = () => {
   const navigate = useNavigate();
@@ -21,23 +20,21 @@ const ImageWorkshopList: React.FC = () => {
     setLoading(false);
   };
 
-  const getStatusStyle = (status: ProjectStatus) => {
-    switch (status) {
-      case ProjectStatus.COMPLETED: return 'bg-emerald-100 text-emerald-700 ring-1 ring-emerald-200';
-      case ProjectStatus.IN_PROGRESS: return 'bg-violet-100 text-violet-700 ring-1 ring-violet-200';
-      case ProjectStatus.ARCHIVED: return 'bg-slate-100 text-slate-500 ring-1 ring-slate-200';
-      default: return 'bg-slate-100 text-slate-600 ring-1 ring-slate-200';
+  const getImageProgress = (project: ProjectData) => {
+    if (!project.storyboard || project.storyboard.length === 0) {
+        return null;
     }
+    const total = project.storyboard.length;
+    const generated = project.storyboard.filter(f => !!f.imageUrl).length;
+    return { generated, total };
   };
 
-  const getStatusText = (status: ProjectStatus) => {
-      switch (status) {
-        case ProjectStatus.DRAFT: return '草稿';
-        case ProjectStatus.IN_PROGRESS: return '进行中';
-        case ProjectStatus.COMPLETED: return '已完成';
-        case ProjectStatus.ARCHIVED: return '已归档';
-        default: return status;
-      }
+  const handleRowClick = (project: ProjectData) => {
+    if (!project.storyboard || project.storyboard.length === 0) {
+        alert("该项目暂无分镜数据，无法进入生图工坊。\n\n请先进入【项目列表】，在画布中生成【分镜文案】。");
+        return;
+    }
+    navigate(`/project/${project.id}/images`);
   };
 
   return (
@@ -46,9 +43,9 @@ const ImageWorkshopList: React.FC = () => {
         <div>
           <h1 className="text-4xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-fuchsia-600 to-pink-600 mb-2 tracking-tight flex items-center gap-3">
             <ImageIcon className="w-8 h-8 text-fuchsia-600" />
-            分镜图片生成工坊
+            生图列表
           </h1>
-          <p className="text-slate-500 font-medium">选择项目以进入图片生成与管理界面。</p>
+          <p className="text-slate-500 font-medium">查看各项目的生图进度，进入工坊批量生产画面。</p>
         </div>
       </div>
 
@@ -59,10 +56,10 @@ const ImageWorkshopList: React.FC = () => {
       ) : projects.length === 0 ? (
         <div className="bg-white border border-dashed border-slate-300 rounded-3xl p-16 text-center shadow-sm">
           <div className="w-20 h-20 bg-slate-50 rounded-full flex items-center justify-center mx-auto mb-6 shadow-inner">
-            <Sparkles className="w-8 h-8 text-slate-400" />
+            <ImageIcon className="w-8 h-8 text-slate-400" />
           </div>
           <h3 className="text-2xl font-bold text-slate-800 mb-3">暂无项目</h3>
-          <p className="text-slate-500 mb-8 max-w-md mx-auto">请先在项目列表中创建项目，再进行图片生成。</p>
+          <p className="text-slate-500 mb-8 max-w-md mx-auto">请先在项目列表中创建项目并生成分镜。</p>
           <button onClick={() => navigate('/')} className="text-fuchsia-600 hover:text-fuchsia-700 font-bold hover:underline decoration-2 underline-offset-4">
             前往项目列表 &rarr;
           </button>
@@ -75,43 +72,74 @@ const ImageWorkshopList: React.FC = () => {
                         <tr className="bg-slate-50/50 border-b border-slate-100">
                             <th className="py-5 px-6 text-xs font-bold text-slate-400 uppercase tracking-wider w-20 text-center">序号</th>
                             <th className="py-5 px-6 text-xs font-bold text-slate-400 uppercase tracking-wider">主题 / 核心观点</th>
-                            <th className="py-5 px-6 text-xs font-bold text-slate-400 uppercase tracking-wider w-32">进度</th>
+                            <th className="py-5 px-6 text-xs font-bold text-slate-400 uppercase tracking-wider w-48">生图进度</th>
                             <th className="py-5 px-6 text-xs font-bold text-slate-400 uppercase tracking-wider w-40">完成日期</th>
                         </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-50">
-                        {projects.map((project, index) => (
-                            <tr 
-                                key={project.id} 
-                                onClick={() => navigate(`/project/${project.id}/images`)}
-                                className="group hover:bg-fuchsia-50/30 transition-colors cursor-pointer"
-                            >
-                                <td className="py-5 px-6 text-center text-sm font-bold text-slate-400">
-                                    {index + 1}
-                                </td>
-                                <td className="py-5 px-6">
-                                    <div className="flex flex-col">
-                                        <span className="font-bold text-slate-800 text-lg group-hover:text-fuchsia-700 transition-colors mb-1">
-                                            {project.title || '未命名项目'}
-                                        </span>
-                                        <span className="text-xs text-slate-400 line-clamp-1 max-w-md">
-                                            {project.inputs.corePoint || '暂无核心观点描述...'}
-                                        </span>
-                                    </div>
-                                </td>
-                                <td className="py-5 px-6">
-                                    <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-[10px] font-bold tracking-wide uppercase ${getStatusStyle(project.status)}`}>
-                                        {getStatusText(project.status)}
-                                    </span>
-                                </td>
-                                <td className="py-5 px-6">
-                                    <div className="flex items-center gap-2 text-sm font-medium text-slate-500">
-                                        <Calendar className="w-4 h-4 text-slate-300" />
-                                        {new Date(project.updatedAt).toLocaleDateString('zh-CN')}
-                                    </div>
-                                </td>
-                            </tr>
-                        ))}
+                        {projects.map((project, index) => {
+                            const progress = getImageProgress(project);
+                            const hasStoryboard = !!progress;
+                            
+                            return (
+                                <tr 
+                                    key={project.id} 
+                                    onClick={() => handleRowClick(project)}
+                                    className={`group transition-colors border-b border-slate-50 last:border-0 ${
+                                        hasStoryboard 
+                                        ? 'hover:bg-fuchsia-50/30 cursor-pointer' 
+                                        : 'opacity-60 bg-slate-50/30 cursor-not-allowed grayscale-[0.5]'
+                                    }`}
+                                >
+                                    <td className="py-5 px-6 text-center text-sm font-bold text-slate-400">
+                                        {index + 1}
+                                    </td>
+                                    <td className="py-5 px-6">
+                                        <div className="flex flex-col">
+                                            <span className={`font-bold text-lg transition-colors mb-1 ${hasStoryboard ? 'text-slate-800 group-hover:text-fuchsia-700' : 'text-slate-500'}`}>
+                                                {project.title || '未命名项目'}
+                                            </span>
+                                            <span className="text-xs text-slate-400 line-clamp-1 max-w-md">
+                                                {project.inputs.corePoint || '暂无核心观点描述...'}
+                                            </span>
+                                        </div>
+                                    </td>
+                                    <td className="py-5 px-6">
+                                        {hasStoryboard ? (
+                                            <div className="flex flex-col gap-1.5">
+                                                <div className="flex items-center justify-between text-xs font-bold text-slate-600">
+                                                    <span>{progress.generated} / {progress.total} 张</span>
+                                                    {progress.generated === progress.total && (
+                                                        <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500" />
+                                                    )}
+                                                </div>
+                                                <div className="w-full h-1.5 bg-slate-100 rounded-full overflow-hidden">
+                                                    <div 
+                                                        className={`h-full rounded-full transition-all duration-500 ${
+                                                            progress.generated === progress.total 
+                                                            ? 'bg-emerald-500' 
+                                                            : 'bg-gradient-to-r from-fuchsia-500 to-pink-500'
+                                                        }`}
+                                                        style={{ width: `${(progress.generated / progress.total) * 100}%` }}
+                                                    />
+                                                </div>
+                                            </div>
+                                        ) : (
+                                            <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-slate-100 text-slate-400 text-xs font-bold border border-slate-200">
+                                                <AlertCircle className="w-3.5 h-3.5" />
+                                                暂无分镜
+                                            </div>
+                                        )}
+                                    </td>
+                                    <td className="py-5 px-6">
+                                        <div className="flex items-center gap-2 text-sm font-medium text-slate-500">
+                                            <Calendar className="w-4 h-4 text-slate-300" />
+                                            {new Date(project.updatedAt).toLocaleDateString('zh-CN')}
+                                        </div>
+                                    </td>
+                                </tr>
+                            );
+                        })}
                     </tbody>
                 </table>
             </div>
