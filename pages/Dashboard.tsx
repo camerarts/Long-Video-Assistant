@@ -1,27 +1,36 @@
+
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ProjectData, ProjectStatus } from '../types';
 import * as storage from '../services/storageService';
-import { Calendar, Trash2, Plus, Sparkles } from 'lucide-react';
+import { Calendar, Trash2, Plus, Sparkles, Loader2 } from 'lucide-react';
 
 const Dashboard: React.FC = () => {
   const navigate = useNavigate();
   const [projects, setProjects] = useState<ProjectData[]>([]);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    setProjects(storage.getProjects().sort((a, b) => b.updatedAt - a.updatedAt));
+    loadProjects();
   }, []);
 
-  const handleCreate = () => {
-    const newId = storage.createProject();
+  const loadProjects = async () => {
+    setLoading(true);
+    const data = await storage.getProjects();
+    setProjects(data.sort((a, b) => b.updatedAt - a.updatedAt));
+    setLoading(false);
+  };
+
+  const handleCreate = async () => {
+    const newId = await storage.createProject();
     navigate(`/project/${newId}`);
   };
 
-  const handleDelete = (e: React.MouseEvent, id: string) => {
+  const handleDelete = async (e: React.MouseEvent, id: string) => {
     e.preventDefault();
     e.stopPropagation(); // Stop row click
     if (window.confirm('确定要删除这个项目吗？')) {
-      storage.deleteProject(id);
+      await storage.deleteProject(id);
       setProjects(prev => prev.filter(p => p.id !== id));
     }
   };
@@ -60,7 +69,11 @@ const Dashboard: React.FC = () => {
         </button>
       </div>
 
-      {projects.length === 0 ? (
+      {loading ? (
+        <div className="flex justify-center py-20">
+          <Loader2 className="w-10 h-10 text-violet-500 animate-spin" />
+        </div>
+      ) : projects.length === 0 ? (
         <div className="bg-white border border-dashed border-slate-300 rounded-3xl p-16 text-center shadow-sm">
           <div className="w-20 h-20 bg-slate-50 rounded-full flex items-center justify-center mx-auto mb-6 shadow-inner">
             <Sparkles className="w-8 h-8 text-slate-400" />
