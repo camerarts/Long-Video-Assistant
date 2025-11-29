@@ -1,7 +1,7 @@
 
 import React, { useEffect, useState, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ProjectData, StoryboardFrame, ProjectStatus } from '../types';
+import { ProjectData, StoryboardFrame, ProjectStatus, PromptTemplate } from '../types';
 import * as storage from '../services/storageService';
 import * as gemini from '../services/geminiService';
 import { 
@@ -79,6 +79,7 @@ const ProjectWorkspace: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const [project, setProject] = useState<ProjectData | null>(null);
+  const [prompts, setPrompts] = useState<Record<string, PromptTemplate>>({});
   
   // UI State
   const [showSettings, setShowSettings] = useState(true);
@@ -107,25 +108,27 @@ const ProjectWorkspace: React.FC = () => {
   const [generatingNodes, setGeneratingNodes] = useState<Set<string>>(new Set());
   const [error, setError] = useState<string | null>(null);
 
-  // Template/Prompts
-  const prompts = storage.getPrompts();
-
-  // Load project
+  // Load project and prompts
   useEffect(() => {
-    if (id) {
-      const p = storage.getProject(id);
-      if (p) {
-        setProject(p);
-        if (!p.inputs.topic) {
-            setShowInitModal(true);
-            setInitFormData({ topic: '', corePoint: '' });
-        } else {
-            setShowInitModal(false);
+    const init = async () => {
+        if (id) {
+            const p = await storage.getProject(id);
+            if (p) {
+                setProject(p);
+                if (!p.inputs.topic) {
+                    setShowInitModal(true);
+                    setInitFormData({ topic: '', corePoint: '' });
+                } else {
+                    setShowInitModal(false);
+                }
+            } else {
+                navigate('/');
+            }
         }
-      } else {
-        navigate('/');
-      }
-    }
+        const loadedPrompts = await storage.getPrompts();
+        setPrompts(loadedPrompts);
+    };
+    init();
   }, [id, navigate]);
 
   // Keyboard Listeners for Spacebar
@@ -155,14 +158,17 @@ const ProjectWorkspace: React.FC = () => {
     };
   }, []);
 
-  const saveWork = (updatedProject: ProjectData) => {
+  const saveWork = async (updatedProject: ProjectData) => {
     setSaving(true);
-    storage.saveProject(updatedProject);
+    // Optimistic Update
     setProject(updatedProject);
     if (updatedProject.inputs.topic) {
         setShowInitModal(false);
     }
-    setTimeout(() => setSaving(false), 500);
+    
+    // API Call
+    await storage.saveProject(updatedProject);
+    setSaving(false);
   };
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
@@ -244,23 +250,17 @@ const ProjectWorkspace: React.FC = () => {
     });
   };
 
-  const getLatestProject = (): ProjectData | null => {
-     if (!id) return null;
-     return storage.getProject(id) || null;
-  };
-
   const handleGenerateScript = async () => {
-    const currentProject = getLatestProject();
-    if (!currentProject) return;
+    if (!project) return;
     
     setNodeLoading('script', true);
     setError(null);
     try {
-      const promptText = interpolatePrompt(prompts.SCRIPT.template, { ...currentProject.inputs });
+      const promptText = interpolatePrompt(prompts.SCRIPT.template, { ...project.inputs });
       const script = await gemini.generateText(promptText);
       
-      const updated = { ...getLatestProject()!, script, status: ProjectStatus.IN_PROGRESS };
-      saveWork(updated);
+      const updated = { ...project, script, status: ProjectStatus.IN_PROGRESS };
+      await saveWork(updated);
     } catch (e) {
       setError("生成脚本失败，请检查配置或重试。");
     } finally {
@@ -269,13 +269,12 @@ const ProjectWorkspace: React.FC = () => {
   };
 
   const handleGenerateStoryboardText = async () => {
-    const currentProject = getLatestProject();
-    if (!currentProject || !currentProject.script) return;
+    if (!project || !project.script) return;
     
     setNodeLoading('sb_text', true);
     setError(null);
     try {
-      const promptText = interpolatePrompt(prompts.STORYBOARD_TEXT.template, { script: currentProject.script });
+      const promptText = interpolatePrompt(prompts.STORYBOARD_TEXT.template, { script: project.script });
       const framesData = await gemini.generateJSON<{description: string}[]>(promptText, {
         type: "ARRAY",
         items: {
@@ -291,8 +290,8 @@ const ProjectWorkspace: React.FC = () => {
         imagePrompt: interpolatePrompt(prompts.IMAGE_GEN.template, { description: f.description })
       }));
 
-      const updated = { ...getLatestProject()!, storyboard: newFrames };
-      saveWork(updated);
+      const updated = { ...project, storyboard: newFrames };
+      await saveWork(updated);
     } catch (e) {
       setError("生成分镜文案失败，请重试。");
     } finally {
@@ -301,14 +300,13 @@ const ProjectWorkspace: React.FC = () => {
   };
 
   const handleGenerateTitles = async () => {
-    const currentProject = getLatestProject();
-    if (!currentProject || !currentProject.script) return;
+    if (!project || !project.script) return;
     
     setNodeLoading('titles', true);
     try {
       const promptText = interpolatePrompt(prompts.TITLES.template, { 
-          ...currentProject.inputs,
-          script: currentProject.script 
+          ...project.inputs,
+          script: project.script 
       });
       
       const rawText = await gemini.generateText(promptText);
@@ -317,8 +315,8 @@ const ProjectWorkspace: React.FC = () => {
         .filter(t => t.length > 5)
         .slice(0, 10);
       
-      const updated = { ...getLatestProject()!, titles };
-      saveWork(updated);
+      const updated = { ...project, titles };
+      await saveWork(updated);
     } catch (e) {
       setError("生成标题失败。");
     } finally {
@@ -327,16 +325,15 @@ const ProjectWorkspace: React.FC = () => {
   };
 
   const handleGenerateSummary = async () => {
-    const currentProject = getLatestProject();
-    if (!currentProject || !currentProject.script) return;
+    if (!project || !project.script) return;
     
     setNodeLoading('summary', true);
     try {
-      const promptText = interpolatePrompt(prompts.SUMMARY.template, { script: currentProject.script });
+      const promptText = interpolatePrompt(prompts.SUMMARY.template, { script: project.script });
       const summary = await gemini.generateText(promptText);
       
-      const updated = { ...getLatestProject()!, summary };
-      saveWork(updated);
+      const updated = { ...project, summary };
+      await saveWork(updated);
     } catch (e) {
       setError("生成总结失败。");
     } finally {
@@ -345,24 +342,23 @@ const ProjectWorkspace: React.FC = () => {
   };
 
   const handleGenerateCover = async () => {
-    const currentProject = getLatestProject();
-    if (!currentProject || !currentProject.script) return;
+    if (!project || !project.script) return;
     
     setNodeLoading('cover', true);
     try {
       const promptText = interpolatePrompt(prompts.COVER_GEN.template, { 
-          ...currentProject.inputs,
-          script: currentProject.script
+          ...project.inputs,
+          script: project.script
       });
       
       const coverText = await gemini.generateText(promptText);
       
       const updated = { 
-        ...getLatestProject()!, 
+        ...project, 
         coverText: coverText, 
         status: ProjectStatus.COMPLETED 
       };
-      saveWork(updated);
+      await saveWork(updated);
     } catch (e) {
       setError("生成封面方案失败。");
     } finally {
@@ -590,8 +586,8 @@ const ProjectWorkspace: React.FC = () => {
                 <div className="flex gap-4 pt-4">
                     <button 
                         type="button" 
-                        onClick={() => {
-                            if (project.id) storage.deleteProject(project.id);
+                        onClick={async () => {
+                            if (project.id) await storage.deleteProject(project.id);
                             navigate('/');
                         }}
                         className="flex-1 py-4 bg-slate-100 hover:bg-slate-200 text-slate-600 font-bold rounded-xl transition-colors"
