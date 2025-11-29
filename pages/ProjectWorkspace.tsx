@@ -33,7 +33,8 @@ import {
   Lock,
   Hand,
   Search,
-  AlertCircle
+  AlertCircle,
+  Zap
 } from 'lucide-react';
 
 // --- Canvas & Layout Types ---
@@ -108,6 +109,10 @@ const ProjectWorkspace: React.FC = () => {
   const [saving, setSaving] = useState(false);
   const [generatingNodes, setGeneratingNodes] = useState<Set<string>>(new Set());
   const [error, setError] = useState<string | null>(null);
+
+  // One-Click Automation State
+  const [isAutoGenerating, setIsAutoGenerating] = useState(false);
+  const [nodeErrors, setNodeErrors] = useState<Set<string>>(new Set());
 
   // Load project and prompts
   useEffect(() => {
@@ -260,12 +265,16 @@ const ProjectWorkspace: React.FC = () => {
     });
   };
 
-  const handleGenerateScript = async () => {
-    if (!project) return;
+  const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
+
+  // --- Individual Generators (return boolean for success) ---
+
+  const handleGenerateScript = async (): Promise<boolean> => {
+    if (!project) return false;
     
     if (!prompts.SCRIPT) {
         setError("提示词模版未加载，请刷新页面。");
-        return;
+        return false;
     }
 
     setNodeLoading('script', true);
@@ -276,20 +285,22 @@ const ProjectWorkspace: React.FC = () => {
       
       const updated = { ...project, script, status: ProjectStatus.IN_PROGRESS };
       await saveWork(updated);
+      return true;
     } catch (e: any) {
       console.error("Generate Script Error:", e);
       setError(`生成脚本失败: ${e.message || '未知错误'}`);
+      return false;
     } finally {
       setNodeLoading('script', false);
     }
   };
 
-  const handleGenerateStoryboardText = async () => {
-    if (!project || !project.script) return;
+  const handleGenerateStoryboardText = async (): Promise<boolean> => {
+    if (!project || !project.script) return false;
     
     if (!prompts.STORYBOARD_TEXT) {
         setError("提示词模版错误。");
-        return;
+        return false;
     }
 
     setNodeLoading('sb_text', true);
@@ -313,20 +324,22 @@ const ProjectWorkspace: React.FC = () => {
 
       const updated = { ...project, storyboard: newFrames };
       await saveWork(updated);
+      return true;
     } catch (e: any) {
       console.error("Generate Storyboard Error:", e);
       setError(`生成分镜失败: ${e.message}`);
+      return false;
     } finally {
       setNodeLoading('sb_text', false);
     }
   };
 
-  const handleGenerateTitles = async () => {
-    if (!project || !project.script) return;
+  const handleGenerateTitles = async (): Promise<boolean> => {
+    if (!project || !project.script) return false;
     
     if (!prompts.TITLES) {
         setError("提示词模版错误。");
-        return;
+        return false;
     }
 
     setNodeLoading('titles', true);
@@ -351,19 +364,21 @@ const ProjectWorkspace: React.FC = () => {
       
       const updated = { ...project, titles: titles };
       await saveWork(updated);
+      return true;
     } catch (e: any) {
       setError(`生成标题失败: ${e.message}`);
+      return false;
     } finally {
       setNodeLoading('titles', false);
     }
   };
 
-  const handleGenerateSummary = async () => {
-    if (!project || !project.script) return;
+  const handleGenerateSummary = async (): Promise<boolean> => {
+    if (!project || !project.script) return false;
     
     if (!prompts.SUMMARY) {
       setError("提示词模版错误。");
-      return;
+      return false;
     }
 
     setNodeLoading('summary', true);
@@ -374,19 +389,21 @@ const ProjectWorkspace: React.FC = () => {
       
       const updated = { ...project, summary };
       await saveWork(updated);
+      return true;
     } catch (e: any) {
       setError(`生成总结失败: ${e.message}`);
+      return false;
     } finally {
       setNodeLoading('summary', false);
     }
   };
 
-  const handleGenerateCover = async () => {
-    if (!project || !project.script) return;
+  const handleGenerateCover = async (): Promise<boolean> => {
+    if (!project || !project.script) return false;
     
     if (!prompts.COVER_GEN) {
       setError("提示词模版错误。");
-      return;
+      return false;
     }
 
     setNodeLoading('cover', true);
@@ -415,12 +432,81 @@ const ProjectWorkspace: React.FC = () => {
         status: ProjectStatus.COMPLETED 
       };
       await saveWork(updated);
+      return true;
     } catch (e: any) {
       setError(`生成封面方案失败: ${e.message}`);
+      return false;
     } finally {
       setNodeLoading('cover', false);
     }
   };
+
+  // --- One-Click Automation ---
+  
+  const handleOneClickGenerate = async () => {
+    if (!project || !project.script) {
+        alert("请先生成视频文案，然后再执行一键生成。");
+        return;
+    }
+    if (isAutoGenerating) return;
+
+    setIsAutoGenerating(true);
+    // Clear previous errors for these nodes
+    setNodeErrors(prev => {
+        const next = new Set(prev);
+        ['titles', 'summary', 'sb_text', 'cover'].forEach(id => next.delete(id));
+        return next;
+    });
+
+    const sequence = ['titles', 'summary', 'sb_text', 'cover'];
+
+    for (const nodeId of sequence) {
+        // Run logic wrapper
+        const runNode = async (id: string): Promise<boolean> => {
+            switch(id) {
+                case 'titles': return await handleGenerateTitles();
+                case 'summary': return await handleGenerateSummary();
+                case 'sb_text': return await handleGenerateStoryboardText();
+                case 'cover': return await handleGenerateCover();
+                default: return false;
+            }
+        };
+
+        // Attempt 1
+        let success = await runNode(nodeId);
+
+        // Attempt 2 (Retry on failure)
+        if (!success) {
+            console.warn(`Node ${nodeId} failed first attempt. Retrying...`);
+            // Mark error temporarily to show red
+            setNodeErrors(prev => new Set(prev).add(nodeId));
+            
+            await delay(1000); // Wait 1s before retry
+            success = await runNode(nodeId);
+        }
+
+        // Final Result Handling
+        if (success) {
+             setNodeErrors(prev => {
+                const next = new Set(prev);
+                next.delete(nodeId);
+                return next;
+             });
+        } else {
+             // Final failure, keep red border
+             setNodeErrors(prev => new Set(prev).add(nodeId));
+             console.error(`Node ${nodeId} failed after retry.`);
+        }
+
+        // Interval before next node (only if not the last one)
+        if (nodeId !== sequence[sequence.length - 1]) {
+            await delay(2000);
+        }
+    }
+
+    setIsAutoGenerating(false);
+  };
+
 
   // --- Canvas Interaction ---
 
@@ -439,6 +525,13 @@ const ProjectWorkspace: React.FC = () => {
     }
 
     if (generatingNodes.has(nodeId)) return;
+
+    // Manual run clears error state for that node
+    setNodeErrors(prev => {
+        const next = new Set(prev);
+        next.delete(nodeId);
+        return next;
+    });
 
     switch (nodeId) {
       case 'script': handleGenerateScript(); break;
@@ -789,13 +882,25 @@ const ProjectWorkspace: React.FC = () => {
             {showSettings ? <PanelLeftClose className="w-5 h-5"/> : <PanelLeftOpen className="w-5 h-5"/>}
         </button>
 
-        <button 
-            onClick={() => saveWork(project)}
-            className="absolute right-6 top-6 z-30 px-5 py-2.5 bg-gradient-to-r from-slate-900 to-slate-800 text-white rounded-xl hover:shadow-lg hover:shadow-slate-500/20 transition-all hover:-translate-y-0.5 flex items-center gap-2 font-medium text-sm backdrop-blur-md"
-        >
-            {saving ? <Loader2 className="w-4 h-4 animate-spin"/> : <Save className="w-4 h-4"/>}
-            保存进度
-        </button>
+        <div className="absolute right-6 top-6 z-30 flex items-center gap-3">
+             <button 
+                onClick={handleOneClickGenerate}
+                disabled={isAutoGenerating || !project.script}
+                className="px-5 py-2.5 bg-white text-violet-600 border border-violet-100 rounded-xl hover:bg-violet-50 hover:border-violet-200 shadow-sm hover:shadow-md transition-all flex items-center gap-2 font-bold text-sm disabled:opacity-50 disabled:cursor-not-allowed"
+                title="按顺序自动执行后续所有任务"
+            >
+                {isAutoGenerating ? <Loader2 className="w-4 h-4 animate-spin"/> : <Zap className="w-4 h-4 fill-violet-600" />}
+                一键生成
+            </button>
+
+            <button 
+                onClick={() => saveWork(project)}
+                className="px-5 py-2.5 bg-gradient-to-r from-slate-900 to-slate-800 text-white rounded-xl hover:shadow-lg hover:shadow-slate-500/20 transition-all hover:-translate-y-0.5 flex items-center gap-2 font-medium text-sm backdrop-blur-md"
+            >
+                {saving ? <Loader2 className="w-4 h-4 animate-spin"/> : <Save className="w-4 h-4"/>}
+                保存进度
+            </button>
+        </div>
 
         {/* Spacebar/Zoom Indicator */}
         {isSpacePressed && (
@@ -879,6 +984,7 @@ const ProjectWorkspace: React.FC = () => {
                     const isRunning = generatingNodes.has(node.id);
                     const hasAction = node.id !== 'input';
                     const disabled = isNodeDisabled(node.id);
+                    const isError = nodeErrors.has(node.id);
                     
                     const colorMap: Record<string, string> = {
                     violet: 'from-violet-500 to-indigo-500 shadow-violet-500/20',
@@ -891,6 +997,17 @@ const ProjectWorkspace: React.FC = () => {
                     };
 
                     const gradientClass = colorMap[node.color] || colorMap.slate;
+                    
+                    // Style logic: Error (Red) > Completed (Green) > Selected (Violet) > Default
+                    let borderClass = 'border-slate-100 hover:border-violet-200 border shadow-md hover:shadow-xl hover:shadow-indigo-500/5';
+                    
+                    if (isError) {
+                        borderClass = 'border-rose-500 border-2 shadow-lg shadow-rose-500/20';
+                    } else if (status === 'completed') {
+                         borderClass = 'border-emerald-500 border-2 shadow-lg shadow-emerald-500/10';
+                    } else if (isSelected) {
+                         borderClass = 'border-violet-500 ring-4 ring-violet-500/10 shadow-xl border';
+                    }
 
                     return (
                         <div
@@ -898,11 +1015,7 @@ const ProjectWorkspace: React.FC = () => {
                             onMouseDown={(e) => handleNodeMouseDown(e, node.id)}
                             onClick={(e) => handleNodeClick(e, node.id)}
                             className={`absolute flex flex-col bg-white rounded-2xl transition-all duration-300 group overflow-hidden select-none
-                                ${status === 'completed' 
-                                    ? 'border-emerald-500 border-2 shadow-lg shadow-emerald-500/10' 
-                                    : isSelected 
-                                        ? 'border-violet-500 ring-4 ring-violet-500/10 shadow-xl border' 
-                                        : 'border-slate-100 hover:border-violet-200 border shadow-md hover:shadow-xl hover:shadow-indigo-500/5'}
+                                ${borderClass}
                                 ${draggingId === node.id ? 'z-50 shadow-2xl scale-[1.03] ring-0' : 'z-10'}
                                 ${disabled ? 'opacity-60 grayscale cursor-not-allowed hover:shadow-none hover:border-slate-100' : ''}
                                 ${isSpacePressed ? 'cursor-grab' : disabled ? 'cursor-not-allowed' : 'cursor-grab active:cursor-grabbing'}
@@ -929,16 +1042,20 @@ const ProjectWorkspace: React.FC = () => {
                                             className={`p-2 rounded-full transition-all shadow-sm flex items-center justify-center border
                                                 ${disabled
                                                     ? 'bg-slate-100 border-slate-200 text-slate-300 cursor-not-allowed'
+                                                    : isError 
+                                                        ? 'bg-rose-50 border-rose-100 text-rose-500 hover:bg-rose-100'
                                                     : status === 'completed' 
                                                         ? 'bg-emerald-50 border-emerald-100 text-emerald-600 hover:bg-emerald-100 cursor-pointer' 
                                                         : 'bg-slate-50 border-slate-100 text-slate-400 hover:bg-violet-600 hover:text-white hover:border-violet-600 hover:shadow-md cursor-pointer'}
                                             `}
-                                            title={disabled ? "请先完成前置任务" : "执行任务"}
+                                            title={disabled ? "请先完成前置任务" : isError ? "执行失败，点击重试" : "执行任务"}
                                         >
                                             {isRunning ? (
                                                 <Loader2 className="w-4 h-4 animate-spin text-violet-600" />
                                             ) : disabled ? (
                                                 <Lock className="w-4 h-4" />
+                                            ) : isError ? (
+                                                <AlertCircle className="w-4 h-4" />
                                             ) : status === 'completed' ? (
                                                 <Check className="w-4 h-4" />
                                             ) : (
@@ -949,7 +1066,7 @@ const ProjectWorkspace: React.FC = () => {
                                 </div>
                                 
                                 <div>
-                                    <h3 className={`font-bold text-sm tracking-tight ${status === 'completed' ? 'text-emerald-700' : 'text-slate-800'}`}>{node.label}</h3>
+                                    <h3 className={`font-bold text-sm tracking-tight ${isError ? 'text-rose-600' : status === 'completed' ? 'text-emerald-700' : 'text-slate-800'}`}>{node.label}</h3>
                                     <p className="text-[11px] font-medium text-slate-400 line-clamp-1 mt-0.5">{node.description}</p>
                                 </div>
                             </div>
@@ -960,10 +1077,14 @@ const ProjectWorkspace: React.FC = () => {
                                 </div>
                             )}
                             
-                            {!isRunning && !disabled && (
+                            {!isRunning && !disabled && !isError && (
                                 <div className="h-1 w-full bg-slate-50/50">
                                     <div className={`h-full transition-all duration-700 ease-in-out ${status === 'completed' ? 'bg-emerald-400 w-full' : 'bg-transparent w-0'}`} />
                                 </div>
+                            )}
+                            
+                             {!isRunning && isError && (
+                                <div className="h-1 w-full bg-rose-500"></div>
                             )}
                         </div>
                     );
@@ -974,7 +1095,7 @@ const ProjectWorkspace: React.FC = () => {
       </div>
 
       {/* Detail Drawer (Right Side Overlay) */}
-      <div className={`absolute top-0 right-0 bottom-0 w-full md:w-[640px] bg-white/95 backdrop-blur-xl shadow-2xl z-40 transform transition-transform duration-300 ease-in-out border-l border-slate-200 flex flex-col ${selectedNodeId ? 'translate-x-0' : 'translate-x-full'}`}>
+      <div className={`absolute top-0 right-0 bottom-0 w-full md:w-[640px] bg-white/95 backdrop-blur-xl shadow-2xl z-40 transform transition-transform duration-300 ease-in-out border-l border-slate-200 flex flex-col ${selectedNodeId ? 'translate-x-0' : 'translate-x-full'}`} onClick={(e) => e.stopPropagation()}>
          {selectedNodeId && (
              <>
                 <div className="px-6 py-5 border-b border-slate-100 flex items-center justify-between bg-white">
@@ -1047,7 +1168,7 @@ const ProjectWorkspace: React.FC = () => {
                         <div className="space-y-5 h-full flex flex-col">
                             <div className="flex justify-between items-center mb-1">
                                 <span className="text-sm font-bold text-slate-600 uppercase tracking-wide">生成内容</span>
-                                <button onClick={handleGenerateScript} disabled={generatingNodes.has('script')} className="text-xs px-4 py-2 bg-gradient-to-r from-violet-600 to-indigo-600 text-white rounded-lg hover:shadow-lg hover:shadow-violet-500/30 transition-all flex items-center gap-2 font-semibold">
+                                <button onClick={() => handleGenerateScript()} disabled={generatingNodes.has('script')} className="text-xs px-4 py-2 bg-gradient-to-r from-violet-600 to-indigo-600 text-white rounded-lg hover:shadow-lg hover:shadow-violet-500/30 transition-all flex items-center gap-2 font-semibold">
                                     {generatingNodes.has('script') ? <Loader2 className="w-3.5 h-3.5 animate-spin"/> : <Wand2 className="w-3.5 h-3.5"/>}
                                     {project.script ? '重新生成' : '智能生成'}
                                 </button>
@@ -1070,7 +1191,7 @@ const ProjectWorkspace: React.FC = () => {
                                     <p className="text-xs font-medium text-slate-500 mt-1">{project.storyboard?.length || 0} 个关键场景</p>
                                 </div>
                                 <div className="flex gap-3">
-                                     <button onClick={handleGenerateStoryboardText} disabled={generatingNodes.has('sb_text')} className="px-4 py-2 bg-slate-50 text-slate-600 border border-slate-200 rounded-lg text-xs font-semibold hover:bg-white hover:border-slate-300 transition-colors flex items-center gap-1.5">
+                                     <button onClick={() => handleGenerateStoryboardText()} disabled={generatingNodes.has('sb_text')} className="px-4 py-2 bg-slate-50 text-slate-600 border border-slate-200 rounded-lg text-xs font-semibold hover:bg-white hover:border-slate-300 transition-colors flex items-center gap-1.5">
                                         <ListEnd className="w-3.5 h-3.5"/> 重置文案
                                     </button>
                                 </div>
@@ -1131,7 +1252,7 @@ const ProjectWorkspace: React.FC = () => {
                     {selectedNodeId === 'titles' && (
                         <div className="space-y-6">
                             <div className="flex justify-end">
-                                <button onClick={handleGenerateTitles} disabled={generatingNodes.has('titles')} className="px-5 py-2.5 bg-gradient-to-r from-blue-600 to-cyan-600 text-white rounded-xl shadow-lg shadow-blue-500/30 hover:-translate-y-0.5 transition-all text-sm font-bold flex items-center gap-2">
+                                <button onClick={() => handleGenerateTitles()} disabled={generatingNodes.has('titles')} className="px-5 py-2.5 bg-gradient-to-r from-blue-600 to-cyan-600 text-white rounded-xl shadow-lg shadow-blue-500/30 hover:-translate-y-0.5 transition-all text-sm font-bold flex items-center gap-2">
                                     {generatingNodes.has('titles') ? <Loader2 className="w-4 h-4 animate-spin"/> : <RefreshCw className="w-4 h-4"/>}
                                     重新生成
                                 </button>
@@ -1168,7 +1289,7 @@ const ProjectWorkspace: React.FC = () => {
                     {selectedNodeId === 'summary' && (
                          <div className="space-y-5 h-full flex flex-col">
                             <div className="flex justify-end mb-2">
-                                <button onClick={handleGenerateSummary} disabled={generatingNodes.has('summary')} className="px-5 py-2.5 bg-gradient-to-r from-emerald-600 to-teal-600 text-white rounded-xl shadow-lg shadow-emerald-500/30 hover:-translate-y-0.5 transition-all text-sm font-bold flex items-center gap-2">
+                                <button onClick={() => handleGenerateSummary()} disabled={generatingNodes.has('summary')} className="px-5 py-2.5 bg-gradient-to-r from-emerald-600 to-teal-600 text-white rounded-xl shadow-lg shadow-emerald-500/30 hover:-translate-y-0.5 transition-all text-sm font-bold flex items-center gap-2">
                                     {generatingNodes.has('summary') ? <Loader2 className="w-4 h-4 animate-spin"/> : <Wand2 className="w-4 h-4"/>}
                                     生成简介
                                 </button>
@@ -1194,7 +1315,7 @@ const ProjectWorkspace: React.FC = () => {
                     {selectedNodeId === 'cover' && (
                         <div className="space-y-6">
                              <div className="flex justify-end">
-                                <button onClick={handleGenerateCover} disabled={generatingNodes.has('cover')} className="px-5 py-2.5 bg-gradient-to-r from-rose-600 to-pink-600 text-white rounded-xl shadow-lg shadow-rose-500/30 hover:-translate-y-0.5 transition-all text-sm font-bold flex items-center gap-2">
+                                <button onClick={() => handleGenerateCover()} disabled={generatingNodes.has('cover')} className="px-5 py-2.5 bg-gradient-to-r from-rose-600 to-pink-600 text-white rounded-xl shadow-lg shadow-rose-500/30 hover:-translate-y-0.5 transition-all text-sm font-bold flex items-center gap-2">
                                     {generatingNodes.has('cover') ? <Loader2 className="w-4 h-4 animate-spin"/> : <Wand2 className="w-4 h-4"/>}
                                     生成封面文案
                                 </button>
