@@ -11,13 +11,10 @@ interface LayoutProps {
 const Layout: React.FC<LayoutProps> = ({ children }) => {
   const location = useLocation();
   const navigate = useNavigate();
-  const isActive = (path: string) => location.pathname === path;
+  const isActive = (path: string) => location.pathname === path || (path !== '/' && location.pathname.startsWith(path));
 
-  // Check if we are in a project context
-  const projectMatch = location.pathname.match(/\/project\/([^\/]+)/);
-  const projectId = projectMatch ? projectMatch[1] : null;
-
-  const isWorkspace = location.pathname.startsWith('/project/');
+  // Check if we are in a project context for rendering main area
+  const isWorkspace = location.pathname.startsWith('/project/') && !location.pathname.endsWith('/images');
 
   const handleCreateProject = async () => {
     const newId = await storage.createProject();
@@ -51,29 +48,26 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
           <Link
             to="/"
             className={`flex flex-col items-center justify-center py-3.5 px-2 w-full rounded-2xl transition-all gap-1.5 duration-300 ${
-              isActive('/') 
+              location.pathname === '/' 
                 ? 'bg-violet-50 text-violet-700 shadow-sm' 
                 : 'text-slate-400 hover:bg-slate-50 hover:text-slate-700'
             }`}
           >
-            <LayoutDashboard className={`w-5 h-5 ${isActive('/') ? 'stroke-[2.5px]' : 'stroke-2'}`} />
+            <LayoutDashboard className={`w-5 h-5 ${location.pathname === '/' ? 'stroke-[2.5px]' : 'stroke-2'}`} />
             <span className="text-[10px] font-bold tracking-wide">列表</span>
           </Link>
           
-          {/* Show Image Gen button if inside a project */}
-          {projectId && (
-            <Link
-                to={`/project/${projectId}/images`}
-                className={`flex flex-col items-center justify-center py-3.5 px-2 w-full rounded-2xl transition-all gap-1.5 duration-300 ${
-                isActive(`/project/${projectId}/images`) 
-                    ? 'bg-fuchsia-50 text-fuchsia-700 shadow-sm' 
-                    : 'text-slate-400 hover:bg-slate-50 hover:text-slate-700'
-                }`}
-            >
-                <ImageIcon className={`w-5 h-5 ${isActive(`/project/${projectId}/images`) ? 'stroke-[2.5px]' : 'stroke-2'}`} />
-                <span className="text-[10px] font-bold tracking-wide">图片</span>
-            </Link>
-          )}
+          <Link
+            to="/images"
+            className={`flex flex-col items-center justify-center py-3.5 px-2 w-full rounded-2xl transition-all gap-1.5 duration-300 ${
+              isActive('/images') 
+                ? 'bg-fuchsia-50 text-fuchsia-700 shadow-sm' 
+                : 'text-slate-400 hover:bg-slate-50 hover:text-slate-700'
+            }`}
+          >
+            <ImageIcon className={`w-5 h-5 ${isActive('/images') ? 'stroke-[2.5px]' : 'stroke-2'}`} />
+            <span className="text-[10px] font-bold tracking-wide">图片</span>
+          </Link>
 
           <Link
             to="/settings"
