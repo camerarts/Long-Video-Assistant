@@ -91,8 +91,7 @@ export const DEFAULT_PROMPTS: Record<string, PromptTemplate> = {
 脚本内容:
 {{script}}
 
-请仅返回一个JSON对象数组。每个对象必须包含 "description" 字段，描述该场景的视觉画面（包含主体、动作、环境、光影、镜头角度）。
-示例格式：
+请仅返回一个纯 JSON 对象数组（不要Markdown格式）。每个对象必须包含 "description" 字段。
 [
   {"description": "一名年轻男子坐在充满科技感的房间里，面前是发光的全息屏幕，侧面特写，蓝色冷调光"},
   {"description": "繁忙的东京涩谷十字路口，人流穿梭，延时摄影，俯拍视角"}
@@ -110,13 +109,13 @@ export const DEFAULT_PROMPTS: Record<string, PromptTemplate> = {
 
 要求：
 1. 标题必须紧扣脚本的核心内容。
-2. 要有冲击力，引发好奇心或情感共鸣（可以使用悬念、数字、反差等技巧）。
+2. 要有冲击力，引发好奇心或情感共鸣。
 
-请返回一个 JSON 数组，数组中每个对象包含两个字段：
+请返回一个纯 JSON 数组（不要Markdown格式），数组中每个对象包含两个字段：
 - "title": 具体的标题文本
 - "type": 标题的类型风格（例如：悬念型、直击痛点、数字盘点、情绪共鸣等）
 
-示例格式：
+示例：
 [
   {"title": "普通人如何利用AI在30天内赚到第一桶金？", "type": "悬念利益型"},
   {"title": "揭秘OpenAI内部：你不知道的5个真相", "type": "揭秘型"}
@@ -152,11 +151,11 @@ export const DEFAULT_PROMPTS: Record<string, PromptTemplate> = {
 脚本内容:
 {{script}}
 
-请返回一个 JSON 数组，数组中每个对象包含两个字段：
+请返回一个纯 JSON 数组（不要Markdown格式），数组中每个对象包含两个字段：
 - "visual": 详细的画面描述（包含主体、表情、背景颜色、氛围）。
 - "copy": 封面上的醒目大字文案（Copywriting），通常少于8个字，极具冲击力。
 
-示例格式：
+示例：
 [
   {"visual": "极度震惊的表情特写，背景是燃烧的红色火焰", "copy": "彻底崩盘！"},
   {"visual": "左右分屏对比，左边是贫穷的街道，右边是未来城市", "copy": "逆袭翻身"}
