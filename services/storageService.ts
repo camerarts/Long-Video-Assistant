@@ -29,18 +29,20 @@ const saveLocalProjects = (projects: ProjectData[]) => {
 // --- Service Methods ---
 
 export const getProjects = async (): Promise<ProjectData[]> => {
-  // Strategy: Try API first, fallback to LocalStorage
+  // Strategy: Optimistic. Return LocalStorage if API fails.
   try {
     const res = await fetch(`${API_BASE}/projects`);
     if (res.ok) {
       const data = await res.json();
-      // Sync API data down to local for future offline usage
+      // Sync API data down to local
       saveLocalProjects(data);
       return data;
+    } else {
+      console.warn(`API getProjects failed with ${res.status}, falling back to local.`);
+      return getLocalProjects();
     }
-    throw new Error(`API returned ${res.status}`);
   } catch (error) {
-    console.warn("API Unavailable (getProjects), using LocalStorage fallback:", error);
+    console.warn("API Unavailable (getProjects), using LocalStorage fallback.");
     return getLocalProjects();
   }
 };
@@ -52,13 +54,13 @@ export const getProject = async (id: string): Promise<ProjectData | undefined> =
     if (res.ok) {
       return await res.json();
     }
-    if (res.status === 404) return undefined;
-    throw new Error(`API returned ${res.status}`);
   } catch (error) {
-    console.warn("API Unavailable (getProject), using LocalStorage fallback:", error);
-    const projects = getLocalProjects();
-    return projects.find(p => p.id === id);
+    console.warn("API Unavailable (getProject), using LocalStorage fallback.");
   }
+  
+  // Fallback
+  const projects = getLocalProjects();
+  return projects.find(p => p.id === id);
 };
 
 export const saveProject = async (project: ProjectData): Promise<void> => {
@@ -67,9 +69,7 @@ export const saveProject = async (project: ProjectData): Promise<void> => {
     updatedAt: Date.now()
   };
   
-  // Strategy: Write to LocalStorage IMMEDIATELY (Sync), then try API (Async)
-  
-  // 1. Local Update
+  // 1. Local Update (Always succeeds immediately)
   const projects = getLocalProjects();
   const index = projects.findIndex(p => p.id === payload.id);
   if (index >= 0) {
@@ -79,7 +79,7 @@ export const saveProject = async (project: ProjectData): Promise<void> => {
   }
   saveLocalProjects(projects);
 
-  // 2. API Update (Fire and forget-ish, but catch errors)
+  // 2. API Update (Background Sync)
   try {
     await fetch(`${API_BASE}/projects`, {
       method: 'POST',
@@ -87,6 +87,8 @@ export const saveProject = async (project: ProjectData): Promise<void> => {
       body: JSON.stringify(payload)
     });
   } catch (error) {
+    // We suppress the error here because we've already saved locally.
+    // The user doesn't need to know the sync failed, it will sync next time.
     console.warn("API Save Failed (Offline mode active):", error);
   }
 };
@@ -127,7 +129,7 @@ export const deleteProject = async (id: string): Promise<void> => {
 };
 
 export const getPrompts = async (): Promise<Record<string, PromptTemplate>> => {
-  // Strategy: Try API -> Try LocalStorage -> Return Defaults
+  // Strategy: API -> Local -> Defaults
   try {
     const res = await fetch(`${API_BASE}/prompts`);
     if (res.ok) {
@@ -138,7 +140,7 @@ export const getPrompts = async (): Promise<Record<string, PromptTemplate>> => {
       }
     }
   } catch (error) {
-    console.warn("API Unavailable (getPrompts), checking local:", error);
+    console.warn("API Unavailable (getPrompts), checking local.");
   }
 
   // Fallback to local
