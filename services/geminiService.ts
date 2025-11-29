@@ -1,12 +1,12 @@
-import { GoogleGenAI, Type } from "@google/genai";
+import { GoogleGenAI } from "@google/genai";
 
 // Helper to get the client instance safely at runtime
 const getClient = () => {
-  // Check if process.env exists (safe access) and get the key
-  const apiKey = typeof process !== 'undefined' ? process.env.API_KEY : '';
+  // strict adherence to guidelines: API key must be from process.env.API_KEY
+  const apiKey = process.env.API_KEY;
   
   if (!apiKey) {
-    throw new Error("API Key is missing. Please check your environment configuration (API_KEY).");
+    throw new Error("API Key is missing. Please check your environment configuration.");
   }
   
   return new GoogleGenAI({ apiKey });
