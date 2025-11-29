@@ -3,10 +3,12 @@ import { GoogleGenAI } from "@google/genai";
 // Helper to get the client instance safely at runtime
 const getClient = () => {
   // strict adherence to guidelines: API key must be from process.env.API_KEY
+  // The build tool (Vite) replaces this with the actual string value
   const apiKey = process.env.API_KEY;
   
   if (!apiKey) {
-    throw new Error("API Key is missing. Please check your environment configuration.");
+    console.error("API Key check failed. Value is:", apiKey);
+    throw new Error("API Key is missing. Please check your environment configuration in Cloudflare Pages.");
   }
   
   return new GoogleGenAI({ apiKey });
@@ -22,7 +24,6 @@ export const generateText = async (prompt: string, modelName: string = 'gemini-2
     return response.text || '';
   } catch (error: any) {
     console.error("Text generation error:", error);
-    // Re-throw with a user-friendly message if possible
     throw new Error(error.message || "Failed to generate text");
   }
 };
