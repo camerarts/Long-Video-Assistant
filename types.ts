@@ -18,6 +18,7 @@ export interface StoryboardFrame {
 export interface TitleItem {
   title: string;
   type: string; // e.g., "悬念型", "数字型"
+  score?: number; // Recommendation score
 }
 
 export interface CoverOption {
@@ -117,6 +118,7 @@ export const DEFAULT_PROMPTS: Record<string, PromptTemplate> = {
     description: '基于脚本生成具有病毒传播潜力的标题',
     template: `请基于以下完整的视频脚本，生成10个具有病毒传播潜力、高点击率的YouTube/B站风格标题。
 
+主题: {{title}}
 脚本内容概要：
 {{script}}
 
@@ -124,14 +126,15 @@ export const DEFAULT_PROMPTS: Record<string, PromptTemplate> = {
 1. 标题必须紧扣脚本的核心内容。
 2. 要有冲击力，引发好奇心或情感共鸣。
 
-请返回一个纯 JSON 数组（不要Markdown格式），数组中每个对象包含两个字段：
+请返回一个纯 JSON 数组（不要Markdown格式），数组中每个对象包含三个字段：
 - "title": 具体的标题文本
 - "type": 标题的类型风格（例如：悬念型、直击痛点、数字盘点、情绪共鸣等）
+- "score": 推荐指数（1-100分），代表该标题的潜在点击率预估。
 
 示例：
 [
-  {"title": "普通人如何利用AI在30天内赚到第一桶金？", "type": "悬念利益型"},
-  {"title": "揭秘OpenAI内部：你不知道的5个真相", "type": "揭秘型"}
+  {"title": "普通人如何利用AI在30天内赚到第一桶金？", "type": "悬念利益型", "score": 95},
+  {"title": "揭秘OpenAI内部：你不知道的5个真相", "type": "揭秘型", "score": 88}
 ]
 `
   },
