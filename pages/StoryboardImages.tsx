@@ -1,4 +1,5 @@
 
+
 import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { ProjectData, StoryboardFrame, PromptTemplate } from '../types';
@@ -50,9 +51,17 @@ const StoryboardImages: React.FC = () => {
     const updatedSb = project.storyboard.map(f => 
         f.id === frameId ? { ...f, imagePrompt: newPrompt } : f
     );
-    const updated = { ...project, storyboard: updatedSb };
-    setProject(updated); // Optimistic UI
-    await storage.saveProject(updated); // Background save
+    // Optimistic UI
+    const optimistic = { ...project, storyboard: updatedSb };
+    setProject(optimistic); 
+    
+    // Background Atomic Save
+    await storage.updateProject(id!, (latest) => ({
+        ...latest,
+        storyboard: latest.storyboard?.map(f => 
+            f.id === frameId ? { ...f, imagePrompt: newPrompt } : f
+        )
+    }));
   };
 
   const interpolatePrompt = (template: string, data: Record<string, string>) => {
@@ -62,7 +71,7 @@ const StoryboardImages: React.FC = () => {
   const generateSingleImage = async (frame: StoryboardFrame, isBatch = false): Promise<string | null> => {
       try {
         const prompt = frame.imagePrompt || interpolatePrompt(prompts.IMAGE_GEN?.template || '', { description: frame.description });
-        // Update prompt if it was empty in data
+        // If prompt was empty, save the interpolated one for reference
         if (!frame.imagePrompt) {
             handlePromptChange(frame.id, prompt);
         }
@@ -87,7 +96,7 @@ const StoryboardImages: React.FC = () => {
     const promises = framesToGenerate.map(async (frame) => {
         const base64 = await generateSingleImage(frame, true);
         
-        // Remove from active set
+        // Remove from active set in UI
         setCurrentGenIds(prev => {
             const next = new Set(prev);
             next.delete(frame.id);
@@ -95,17 +104,17 @@ const StoryboardImages: React.FC = () => {
         });
 
         if (base64) {
-             // Update Project Data Immediately (Optimistic per frame)
-             setProject(prev => {
-                if (!prev || !prev.storyboard) return prev;
-                const newSb = prev.storyboard.map(f => 
+             // Atomic Update to Storage
+             const updated = await storage.updateProject(id!, (latest) => {
+                 const newSb = latest.storyboard?.map(f => 
                     f.id === frame.id ? { ...f, imageUrl: base64 } : f
-                );
-                // Save to ensure data safety
-                const updated = { ...prev, storyboard: newSb };
-                storage.saveProject(updated);
-                return updated;
+                 );
+                 return { ...latest, storyboard: newSb };
              });
+             
+             // Update UI with the atomic result to ensure consistency
+             if (updated) setProject(updated);
+             
              setBatchProgress(prev => ({ ...prev, completed: prev.completed + 1 }));
         } else {
              setBatchProgress(prev => ({ ...prev, failed: prev.failed + 1 }));
@@ -355,13 +364,13 @@ const StoryboardImages: React.FC = () => {
                                                         setCurrentGenIds(prev => new Set(prev).add(frame.id));
                                                         const base64 = await generateSingleImage(frame);
                                                         if (base64) {
-                                                             setProject(prev => {
-                                                                if (!prev || !prev.storyboard) return prev;
-                                                                const newSb = prev.storyboard.map(f => f.id === frame.id ? { ...f, imageUrl: base64 } : f);
-                                                                const updated = { ...prev, storyboard: newSb };
-                                                                storage.saveProject(updated);
-                                                                return updated;
+                                                             await storage.updateProject(id!, (latest) => {
+                                                                const newSb = latest.storyboard?.map(f => f.id === frame.id ? { ...f, imageUrl: base64 } : f);
+                                                                return { ...latest, storyboard: newSb };
                                                              });
+                                                             // Trigger reload to update UI
+                                                             const updated = await storage.getProject(id!);
+                                                             if(updated) setProject(updated);
                                                         }
                                                         setCurrentGenIds(prev => {
                                                             const next = new Set(prev);
