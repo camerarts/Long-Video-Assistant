@@ -1,106 +1,243 @@
 
-import React from 'react';
-import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { LayoutDashboard, Settings, Video, Plus, Image as ImageIcon } from 'lucide-react';
-import * as storage from '../services/storageService';
+import { ProjectData, PromptTemplate, DEFAULT_PROMPTS, ProjectStatus, Inspiration } from '../types';
 
-interface LayoutProps {
-  children: React.ReactNode;
-}
+// API Endpoints
+const API_BASE = '/api';
+const LOCAL_KEY_PROJECTS = 'lva_projects';
+const LOCAL_KEY_PROMPTS = 'lva_prompts';
+const LOCAL_KEY_INSPIRATIONS = 'lva_inspirations';
 
-const Layout: React.FC<LayoutProps> = ({ children }) => {
-  const location = useLocation();
-  const navigate = useNavigate();
-  const isActive = (path: string) => location.pathname === path || (path !== '/' && location.pathname.startsWith(path));
+// --- LocalStorage Helpers ---
 
-  // Check if we are in a project context for rendering main area
-  const isWorkspace = location.pathname.startsWith('/project/') && !location.pathname.endsWith('/images');
-
-  const handleCreateProject = async () => {
-    const newId = await storage.createProject();
-    navigate(`/project/${newId}`);
-  };
-
-  return (
-    <div className="h-screen flex bg-[#F8F9FC] text-slate-900 font-sans overflow-hidden">
-      {/* App Sidebar (Global Navigation) */}
-      <aside className="w-24 flex-shrink-0 border-r border-slate-200/60 bg-white/80 backdrop-blur-md flex flex-col items-center py-8 z-30 transition-all duration-300">
-        <div className="flex flex-col items-center mb-10 gap-2">
-            <Link to="/" className="w-11 h-11 bg-gradient-to-br from-violet-600 to-indigo-600 rounded-2xl flex items-center justify-center shadow-lg shadow-indigo-500/30 hover:scale-105 transition-transform duration-300">
-              <Video className="text-white w-6 h-6" />
-            </Link>
-            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">助手</span>
-        </div>
-
-        <nav className="flex-1 flex flex-col gap-5 w-full px-3 items-center">
-          
-          {/* Big Add Button - High End Gradient */}
-          <button
-            onClick={handleCreateProject}
-            className="w-14 h-14 bg-gradient-to-r from-violet-600 to-fuchsia-600 text-white rounded-2xl flex items-center justify-center shadow-lg shadow-violet-500/30 hover:shadow-violet-500/50 hover:scale-105 transition-all duration-300 group mb-4"
-            title="新建项目"
-          >
-            <Plus className="w-8 h-8 group-hover:rotate-90 transition-transform duration-500" />
-          </button>
-
-          <div className="w-8 h-px bg-slate-100 my-2"></div>
-
-          <Link
-            to="/"
-            className={`flex flex-col items-center justify-center py-3.5 px-2 w-full rounded-2xl transition-all gap-1.5 duration-300 ${
-              location.pathname === '/' 
-                ? 'bg-violet-50 text-violet-700 shadow-sm' 
-                : 'text-slate-400 hover:bg-slate-50 hover:text-slate-700'
-            }`}
-          >
-            <LayoutDashboard className={`w-5 h-5 ${location.pathname === '/' ? 'stroke-[2.5px]' : 'stroke-2'}`} />
-            <span className="text-[10px] font-bold tracking-wide">列表</span>
-          </Link>
-          
-          <Link
-            to="/images"
-            className={`flex flex-col items-center justify-center py-3.5 px-2 w-full rounded-2xl transition-all gap-1.5 duration-300 ${
-              isActive('/images') 
-                ? 'bg-fuchsia-50 text-fuchsia-700 shadow-sm' 
-                : 'text-slate-400 hover:bg-slate-50 hover:text-slate-700'
-            }`}
-          >
-            <ImageIcon className={`w-5 h-5 ${isActive('/images') ? 'stroke-[2.5px]' : 'stroke-2'}`} />
-            <span className="text-[10px] font-bold tracking-wide">图片</span>
-          </Link>
-
-          <Link
-            to="/settings"
-            className={`flex flex-col items-center justify-center py-3.5 px-2 w-full rounded-2xl transition-all gap-1.5 duration-300 ${
-              isActive('/settings') 
-                ? 'bg-violet-50 text-violet-700 shadow-sm' 
-                : 'text-slate-400 hover:bg-slate-50 hover:text-slate-700'
-            }`}
-          >
-            <Settings className={`w-5 h-5 ${isActive('/settings') ? 'stroke-[2.5px]' : 'stroke-2'}`} />
-            <span className="text-[10px] font-bold tracking-wide">设置</span>
-          </Link>
-        </nav>
-      </aside>
-
-      {/* Main Content Area */}
-      <main className="flex-1 flex flex-col h-full overflow-hidden bg-[#F8F9FC]">
-        {isWorkspace ? (
-          /* Full screen workspace mode */
-          <div className="flex-1 h-full overflow-hidden">
-            {children}
-          </div>
-        ) : (
-          /* Standard page mode with container */
-          <div className="flex-1 overflow-y-auto">
-             <div className="container mx-auto px-8 py-10 max-w-7xl">
-              {children}
-            </div>
-          </div>
-        )}
-      </main>
-    </div>
-  );
+const getLocalProjects = (): ProjectData[] => {
+  try {
+    const data = localStorage.getItem(LOCAL_KEY_PROJECTS);
+    return data ? JSON.parse(data) : [];
+  } catch (e) {
+    console.warn("LocalStorage Read Error", e);
+    return [];
+  }
 };
 
-export default Layout;
+const saveLocalProjects = (projects: ProjectData[]) => {
+  try {
+    localStorage.setItem(LOCAL_KEY_PROJECTS, JSON.stringify(projects));
+  } catch (e) {
+    console.warn("LocalStorage Write Error", e);
+  }
+};
+
+const getLocalInspirations = (): Inspiration[] => {
+  try {
+    const data = localStorage.getItem(LOCAL_KEY_INSPIRATIONS);
+    return data ? JSON.parse(data) : [];
+  } catch (e) {
+    return [];
+  }
+};
+
+const saveLocalInspirations = (inspirations: Inspiration[]) => {
+  localStorage.setItem(LOCAL_KEY_INSPIRATIONS, JSON.stringify(inspirations));
+};
+
+// --- Service Methods ---
+
+export const getProjects = async (): Promise<ProjectData[]> => {
+  // Robust Strategy: Try API, but catch ALL errors and fallback to LocalStorage.
+  // This ensures the app works even if the backend is down/missing.
+  try {
+    const res = await fetch(`${API_BASE}/projects`);
+    if (res.ok) {
+      const data = await res.json();
+      // Sync API data down to local (Source of Truth sync)
+      saveLocalProjects(data);
+      return data;
+    } else {
+      console.warn(`API getProjects failed with status ${res.status}, using LocalStorage.`);
+      return getLocalProjects();
+    }
+  } catch (error) {
+    console.warn("API unreachable (Offline/Dev mode), using LocalStorage.");
+    return getLocalProjects();
+  }
+};
+
+export const getProject = async (id: string): Promise<ProjectData | undefined> => {
+  let project: ProjectData | undefined;
+
+  // 1. Try API
+  try {
+    const res = await fetch(`${API_BASE}/projects/${id}`);
+    if (res.ok) {
+      project = await res.json();
+    }
+  } catch (error) {
+    // Ignore API errors
+  }
+
+  // 2. Fallback to LocalStorage if API didn't return a project
+  if (!project) {
+    const projects = getLocalProjects();
+    project = projects.find(p => p.id === id);
+  }
+  
+  return project;
+};
+
+export const saveProject = async (project: ProjectData): Promise<void> => {
+  const payload = {
+    ...project,
+    updatedAt: Date.now()
+  };
+  
+  // 1. Local Update (Optimistic - Immediate UI Update)
+  const projects = getLocalProjects();
+  const index = projects.findIndex(p => p.id === payload.id);
+  if (index >= 0) {
+    projects[index] = payload;
+  } else {
+    projects.push(payload);
+  }
+  saveLocalProjects(projects);
+
+  // 2. API Update (Background Sync)
+  // We fire and forget this, or catch errors silently so the user flow isn't interrupted.
+  try {
+    await fetch(`${API_BASE}/projects`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+  } catch (error) {
+    console.warn("Background API Sync Failed (saved locally):", error);
+  }
+};
+
+export const createProject = async (): Promise<string> => {
+  const newProject: ProjectData = {
+    id: crypto.randomUUID(),
+    title: '未命名项目',
+    status: ProjectStatus.DRAFT,
+    createdAt: Date.now(),
+    updatedAt: Date.now(),
+    inputs: {
+      topic: '',
+      corePoint: '',
+      audience: '大众',
+      duration: '10分钟',
+      tone: '信息丰富且引人入胜',
+      language: '中文'
+    }
+  };
+  
+  // Save to both (Local ensures immediate availability for redirect)
+  await saveProject(newProject);
+  return newProject.id;
+};
+
+export const deleteProject = async (id: string): Promise<void> => {
+  // 1. Local Delete
+  const projects = getLocalProjects();
+  const filtered = projects.filter(p => p.id !== id);
+  saveLocalProjects(filtered);
+
+  // 2. API Delete
+  try {
+    await fetch(`${API_BASE}/projects/${id}`, { method: 'DELETE' });
+  } catch (error) {
+    console.warn("API Delete Failed:", error);
+  }
+};
+
+export const getPrompts = async (): Promise<Record<string, PromptTemplate>> => {
+  // Strategy: Try API -> Fallback Local -> Fallback Defaults
+  try {
+    const res = await fetch(`${API_BASE}/prompts`);
+    if (res.ok) {
+      const stored = await res.json();
+      if (stored) {
+        localStorage.setItem(LOCAL_KEY_PROMPTS, JSON.stringify(stored));
+        return { ...DEFAULT_PROMPTS, ...stored };
+      }
+    }
+  } catch (error) {
+    // API failed, check local
+  }
+
+  // Fallback to local
+  try {
+    const local = localStorage.getItem(LOCAL_KEY_PROMPTS);
+    if (local) {
+      return { ...DEFAULT_PROMPTS, ...JSON.parse(local) };
+    }
+  } catch (e) { /* ignore */ }
+
+  // Fallback to defaults
+  return DEFAULT_PROMPTS;
+};
+
+export const savePrompts = async (prompts: Record<string, PromptTemplate>): Promise<void> => {
+  // 1. Local Save
+  localStorage.setItem(LOCAL_KEY_PROMPTS, JSON.stringify(prompts));
+
+  // 2. API Save
+  try {
+    await fetch(`${API_BASE}/prompts`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(prompts)
+    });
+  } catch (error) {
+    console.warn("API Save Prompts Error:", error);
+  }
+};
+
+export const resetPrompts = async (): Promise<void> => {
+  await savePrompts(DEFAULT_PROMPTS);
+};
+
+// --- Inspiration Methods ---
+
+export const getInspirations = async (): Promise<Inspiration[]> => {
+  try {
+    const res = await fetch(`${API_BASE}/inspirations`);
+    if (res.ok) {
+      const data = await res.json();
+      saveLocalInspirations(data);
+      return data;
+    }
+  } catch (e) {}
+  return getLocalInspirations();
+};
+
+export const saveInspiration = async (item: Inspiration): Promise<void> => {
+  // Local
+  const list = getLocalInspirations();
+  const index = list.findIndex(i => i.id === item.id);
+  if (index >= 0) list[index] = item;
+  else list.push(item);
+  saveLocalInspirations(list);
+
+  // API
+  try {
+    await fetch(`${API_BASE}/inspirations`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(item)
+    });
+  } catch (e) {
+    console.warn("API Save Inspiration Error", e);
+  }
+};
+
+export const deleteInspiration = async (id: string): Promise<void> => {
+  // Local
+  const list = getLocalInspirations();
+  const filtered = list.filter(i => i.id !== id);
+  saveLocalInspirations(filtered);
+
+  // API
+  try {
+    await fetch(`${API_BASE}/inspirations/${id}`, { method: 'DELETE' });
+  } catch (e) {}
+};
