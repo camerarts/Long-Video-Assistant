@@ -136,15 +136,14 @@ const Settings: React.FC = () => {
 
             return (
               <div key={key} className="bg-white border border-slate-100 rounded-3xl p-8 shadow-[0_2px_10px_-4px_rgba(0,0,0,0.05)] relative group hover:shadow-[0_20px_40px_-12px_rgba(0,0,0,0.1)] transition-all hover:-translate-y-1 flex flex-col">
-                {/* Red Badge Index - Vibrant */}
-                <div className="absolute -top-3 -right-3 w-10 h-10 rounded-2xl bg-gradient-to-br from-rose-500 to-orange-500 text-white flex items-center justify-center font-bold shadow-lg shadow-orange-500/30 border-4 border-[#F8F9FC] z-10 text-lg">
-                  {index + 1}
-                </div>
-
+                
                 <div className="flex justify-between items-start mb-6">
                   <div>
-                    <h3 className="text-xl font-bold text-slate-800">{prompt.name}</h3>
-                    <p className="text-xs font-medium text-slate-400 mt-1">{prompt.description}</p>
+                    <h3 className="text-xl font-bold text-slate-800 flex items-center gap-2">
+                        <span className="text-slate-200 font-black text-2xl italic select-none">#{index + 1}</span>
+                        {prompt.name}
+                    </h3>
+                    <p className="text-xs font-medium text-slate-400 mt-1 pl-9">{prompt.description}</p>
                   </div>
                   <div className="flex flex-col items-end gap-3">
                     {/* Key Tag */}
