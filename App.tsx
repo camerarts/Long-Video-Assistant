@@ -7,6 +7,7 @@ import ProjectWorkspace from './pages/ProjectWorkspace';
 import Settings from './pages/Settings';
 import StoryboardImages from './pages/StoryboardImages';
 import ImageWorkshopList from './pages/ImageWorkshopList';
+import InspirationRepo from './pages/InspirationRepo';
 import AuthGuard from './components/AuthGuard';
 
 const App: React.FC = () => {
@@ -17,6 +18,7 @@ const App: React.FC = () => {
           <Routes>
             <Route path="/" element={<Dashboard />} />
             <Route path="/images" element={<ImageWorkshopList />} />
+            <Route path="/inspiration" element={<InspirationRepo />} />
             <Route path="/project/:id" element={<ProjectWorkspace />} />
             <Route path="/project/:id/images" element={<StoryboardImages />} />
             <Route path="/settings" element={<Settings />} />
