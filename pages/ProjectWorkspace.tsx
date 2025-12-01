@@ -1,4 +1,5 @@
 
+
 import React, { useEffect, useState, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { ProjectData, StoryboardFrame, ProjectStatus, PromptTemplate, TitleItem, CoverOption } from '../types';
@@ -386,12 +387,25 @@ const ProjectWorkspace: React.FC = () => {
     const currentScript = projectRef.current?.script;
     if (!currentScript || !currentInputs) return false;
     
-    if (!prompts.TITLES) return false;
+    if (!prompts.TITLES) {
+         // Fallback or retry loading prompts if missing
+        try {
+            const loadedPrompts = await storage.getPrompts();
+            setPrompts(loadedPrompts);
+            if (!loadedPrompts.TITLES) return false;
+        } catch(e) {
+            return false;
+        }
+    }
 
     setNodeLoading('titles', true);
     if (mountedRef.current) setError(null);
     try {
-      const promptText = interpolatePrompt(prompts.TITLES.template, { 
+      // Ensure we use the latest prompts
+      const template = prompts.TITLES?.template || (await storage.getPrompts()).TITLES?.template;
+      if (!template) throw new Error("Missing Titles Prompt Template");
+
+      const promptText = interpolatePrompt(template, { 
           ...currentInputs,
           title: projectRef.current?.title || '',
           script: currentScript 
@@ -403,7 +417,8 @@ const ProjectWorkspace: React.FC = () => {
             type: "OBJECT",
             properties: {
                 title: { type: "STRING" },
-                type: { type: "STRING" }
+                type: { type: "STRING" },
+                score: { type: "NUMBER" }
             }
         }
       });
@@ -1174,15 +1189,26 @@ const ProjectWorkspace: React.FC = () => {
 
                     {selectedNodeId === 'titles' && project.titles && (
                         <TableResultBox 
-                            headers={['序号', '推荐标题', '类型']} 
+                            headers={['序号', '爆款标题', '得分']} 
                             data={project.titles}
                             renderRow={(item: TitleItem, idx) => (
                                 <tr key={idx} className="hover:bg-slate-50 transition-colors border-b border-slate-50">
                                     <td className="py-4 px-6 text-center text-sm font-bold text-slate-400">{idx + 1}</td>
-                                    <td className="py-4 px-6 font-bold text-slate-700 text-sm leading-relaxed">{item.title}</td>
                                     <td className="py-4 px-6">
-                                        <span className="text-[10px] font-bold bg-blue-50 text-blue-600 px-2 py-1 rounded border border-blue-100 inline-block whitespace-nowrap">
-                                            {item.type}
+                                        <div className="font-bold text-slate-700 text-sm leading-relaxed">{item.title}</div>
+                                        <div className="mt-1">
+                                            <span className="text-[10px] font-bold bg-blue-50 text-blue-600 px-2 py-0.5 rounded border border-blue-100 inline-block">
+                                                {item.type}
+                                            </span>
+                                        </div>
+                                    </td>
+                                    <td className="py-4 px-6 text-center">
+                                         <span className={`inline-flex items-center justify-center w-8 h-8 rounded-lg text-sm font-extrabold shadow-sm ${
+                                            (item.score || 0) >= 90 ? 'bg-emerald-100 text-emerald-700 ring-1 ring-emerald-200' :
+                                            (item.score || 0) >= 80 ? 'bg-blue-100 text-blue-700 ring-1 ring-blue-200' :
+                                            'bg-amber-100 text-amber-700 ring-1 ring-amber-200'
+                                        }`}>
+                                            {item.score || '-'}
                                         </span>
                                     </td>
                                 </tr>
