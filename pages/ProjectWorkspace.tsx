@@ -1,5 +1,4 @@
 
-
 import React, { useEffect, useState, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { ProjectData, StoryboardFrame, ProjectStatus, PromptTemplate, TitleItem, CoverOption } from '../types';
@@ -35,7 +34,9 @@ import {
   Hand,
   Search,
   AlertCircle,
-  Zap
+  Zap,
+  PanelRightClose,
+  PanelRightOpen
 } from 'lucide-react';
 
 // --- Canvas & Layout Types ---
@@ -604,6 +605,9 @@ const ProjectWorkspace: React.FC = () => {
         next.delete(nodeId);
         return next;
     });
+    
+    // Auto-select node when running
+    setSelectedNodeId(nodeId);
 
     switch (nodeId) {
       case 'script': handleGenerateScript(); break;
@@ -804,9 +808,9 @@ const ProjectWorkspace: React.FC = () => {
             <div className="overflow-x-auto">
                 <table className="w-full text-left border-collapse">
                     <thead>
-                        <tr className="bg-slate-50 border-b border-slate-100">
+                        <tr className="bg-slate-50/80 border-b border-slate-100">
                             {headers.map((h, i) => (
-                                <th key={i} className="py-3 px-5 text-xs font-bold text-slate-400 uppercase tracking-wider">{h}</th>
+                                <th key={i} className="py-4 px-5 text-sm font-extrabold text-slate-700 uppercase tracking-wide whitespace-nowrap">{h}</th>
                             ))}
                         </tr>
                     </thead>
@@ -1110,368 +1114,169 @@ const ProjectWorkspace: React.FC = () => {
                             key={node.id}
                             onMouseDown={(e) => handleNodeMouseDown(e, node.id)}
                             onClick={(e) => handleNodeClick(e, node.id)}
-                            className={`absolute flex flex-col bg-white rounded-2xl transition-all duration-300 group overflow-hidden select-none
-                                ${borderClass}
-                                ${draggingId === node.id ? 'z-50 shadow-2xl scale-[1.03] ring-0' : 'z-10'}
-                                ${disabled ? 'opacity-60 grayscale cursor-not-allowed hover:shadow-none hover:border-slate-100' : ''}
-                                ${isSpacePressed ? 'cursor-grab' : disabled ? 'cursor-not-allowed' : 'cursor-grab active:cursor-grabbing'}
-                            `}
-                            style={{
-                                left: pos.x,
+                            className={`absolute bg-white rounded-3xl p-5 w-[260px] h-[110px] transition-all duration-200 group flex flex-col justify-between ${borderClass} ${disabled ? 'opacity-50 cursor-not-allowed grayscale' : 'cursor-pointer'}`}
+                            style={{ 
+                                left: pos.x, 
                                 top: pos.y,
-                                width: NODE_WIDTH,
-                                height: NODE_HEIGHT,
-                                transition: draggingId === node.id ? 'none' : 'box-shadow 0.3s, transform 0.2s, border-color 0.2s'
                             }}
                         >
-                            <div className="p-4 flex-1 flex flex-col justify-between relative z-10">
-                                <div className="flex items-start justify-between">
-                                    <div className={`p-2.5 rounded-xl bg-gradient-to-br ${gradientClass} text-white shadow-lg`}>
-                                        <node.icon className="w-5 h-5" />
+                           <div className="flex items-start justify-between">
+                                <div className="flex items-center gap-3">
+                                    <div className={`w-10 h-10 rounded-2xl bg-gradient-to-br ${gradientClass} flex items-center justify-center text-white shadow-sm`}>
+                                        {isRunning ? <Loader2 className="w-5 h-5 animate-spin" /> : <node.icon className="w-5 h-5" />}
                                     </div>
-                                    
-                                    {hasAction && (
-                                        <button 
-                                            onClick={(e) => handleNodeRun(e, node.id)}
-                                            onMouseDown={(e) => e.stopPropagation()} 
-                                            disabled={isRunning || disabled}
-                                            className={`p-2 rounded-full transition-all shadow-sm flex items-center justify-center border
-                                                ${disabled
-                                                    ? 'bg-slate-100 border-slate-200 text-slate-300 cursor-not-allowed'
-                                                    : isError 
-                                                        ? 'bg-rose-50 border-rose-100 text-rose-500 hover:bg-rose-100'
-                                                    : status === 'completed' 
-                                                        ? 'bg-emerald-50 border-emerald-100 text-emerald-600 hover:bg-emerald-100 cursor-pointer' 
-                                                        : 'bg-slate-50 border-slate-100 text-slate-400 hover:bg-violet-600 hover:text-white hover:border-violet-600 hover:shadow-md cursor-pointer'}
-                                            `}
-                                            title={disabled ? "请先完成前置任务" : isError ? "执行失败，点击重试" : "执行任务"}
-                                        >
-                                            {isRunning ? (
-                                                <Loader2 className="w-4 h-4 animate-spin text-violet-600" />
-                                            ) : disabled ? (
-                                                <Lock className="w-4 h-4" />
-                                            ) : isError ? (
-                                                <AlertCircle className="w-4 h-4" />
-                                            ) : status === 'completed' ? (
-                                                <Check className="w-4 h-4" />
-                                            ) : (
-                                                node.id === 'image_gen' ? <ArrowRight className="w-4 h-4" /> : <Play className="w-4 h-4 ml-0.5" />
-                                            )}
-                                        </button>
-                                    )}
+                                    <div>
+                                        <h3 className="font-bold text-slate-800 text-sm leading-tight">{node.label}</h3>
+                                        <p className="text-[10px] text-slate-400 font-medium leading-tight mt-0.5">{node.description}</p>
+                                    </div>
                                 </div>
                                 
-                                <div>
-                                    <h3 className={`font-bold text-sm tracking-tight ${isError ? 'text-rose-600' : status === 'completed' ? 'text-emerald-700' : 'text-slate-800'}`}>{node.label}</h3>
-                                    <p className="text-[11px] font-medium text-slate-400 line-clamp-1 mt-0.5">{node.description}</p>
-                                </div>
-                            </div>
+                                {status === 'completed' && <div className="bg-emerald-100 text-emerald-600 p-1 rounded-full"><Check className="w-3 h-3 stroke-[3]" /></div>}
+                           </div>
 
-                            {isRunning && (
-                                <div className="h-1 w-full bg-violet-100 absolute bottom-0 left-0">
-                                    <div className="h-full bg-violet-600 animate-progress-indeterminate shadow-[0_0_10px_rgba(124,58,237,0.5)]"></div>
-                                </div>
-                            )}
-                            
-                            {!isRunning && !disabled && !isError && (
-                                <div className="h-1 w-full bg-slate-50/50">
-                                    <div className={`h-full transition-all duration-700 ease-in-out ${status === 'completed' ? 'bg-emerald-400 w-full' : 'bg-transparent w-0'}`} />
-                                </div>
-                            )}
-                            
-                             {!isRunning && isError && (
-                                <div className="h-1 w-full bg-rose-500"></div>
-                            )}
+                           {hasAction && !disabled && (
+                               <div className="flex justify-end">
+                                    <button 
+                                        onClick={(e) => handleNodeRun(e, node.id)}
+                                        className="text-[10px] font-bold bg-slate-50 hover:bg-violet-50 text-slate-500 hover:text-violet-600 px-3 py-1.5 rounded-lg border border-slate-100 hover:border-violet-200 transition-colors flex items-center gap-1.5"
+                                    >
+                                        {node.id === 'image_gen' ? '前往工坊' : '立即生成'} 
+                                        {node.id !== 'image_gen' && <Wand2 className="w-3 h-3" />}
+                                    </button>
+                               </div>
+                           )}
                         </div>
                     );
                 })}
             </div>
         </div>
-
       </div>
 
-      {/* Detail Drawer (Right Side Overlay) */}
-      <div className={`absolute top-0 right-0 bottom-0 w-full md:w-[640px] bg-white/95 backdrop-blur-xl shadow-2xl z-40 transform transition-transform duration-300 ease-in-out border-l border-slate-200 flex flex-col ${selectedNodeId ? 'translate-x-0' : 'translate-x-full'}`} onClick={(e) => e.stopPropagation()}>
-         {selectedNodeId && (
-             <>
-                <div className="px-6 py-5 border-b border-slate-100 flex items-center justify-between bg-white">
-                    <div className="flex items-center gap-4">
-                        <div className={`p-2.5 rounded-xl bg-gradient-to-br ${NODES_CONFIG.find(n => n.id === selectedNodeId)?.color === 'violet' ? 'from-violet-500 to-indigo-500' : 'from-slate-700 to-slate-900'} text-white shadow-md`}>
-                            {React.createElement(NODES_CONFIG.find(n => n.id === selectedNodeId)?.icon || Settings2, { className: "w-5 h-5" })}
-                        </div>
-                        <div>
-                            <h2 className="text-lg font-bold text-slate-900">{NODES_CONFIG.find(n => n.id === selectedNodeId)?.label}</h2>
-                            <p className="text-xs font-medium text-slate-400">详细编辑器</p>
-                        </div>
-                    </div>
-                    <button onClick={() => setSelectedNodeId(null)} className="p-2 hover:bg-slate-100 rounded-full transition-colors text-slate-400 hover:text-slate-600">
-                        <X className="w-6 h-6" />
+      {/* Right Sidebar: Results */}
+      <div className={`${selectedNodeId ? 'w-[420px] translate-x-0 opacity-100' : 'w-0 translate-x-full opacity-0'} transition-all duration-300 ease-out border-l border-slate-200 bg-white/95 backdrop-blur-xl flex flex-col h-full flex-shrink-0 z-20 shadow-[-4px_0_24px_rgba(0,0,0,0.02)]`}>
+          {selectedNodeId && (
+              <>
+                 <div className="p-5 border-b border-slate-100 flex items-center justify-between">
+                    <h2 className="font-bold text-slate-800 flex items-center gap-2 text-sm tracking-wide">
+                        {NODES_CONFIG.find(n => n.id === selectedNodeId)?.label}
+                        <span className="text-slate-300">/</span>
+                        <span className="text-slate-400 font-normal">生成结果</span>
+                    </h2>
+                    <button onClick={() => setSelectedNodeId(null)} className="text-slate-400 hover:text-slate-600">
+                        <PanelRightClose className="w-5 h-5" />
                     </button>
-                </div>
+                 </div>
 
-                <div className="flex-1 overflow-y-auto p-8 bg-[#F8F9FC]">
-                    
-                    {/* INPUT NODE - EDITABLE */}
-                    {selectedNodeId === 'input' && (
-                        <div className="space-y-8">
-                             <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100">
-                                 <div className="flex items-center gap-3 mb-6">
-                                    <div className="w-10 h-10 bg-indigo-50 rounded-full flex items-center justify-center">
-                                        <Sparkles className="w-5 h-5 text-indigo-600" />
-                                    </div>
-                                    <div>
-                                        <h3 className="text-lg font-bold text-slate-900">核心创作意图</h3>
-                                        <p className="text-xs text-slate-500">AI 将根据此信息构建整个视频</p>
-                                    </div>
-                                 </div>
-
-                                 <div className="space-y-6">
-                                    <div>
-                                      <label className="block text-sm font-bold text-slate-700 mb-2">视频主题</label>
-                                      <input
-                                        name="topic"
-                                        value={project.inputs.topic}
-                                        onChange={handleInputChange}
-                                        placeholder="例如：2025年人工智能发展趋势"
-                                        className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3.5 text-slate-900 focus:ring-2 focus:ring-violet-500/20 focus:border-violet-500 outline-none transition-all placeholder:text-slate-400 font-medium"
-                                      />
-                                    </div>
-
-                                    <div>
-                                      <label className="block text-sm font-bold text-slate-700 mb-2">核心观点 / 角度</label>
-                                      <textarea
-                                        name="corePoint"
-                                        value={project.inputs.corePoint}
-                                        onChange={handleInputChange}
-                                        rows={5}
-                                        placeholder="主要的论点、受众痛点或独特的叙事角度..."
-                                        className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3.5 text-slate-900 focus:ring-2 focus:ring-violet-500/20 focus:border-violet-500 outline-none transition-all resize-none placeholder:text-slate-400 font-medium"
-                                      />
-                                    </div>
-                                 </div>
-                             </div>
-
-                             <div className="flex justify-end">
-                                 <button onClick={() => {saveWork(project); setSelectedNodeId(null);}} className="bg-slate-900 text-white px-8 py-3 rounded-xl hover:bg-slate-800 font-bold shadow-lg shadow-slate-900/20 transition-all hover:-translate-y-0.5">
-                                    确认并保存
-                                 </button>
-                             </div>
-                        </div>
-                    )}
-
-                    {/* SCRIPT EDITOR */}
+                 <div className="flex-1 overflow-y-auto p-6 space-y-6">
                     {selectedNodeId === 'script' && (
-                        <div className="space-y-5 h-full flex flex-col">
-                            <div className="flex justify-between items-center mb-1">
-                                <span className="text-sm font-bold text-slate-600 uppercase tracking-wide">生成内容</span>
-                                <button onClick={() => handleGenerateScript()} disabled={generatingNodes.has('script')} className="text-xs px-4 py-2 bg-gradient-to-r from-violet-600 to-indigo-600 text-white rounded-lg hover:shadow-lg hover:shadow-violet-500/30 transition-all flex items-center gap-2 font-semibold">
-                                    {generatingNodes.has('script') ? <Loader2 className="w-3.5 h-3.5 animate-spin"/> : <Wand2 className="w-3.5 h-3.5"/>}
-                                    {project.script ? '重新生成' : '智能生成'}
+                        <TextResultBox content={project.script || ''} title="完整视频脚本" />
+                    )}
+
+                    {selectedNodeId === 'titles' && project.titles && (
+                        <TableResultBox 
+                            headers={['序号', '推荐标题', '类型']} 
+                            data={project.titles}
+                            renderRow={(item: TitleItem, idx) => (
+                                <tr key={idx} className="hover:bg-slate-50 transition-colors border-b border-slate-50">
+                                    <td className="py-4 px-6 text-center text-sm font-bold text-slate-400">{idx + 1}</td>
+                                    <td className="py-4 px-6 font-bold text-slate-700 text-sm leading-relaxed">{item.title}</td>
+                                    <td className="py-4 px-6">
+                                        <span className="text-[10px] font-bold bg-blue-50 text-blue-600 px-2 py-1 rounded border border-blue-100 inline-block whitespace-nowrap">
+                                            {item.type}
+                                        </span>
+                                    </td>
+                                </tr>
+                            )}
+                        />
+                    )}
+
+                    {selectedNodeId === 'summary' && (
+                        <TextResultBox content={project.summary || ''} title="简介与标签" copyLabel="复制简介" />
+                    )}
+
+                    {selectedNodeId === 'sb_text' && (
+                        <div className="space-y-4">
+                            <div className="bg-fuchsia-50 border border-fuchsia-100 rounded-xl p-4 flex gap-3 items-center">
+                                <div className="bg-fuchsia-100 p-2 rounded-lg text-fuchsia-600">
+                                    <ImageIcon className="w-5 h-5" />
+                                </div>
+                                <div className="flex-1">
+                                    <h4 className="font-bold text-fuchsia-800 text-sm">分镜文案已生成</h4>
+                                    <p className="text-xs text-fuchsia-600/80">共 {project.storyboard?.length || 0} 个场景描述</p>
+                                </div>
+                                <button 
+                                    onClick={() => navigate(`/project/${project.id}/images`)}
+                                    className="bg-white text-fuchsia-600 text-xs font-bold px-3 py-2 rounded-lg border border-fuchsia-200 hover:bg-fuchsia-50 transition-colors shadow-sm"
+                                >
+                                    去生图
                                 </button>
                             </div>
-                            <textarea
-                                value={project.script || ''}
-                                onChange={(e) => setProject({ ...project, script: e.target.value })}
-                                className="flex-1 w-full bg-white border border-slate-200 rounded-2xl p-6 text-slate-700 leading-8 outline-none focus:ring-2 focus:ring-violet-500/20 focus:border-violet-200 resize-none font-sans text-base shadow-sm selection:bg-violet-100"
-                                placeholder="点击上方按钮生成脚本..."
+                            <TableResultBox 
+                                headers={['#', '画面描述']} 
+                                data={project.storyboard || []}
+                                renderRow={(item: StoryboardFrame, idx) => (
+                                    <tr key={idx} className="hover:bg-slate-50 transition-colors border-b border-slate-50">
+                                        <td className="py-3 px-4 text-center text-xs font-bold text-slate-400 align-top pt-4">{item.sceneNumber}</td>
+                                        <td className="py-3 px-4 text-xs text-slate-600 leading-relaxed align-top pt-4 pb-4">
+                                            {item.description}
+                                        </td>
+                                    </tr>
+                                )}
                             />
                         </div>
                     )}
 
-                    {/* STORYBOARD */}
-                    {selectedNodeId === 'sb_text' && (
-                        <div className="space-y-8">
-                            <div className="flex justify-between items-center bg-white p-5 rounded-2xl border border-slate-100 shadow-sm">
-                                <div>
-                                    <h4 className="font-bold text-slate-900 text-lg">分镜列表</h4>
-                                    <p className="text-xs font-medium text-slate-500 mt-1">{project.storyboard?.length || 0} 个关键场景</p>
-                                </div>
-                                <div className="flex gap-3">
-                                     <button onClick={() => handleGenerateStoryboardText()} disabled={generatingNodes.has('sb_text')} className="px-4 py-2 bg-slate-50 text-slate-600 border border-slate-200 rounded-lg text-xs font-semibold hover:bg-white hover:border-slate-300 transition-colors flex items-center gap-1.5">
-                                        <ListEnd className="w-3.5 h-3.5"/> 重置文案
-                                    </button>
-                                </div>
-                            </div>
-
-                            {/* Text Library for Storyboard */}
-                            <TextResultBox 
-                                title="分镜文案汇总" 
-                                copyLabel="复制所有文案"
-                                content={project.storyboard?.map(f => `场景 ${f.sceneNumber}: ${f.description}`).join('\n\n') || ''} 
-                            />
-                            
-                            <div className="space-y-4">
-                                {project.storyboard?.map((frame, idx) => (
-                                    <div key={frame.id} className="bg-white rounded-2xl border border-slate-100 overflow-hidden shadow-sm hover:shadow-md transition-shadow">
-                                        <div className="flex">
-                                            <div className="p-4 bg-slate-50 border-r border-slate-50 font-mono text-sm text-slate-400 font-bold flex items-center justify-center w-14">
-                                                {idx + 1}
-                                            </div>
-                                            <div className="p-4 flex-1">
-                                                 <textarea 
-                                                    className="w-full text-sm text-slate-700 bg-transparent outline-none resize-none h-20 leading-relaxed"
-                                                    value={frame.description}
-                                                    onChange={(e) => {
-                                                        const newSb = [...(project.storyboard || [])];
-                                                        newSb[idx].description = e.target.value;
-                                                        setProject({...project, storyboard: newSb});
-                                                    }}
-                                                />
-                                            </div>
+                    {selectedNodeId === 'cover' && (
+                         <TableResultBox 
+                            headers={['封面文案', '得分']} 
+                            data={project.coverOptions || []}
+                            renderRow={(item: CoverOption, idx) => (
+                                <tr key={idx} className="hover:bg-slate-50 transition-colors border-b border-slate-50 last:border-0">
+                                    <td className="py-6 px-6 align-top">
+                                        <div className="space-y-2">
+                                            {item.copy.split('\n').map((line, lIdx) => (
+                                                <div key={lIdx} className="text-base font-bold text-slate-800 leading-snug">
+                                                    {line}
+                                                </div>
+                                            ))}
                                         </div>
-                                    </div>
-                                ))}
-                            </div>
-                        </div>
+                                    </td>
+                                    <td className="py-6 px-6 align-top text-center">
+                                         <span className={`inline-flex items-center justify-center w-8 h-8 rounded-lg text-sm font-extrabold shadow-sm ${
+                                            (item.score || 0) >= 90 ? 'bg-emerald-100 text-emerald-700 ring-1 ring-emerald-200' :
+                                            (item.score || 0) >= 80 ? 'bg-blue-100 text-blue-700 ring-1 ring-blue-200' :
+                                            'bg-amber-100 text-amber-700 ring-1 ring-amber-200'
+                                        }`}>
+                                            {item.score || '-'}
+                                        </span>
+                                    </td>
+                                </tr>
+                            )}
+                        />
                     )}
                     
-                    {/* IMAGE GEN REDIRECT */}
-                    {selectedNodeId === 'image_gen' && (
-                        <div className="flex flex-col items-center justify-center h-full text-center p-10 space-y-6">
-                            <div className="w-20 h-20 bg-pink-50 rounded-full flex items-center justify-center">
-                                <Images className="w-10 h-10 text-pink-500" />
-                            </div>
-                            <div>
-                                <h3 className="text-xl font-bold text-slate-900">分镜图片生成工坊</h3>
-                                <p className="text-slate-500 mt-2 max-w-xs mx-auto">切换到专用视图，批量生成、预览和下载分镜图片。</p>
-                            </div>
-                            <button 
-                                onClick={() => navigate(`/project/${project.id}/images`)}
-                                className="px-8 py-3 bg-gradient-to-r from-pink-600 to-rose-600 text-white rounded-xl font-bold shadow-lg shadow-pink-500/30 hover:scale-105 transition-all flex items-center gap-2"
-                            >
-                                进入图片生成界面 <ArrowRight className="w-4 h-4" />
-                            </button>
-                        </div>
-                    )}
-
-                    {/* TITLES */}
-                    {selectedNodeId === 'titles' && (
+                    {selectedNodeId === 'input' && (
                         <div className="space-y-6">
-                            <div className="flex justify-end">
-                                <button onClick={() => handleGenerateTitles()} disabled={generatingNodes.has('titles')} className="px-5 py-2.5 bg-gradient-to-r from-blue-600 to-cyan-600 text-white rounded-xl shadow-lg shadow-blue-500/30 hover:-translate-y-0.5 transition-all text-sm font-bold flex items-center gap-2">
-                                    {generatingNodes.has('titles') ? <Loader2 className="w-4 h-4 animate-spin"/> : <RefreshCw className="w-4 h-4"/>}
-                                    重新生成
-                                </button>
-                            </div>
-
-                            {/* STRUCTURED TABLE VIEW */}
-                            <TableResultBox 
-                                headers={["#", "标题文本", "类型/风格"]}
-                                data={project.titles || []}
-                                renderRow={(item: TitleItem | string, index) => {
-                                    const isObj = typeof item === 'object';
-                                    const title = isObj ? (item as TitleItem).title : (item as string);
-                                    const type = isObj ? (item as TitleItem).type : "默认";
-                                    return (
-                                        <tr key={index} className="hover:bg-blue-50/30 transition-colors group">
-                                            <td className="py-3 px-5 text-sm font-bold text-slate-300 w-12 text-center">{index + 1}</td>
-                                            <td className="py-3 px-5 text-sm font-medium text-slate-800 relative">
-                                                {title}
-                                                <button onClick={() => navigator.clipboard.writeText(title)} className="absolute right-2 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 p-1.5 text-blue-500 bg-white border border-blue-100 rounded hover:bg-blue-50 transition-all" title="复制">
-                                                    <Copy className="w-3.5 h-3.5" />
-                                                </button>
-                                            </td>
-                                            <td className="py-3 px-5 text-xs text-slate-500">
-                                                <span className="bg-slate-100 text-slate-600 px-2 py-1 rounded border border-slate-200">{type}</span>
-                                            </td>
-                                        </tr>
-                                    )
-                                }}
-                            />
-                        </div>
-                    )}
-
-                    {/* SUMMARY */}
-                    {selectedNodeId === 'summary' && (
-                         <div className="space-y-5 h-full flex flex-col">
-                            <div className="flex justify-end mb-2">
-                                <button onClick={() => handleGenerateSummary()} disabled={generatingNodes.has('summary')} className="px-5 py-2.5 bg-gradient-to-r from-emerald-600 to-teal-600 text-white rounded-xl shadow-lg shadow-emerald-500/30 hover:-translate-y-0.5 transition-all text-sm font-bold flex items-center gap-2">
-                                    {generatingNodes.has('summary') ? <Loader2 className="w-4 h-4 animate-spin"/> : <Wand2 className="w-4 h-4"/>}
-                                    生成简介
-                                </button>
-                            </div>
-                            
-                            {/* Text Library for Summary */}
-                             <TextResultBox 
-                                title="简介与标签库" 
-                                copyLabel="复制内容"
-                                content={project.summary || ''} 
-                            />
-
-                            <textarea
-                                value={project.summary || ''}
-                                onChange={(e) => setProject({ ...project, summary: e.target.value })}
-                                className="flex-1 w-full bg-white border border-slate-200 rounded-2xl p-6 text-slate-700 leading-relaxed outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-200 resize-none shadow-sm text-sm"
-                                placeholder="视频简介与标签..."
-                            />
-                        </div>
-                    )}
-
-                    {/* COVER TEXT */}
-                    {selectedNodeId === 'cover' && (
-                        <div className="space-y-6">
-                             <div className="flex justify-end">
-                                <button onClick={() => handleGenerateCover()} disabled={generatingNodes.has('cover')} className="px-5 py-2.5 bg-gradient-to-r from-rose-600 to-pink-600 text-white rounded-xl shadow-lg shadow-rose-500/30 hover:-translate-y-0.5 transition-all text-sm font-bold flex items-center gap-2">
-                                    {generatingNodes.has('cover') ? <Loader2 className="w-4 h-4 animate-spin"/> : <Wand2 className="w-4 h-4"/>}
-                                    生成封面文案
-                                </button>
-                            </div>
-
-                             {/* STRUCTURED TABLE VIEW */}
-                             {project.coverOptions && project.coverOptions.length > 0 ? (
-                                <TableResultBox 
-                                    headers={["封面文案", "得分"]} 
-                                    data={project.coverOptions}
-                                    renderRow={(item: CoverOption, index) => (
-                                        <tr key={index} className="hover:bg-rose-50/30 transition-colors group">
-                                            <td className="py-6 px-5 align-middle">
-                                                <div className="relative group/copy w-fit">
-                                                    <div className="flex flex-col gap-1.5">
-                                                        {item.copy.split(/\r?\n/).map((line, i) => (
-                                                            <span key={i} className="text-xl md:text-2xl font-black text-transparent bg-clip-text bg-gradient-to-r from-rose-600 to-pink-600 tracking-tight leading-snug block">
-                                                                {line}
-                                                            </span>
-                                                        ))}
-                                                    </div>
-                                                     <button onClick={() => navigator.clipboard.writeText(item.copy)} className="absolute -right-8 top-1/2 -translate-y-1/2 opacity-0 group-hover/copy:opacity-100 p-1.5 text-rose-500 hover:bg-rose-50 rounded-lg transition-all" title="复制文案">
-                                                        <Copy className="w-3.5 h-3.5" />
-                                                    </button>
-                                                </div>
-                                            </td>
-                                            <td className="py-6 px-5 align-middle w-32">
-                                                 {item.score && (
-                                                    <div className="flex items-center gap-1.5 font-bold text-rose-600 bg-rose-50 px-3 py-1.5 rounded-lg border border-rose-100 w-fit">
-                                                        <Zap className="w-4 h-4 fill-rose-500" />
-                                                        <span className="text-lg">{item.score}</span>
-                                                    </div>
-                                                 )}
-                                            </td>
-                                        </tr>
-                                    )}
-                                />
-                             ) : (
-                                // Fallback for legacy data
-                                <div className="space-y-4">
-                                     <TextResultBox 
-                                        title="封面文案" 
-                                        copyLabel="复制内容"
-                                        content={project.coverText || ''} 
-                                    />
-                                    <textarea
-                                        value={project.coverText || ''}
-                                        onChange={(e) => setProject({ ...project, coverText: e.target.value })}
-                                        className="w-full bg-white border border-slate-200 rounded-2xl p-6 text-slate-700 leading-relaxed outline-none focus:ring-2 focus:ring-rose-500/20 focus:border-rose-200 resize-none shadow-sm text-sm h-40"
-                                        placeholder="封面文案..."
-                                    />
+                            <div className="space-y-2">
+                                <label className="text-xs font-bold text-slate-400 uppercase">视频主题</label>
+                                <div className="text-sm font-medium text-slate-800 bg-slate-50 p-3 rounded-xl border border-slate-100">
+                                    {project.inputs.topic}
                                 </div>
-                             )}
+                            </div>
+                             <div className="space-y-2">
+                                <label className="text-xs font-bold text-slate-400 uppercase">核心观点</label>
+                                <div className="text-sm font-medium text-slate-800 bg-slate-50 p-3 rounded-xl border border-slate-100 leading-relaxed">
+                                    {project.inputs.corePoint}
+                                </div>
+                            </div>
                         </div>
                     )}
 
-                </div>
-             </>
-         )}
+                 </div>
+              </>
+          )}
       </div>
+
     </div>
   );
 };
