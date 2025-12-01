@@ -1,6 +1,7 @@
+
 import React from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { LayoutDashboard, Settings, Video, Plus, Image as ImageIcon, Lightbulb } from 'lucide-react';
+import { LayoutDashboard, Settings, Video, Plus, Image as ImageIcon, Lightbulb, LogOut } from 'lucide-react';
 import * as storage from '../services/storageService';
 
 interface LayoutProps {
@@ -18,6 +19,13 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
   const handleCreateProject = async () => {
     const newId = await storage.createProject();
     navigate(`/project/${newId}`);
+  };
+
+  const handleLogout = () => {
+    if (window.confirm('确定要退出登录吗？')) {
+      localStorage.removeItem('lva_auth_expiry');
+      navigate('/');
+    }
   };
 
   return (
@@ -91,6 +99,15 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
             <Settings className={`w-5 h-5 ${isActive('/settings') ? 'stroke-[2.5px]' : 'stroke-2'}`} />
             <span className="text-[10px] font-bold tracking-wide">系统设置</span>
           </Link>
+
+          <button
+            onClick={handleLogout}
+            className="mt-auto flex flex-col items-center justify-center py-3.5 px-2 w-full rounded-2xl transition-all gap-1.5 duration-300 text-slate-400 hover:bg-rose-50 hover:text-rose-600"
+            title="退出登录"
+          >
+            <LogOut className="w-5 h-5 stroke-2" />
+            <span className="text-[10px] font-bold tracking-wide">退出</span>
+          </button>
         </nav>
       </aside>
 
