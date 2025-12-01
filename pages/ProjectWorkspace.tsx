@@ -1,4 +1,5 @@
 
+
 import React, { useEffect, useState, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { ProjectData, StoryboardFrame, ProjectStatus, PromptTemplate, TitleItem, CoverOption } from '../types';
@@ -81,6 +82,10 @@ const ProjectWorkspace: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const [project, setProject] = useState<ProjectData | null>(null);
+  
+  // Ref to hold the latest project state for async operations to avoid stale closures
+  const projectRef = useRef<ProjectData | null>(null);
+  
   const [prompts, setPrompts] = useState<Record<string, PromptTemplate>>({});
   
   // UI State
@@ -113,6 +118,11 @@ const ProjectWorkspace: React.FC = () => {
   // One-Click Automation State
   const [isAutoGenerating, setIsAutoGenerating] = useState(false);
   const [nodeErrors, setNodeErrors] = useState<Set<string>>(new Set());
+
+  // Sync ref with state
+  useEffect(() => {
+    projectRef.current = project;
+  }, [project]);
 
   // Load project and prompts
   useEffect(() => {
@@ -270,7 +280,8 @@ const ProjectWorkspace: React.FC = () => {
   // --- Individual Generators (return boolean for success) ---
 
   const handleGenerateScript = async (): Promise<boolean> => {
-    if (!project) return false;
+    const currentProject = projectRef.current;
+    if (!currentProject) return false;
     
     if (!prompts.SCRIPT) {
         setError("提示词模版未加载，请刷新页面。");
@@ -280,10 +291,10 @@ const ProjectWorkspace: React.FC = () => {
     setNodeLoading('script', true);
     setError(null);
     try {
-      const promptText = interpolatePrompt(prompts.SCRIPT.template, { ...project.inputs });
+      const promptText = interpolatePrompt(prompts.SCRIPT.template, { ...currentProject.inputs });
       const script = await gemini.generateText(promptText);
       
-      const updated = { ...project, script, status: ProjectStatus.IN_PROGRESS };
+      const updated = { ...currentProject, script, status: ProjectStatus.IN_PROGRESS };
       await saveWork(updated);
       return true;
     } catch (e: any) {
@@ -296,7 +307,8 @@ const ProjectWorkspace: React.FC = () => {
   };
 
   const handleGenerateStoryboardText = async (): Promise<boolean> => {
-    if (!project || !project.script) return false;
+    const currentProject = projectRef.current;
+    if (!currentProject || !currentProject.script) return false;
     
     if (!prompts.STORYBOARD_TEXT) {
         setError("提示词模版错误。");
@@ -306,7 +318,7 @@ const ProjectWorkspace: React.FC = () => {
     setNodeLoading('sb_text', true);
     setError(null);
     try {
-      const promptText = interpolatePrompt(prompts.STORYBOARD_TEXT.template, { script: project.script });
+      const promptText = interpolatePrompt(prompts.STORYBOARD_TEXT.template, { script: currentProject.script });
       const framesData = await gemini.generateJSON<{description: string}[]>(promptText, {
         type: "ARRAY",
         items: {
@@ -322,7 +334,9 @@ const ProjectWorkspace: React.FC = () => {
         imagePrompt: interpolatePrompt(prompts.IMAGE_GEN?.template || '', { description: f.description })
       }));
 
-      const updated = { ...project, storyboard: newFrames };
+      // IMPORTANT: Merge with LATEST state
+      const latest = projectRef.current || currentProject;
+      const updated = { ...latest, storyboard: newFrames };
       await saveWork(updated);
       return true;
     } catch (e: any) {
@@ -335,7 +349,8 @@ const ProjectWorkspace: React.FC = () => {
   };
 
   const handleGenerateTitles = async (): Promise<boolean> => {
-    if (!project || !project.script) return false;
+    const currentProject = projectRef.current;
+    if (!currentProject || !currentProject.script) return false;
     
     if (!prompts.TITLES) {
         setError("提示词模版错误。");
@@ -346,8 +361,8 @@ const ProjectWorkspace: React.FC = () => {
     setError(null);
     try {
       const promptText = interpolatePrompt(prompts.TITLES.template, { 
-          ...project.inputs,
-          script: project.script 
+          ...currentProject.inputs,
+          script: currentProject.script 
       });
       
       // Use generateJSON to get structured output
@@ -362,7 +377,9 @@ const ProjectWorkspace: React.FC = () => {
         }
       });
       
-      const updated = { ...project, titles: titles };
+      // IMPORTANT: Merge with LATEST state
+      const latest = projectRef.current || currentProject;
+      const updated = { ...latest, titles: titles };
       await saveWork(updated);
       return true;
     } catch (e: any) {
@@ -374,7 +391,8 @@ const ProjectWorkspace: React.FC = () => {
   };
 
   const handleGenerateSummary = async (): Promise<boolean> => {
-    if (!project || !project.script) return false;
+    const currentProject = projectRef.current;
+    if (!currentProject || !currentProject.script) return false;
     
     if (!prompts.SUMMARY) {
       setError("提示词模版错误。");
@@ -384,10 +402,12 @@ const ProjectWorkspace: React.FC = () => {
     setNodeLoading('summary', true);
     setError(null);
     try {
-      const promptText = interpolatePrompt(prompts.SUMMARY.template, { script: project.script });
+      const promptText = interpolatePrompt(prompts.SUMMARY.template, { script: currentProject.script });
       const summary = await gemini.generateText(promptText);
       
-      const updated = { ...project, summary };
+      // IMPORTANT: Merge with LATEST state
+      const latest = projectRef.current || currentProject;
+      const updated = { ...latest, summary };
       await saveWork(updated);
       return true;
     } catch (e: any) {
@@ -399,7 +419,8 @@ const ProjectWorkspace: React.FC = () => {
   };
 
   const handleGenerateCover = async (): Promise<boolean> => {
-    if (!project || !project.script) return false;
+    const currentProject = projectRef.current;
+    if (!currentProject || !currentProject.script) return false;
     
     if (!prompts.COVER_GEN) {
       setError("提示词模版错误。");
@@ -410,8 +431,8 @@ const ProjectWorkspace: React.FC = () => {
     setError(null);
     try {
       const promptText = interpolatePrompt(prompts.COVER_GEN.template, { 
-          ...project.inputs,
-          script: project.script
+          ...currentProject.inputs,
+          script: currentProject.script
       });
       
       // Use generateJSON for structured cover options
@@ -426,8 +447,10 @@ const ProjectWorkspace: React.FC = () => {
           }
       });
       
+      // IMPORTANT: Merge with LATEST state
+      const latest = projectRef.current || currentProject;
       const updated = { 
-        ...project, 
+        ...latest, 
         coverOptions: coverOptions, 
         status: ProjectStatus.COMPLETED 
       };
@@ -451,19 +474,22 @@ const ProjectWorkspace: React.FC = () => {
     if (isAutoGenerating) return;
 
     setIsAutoGenerating(true);
-    // Clear previous errors for these nodes
+    
+    // Clear previous errors for these specific nodes
+    const targetNodes = ['titles', 'summary', 'sb_text', 'cover'];
     setNodeErrors(prev => {
         const next = new Set(prev);
-        ['titles', 'summary', 'sb_text', 'cover'].forEach(id => next.delete(id));
+        targetNodes.forEach(id => next.delete(id));
         return next;
     });
 
-    const sequence = ['titles', 'summary', 'sb_text', 'cover'];
+    // Helper to run a specific node task with retry logic
+    const executeTaskWithRetry = async (nodeId: string) => {
+        // Force loading state on immediately to ensure all 4 show spinners
+        setNodeLoading(nodeId, true);
 
-    for (const nodeId of sequence) {
-        // Run logic wrapper
-        const runNode = async (id: string): Promise<boolean> => {
-            switch(id) {
+        const runAction = async (): Promise<boolean> => {
+            switch(nodeId) {
                 case 'titles': return await handleGenerateTitles();
                 case 'summary': return await handleGenerateSummary();
                 case 'sb_text': return await handleGenerateStoryboardText();
@@ -473,36 +499,31 @@ const ProjectWorkspace: React.FC = () => {
         };
 
         // Attempt 1
-        let success = await runNode(nodeId);
+        let success = await runAction();
 
-        // Attempt 2 (Retry on failure)
+        // Attempt 2 if failed
         if (!success) {
-            console.warn(`Node ${nodeId} failed first attempt. Retrying...`);
-            // Mark error temporarily to show red
-            setNodeErrors(prev => new Set(prev).add(nodeId));
-            
-            await delay(1000); // Wait 1s before retry
-            success = await runNode(nodeId);
+            console.warn(`[OneClick] ${nodeId} failed 1st attempt. Retrying...`);
+            // Keep loading indicator active during wait
+            setNodeLoading(nodeId, true); 
+            await delay(1500); 
+            success = await runAction();
         }
 
-        // Final Result Handling
-        if (success) {
+        if (!success) {
+            console.error(`[OneClick] ${nodeId} failed after retry.`);
+            setNodeErrors(prev => new Set(prev).add(nodeId));
+        } else {
              setNodeErrors(prev => {
                 const next = new Set(prev);
                 next.delete(nodeId);
                 return next;
              });
-        } else {
-             // Final failure, keep red border
-             setNodeErrors(prev => new Set(prev).add(nodeId));
-             console.error(`Node ${nodeId} failed after retry.`);
         }
+    };
 
-        // Interval before next node (only if not the last one)
-        if (nodeId !== sequence[sequence.length - 1]) {
-            await delay(2000);
-        }
-    }
+    // Run all concurrently
+    await Promise.all(targetNodes.map(nodeId => executeTaskWithRetry(nodeId)));
 
     setIsAutoGenerating(false);
   };
@@ -911,7 +932,7 @@ const ProjectWorkspace: React.FC = () => {
                 onClick={handleOneClickGenerate}
                 disabled={isAutoGenerating || !project.script}
                 className="px-5 py-2.5 bg-white text-violet-600 border border-violet-100 rounded-xl hover:bg-violet-50 hover:border-violet-200 shadow-sm hover:shadow-md transition-all flex items-center gap-2 font-bold text-sm disabled:opacity-50 disabled:cursor-not-allowed"
-                title="按顺序自动执行后续所有任务"
+                title="并行执行后续所有任务"
             >
                 {isAutoGenerating ? <Loader2 className="w-4 h-4 animate-spin"/> : <Zap className="w-4 h-4 fill-violet-600" />}
                 一键生成
@@ -1357,12 +1378,12 @@ const ProjectWorkspace: React.FC = () => {
                                                 {item.visual}
                                             </td>
                                             <td className="py-4 px-5 align-top">
-                                                <div className="relative">
-                                                    <div className="bg-rose-50 text-rose-700 font-extrabold text-xl p-3 rounded-lg border border-rose-100 shadow-sm text-center transform -rotate-2 group-hover:rotate-0 transition-transform duration-300">
+                                                <div className="relative group/copy">
+                                                    <span className="text-2xl font-black text-transparent bg-clip-text bg-gradient-to-r from-rose-600 to-pink-600 tracking-tight">
                                                         {item.copy}
-                                                    </div>
-                                                    <button onClick={() => navigator.clipboard.writeText(item.copy)} className="absolute -right-2 -top-2 opacity-0 group-hover:opacity-100 bg-white border border-slate-200 p-1.5 rounded-full shadow-sm hover:text-rose-600 transition-all" title="复制文案">
-                                                        <Copy className="w-3 h-3" />
+                                                    </span>
+                                                     <button onClick={() => navigator.clipboard.writeText(item.copy)} className="absolute -right-6 top-1/2 -translate-y-1/2 opacity-0 group-hover/copy:opacity-100 p-1 text-rose-500 hover:bg-rose-50 rounded transition-all" title="复制文案">
+                                                        <Copy className="w-3.5 h-3.5" />
                                                     </button>
                                                 </div>
                                             </td>
@@ -1370,34 +1391,28 @@ const ProjectWorkspace: React.FC = () => {
                                     )}
                                 />
                              ) : (
-                                 /* Legacy Text View Fallback */
-                                 <div className="space-y-3">
-                                    <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">编辑结果 (文本模式)</label>
-                                    <textarea 
-                                        value={project.coverText || ''} 
-                                        onChange={(e) => setProject({...project, coverText: e.target.value})}
-                                        className="w-full h-64 bg-white border border-slate-200 rounded-2xl p-6 text-sm text-slate-800 resize-none outline-none focus:ring-2 focus:ring-rose-500/20 focus:border-rose-200"
-                                        placeholder="生成的封面方案将显示在这里..."
+                                // Fallback for legacy data
+                                <div className="space-y-4">
+                                     <TextResultBox 
+                                        title="封面文案" 
+                                        copyLabel="复制内容"
+                                        content={project.coverText || ''} 
                                     />
-                                 </div>
+                                    <textarea
+                                        value={project.coverText || ''}
+                                        onChange={(e) => setProject({ ...project, coverText: e.target.value })}
+                                        className="w-full bg-white border border-slate-200 rounded-2xl p-6 text-slate-700 leading-relaxed outline-none focus:ring-2 focus:ring-rose-500/20 focus:border-rose-200 resize-none shadow-sm text-sm h-40"
+                                        placeholder="封面文案..."
+                                    />
+                                </div>
                              )}
                         </div>
                     )}
-                </div>
 
-                <div className="p-5 border-t border-slate-100 bg-white">
-                     <button 
-                        onClick={() => saveWork(project)}
-                        className="w-full bg-slate-900 text-white py-3 rounded-xl text-sm hover:bg-slate-800 transition-colors font-bold flex items-center justify-center gap-2 shadow-lg shadow-slate-900/10"
-                    >
-                        {saving ? <Loader2 className="w-4 h-4 animate-spin"/> : <Save className="w-4 h-4"/>}
-                        保存更改
-                    </button>
                 </div>
              </>
          )}
       </div>
-
     </div>
   );
 };
