@@ -356,7 +356,7 @@ const InspirationRepo: React.FC = () => {
               <thead className="sticky top-0 bg-slate-100 text-slate-600 border-b border-slate-200 z-10">
                 <tr>
                   <th className="py-4 px-4 text-xs font-bold uppercase tracking-wider w-16 text-center">#</th>
-                  <th className="py-4 px-4 text-xs font-bold uppercase tracking-wider w-32 text-center relative group">
+                  <th className="py-4 px-4 text-xs font-bold uppercase tracking-wider w-48 text-center relative group">
                      {/* Category Header with Filter Dropdown */}
                      <button 
                         onClick={(e) => { e.stopPropagation(); setShowCategoryFilter(!showCategoryFilter); }}
