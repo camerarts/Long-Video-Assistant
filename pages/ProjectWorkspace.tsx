@@ -459,12 +459,26 @@ const ProjectWorkspace: React.FC = () => {
     const currentScript = projectRef.current?.script;
     if (!currentScript || !currentInputs) return false;
     
-    if (!prompts.COVER_GEN) return false;
+    if (!prompts.COVER_GEN) {
+        // Fallback or retry loading prompts if missing
+        try {
+            const loadedPrompts = await storage.getPrompts();
+            setPrompts(loadedPrompts);
+            if (!loadedPrompts.COVER_GEN) return false;
+        } catch(e) {
+            return false;
+        }
+    }
 
     setNodeLoading('cover', true);
     if (mountedRef.current) setError(null);
     try {
-      const promptText = interpolatePrompt(prompts.COVER_GEN.template, { 
+      // Ensure we use the latest prompts (in case they were just reloaded)
+      const template = prompts.COVER_GEN?.template || (await storage.getPrompts()).COVER_GEN?.template;
+      
+      if (!template) throw new Error("Missing Cover Prompt Template");
+
+      const promptText = interpolatePrompt(template, { 
           ...currentInputs,
           title: projectRef.current?.title || '',
           script: currentScript
@@ -1412,9 +1426,13 @@ const ProjectWorkspace: React.FC = () => {
                                         <tr key={index} className="hover:bg-rose-50/30 transition-colors group">
                                             <td className="py-6 px-5 align-middle">
                                                 <div className="relative group/copy w-fit">
-                                                    <span className="text-3xl font-black text-transparent bg-clip-text bg-gradient-to-r from-rose-600 to-pink-600 tracking-tight leading-tight">
-                                                        {item.copy}
-                                                    </span>
+                                                    <div className="flex flex-col gap-1.5">
+                                                        {item.copy.split(/\r?\n/).map((line, i) => (
+                                                            <span key={i} className="text-xl md:text-2xl font-black text-transparent bg-clip-text bg-gradient-to-r from-rose-600 to-pink-600 tracking-tight leading-snug block">
+                                                                {line}
+                                                            </span>
+                                                        ))}
+                                                    </div>
                                                      <button onClick={() => navigator.clipboard.writeText(item.copy)} className="absolute -right-8 top-1/2 -translate-y-1/2 opacity-0 group-hover/copy:opacity-100 p-1.5 text-rose-500 hover:bg-rose-50 rounded-lg transition-all" title="复制文案">
                                                         <Copy className="w-3.5 h-3.5" />
                                                     </button>
