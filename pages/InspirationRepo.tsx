@@ -1,17 +1,26 @@
 
-import React, { useEffect, useState } from 'react';
-import { Inspiration } from '../types';
+import React, { useEffect, useState, useMemo } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { Inspiration, ProjectData, ProjectStatus } from '../types';
 import * as storage from '../services/storageService';
 import * as gemini from '../services/geminiService';
-import { Lightbulb, Plus, Trash2, Loader2, Sparkles, X, Save, FileSpreadsheet, ArrowLeft, CheckCircle2, Star } from 'lucide-react';
+import { Lightbulb, Plus, Trash2, Loader2, Sparkles, X, Save, FileSpreadsheet, ArrowLeft, CheckCircle2, Star, ArrowUpDown, ArrowUp, ArrowDown, Rocket } from 'lucide-react';
 
 const InspirationRepo: React.FC = () => {
+  const navigate = useNavigate();
   const [inspirations, setInspirations] = useState<Inspiration[]>([]);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
   
+  // Sorting State
+  const [sortConfig, setSortConfig] = useState<{ key: 'rating' | 'createdAt'; direction: 'asc' | 'desc' }>({
+    key: 'createdAt',
+    direction: 'desc'
+  });
+
   // UI Flow State
   const [viewMode, setViewMode] = useState<'input' | 'single' | 'batch'>('input');
+  const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
   
   // Form Data
   const [rawContent, setRawContent] = useState('');
@@ -26,15 +35,63 @@ const InspirationRepo: React.FC = () => {
   const loadData = async () => {
     setLoading(true);
     const data = await storage.getInspirations();
-    setInspirations(data.sort((a, b) => b.createdAt - a.createdAt));
+    setInspirations(data);
     setLoading(false);
   };
 
+  // Sorting Logic
+  const sortedInspirations = useMemo(() => {
+    const sorted = [...inspirations];
+    sorted.sort((a, b) => {
+        if (sortConfig.key === 'rating') {
+            const rateA = parseFloat(a.rating || '0');
+            const rateB = parseFloat(b.rating || '0');
+            if (rateA === rateB) return 0;
+            return sortConfig.direction === 'asc' ? rateA - rateB : rateB - rateA;
+        } else {
+            // Default: Created At
+            return sortConfig.direction === 'asc' ? a.createdAt - b.createdAt : b.createdAt - a.createdAt;
+        }
+    });
+    return sorted;
+  }, [inspirations, sortConfig]);
+
+  const handleSort = (key: 'rating' | 'createdAt') => {
+      setSortConfig(prev => ({
+          key,
+          direction: prev.key === key && prev.direction === 'desc' ? 'asc' : 'desc'
+      }));
+  };
+
   const handleDelete = async (id: string) => {
-    if (confirm('确定删除这条灵感吗？')) {
-      await storage.deleteInspiration(id);
-      setInspirations(prev => prev.filter(i => i.id !== id));
-    }
+    await storage.deleteInspiration(id);
+    setInspirations(prev => prev.filter(i => i.id !== id));
+    setDeleteConfirmId(null);
+  };
+
+  const handleApprove = async (item: Inspiration) => {
+    // Create a new project based on this inspiration
+    const newId = crypto.randomUUID();
+    const titleSnippet = item.viralTitle.length > 20 ? item.viralTitle.substring(0, 20) + '...' : item.viralTitle;
+    
+    const newProject: ProjectData = {
+      id: newId,
+      title: titleSnippet,
+      status: ProjectStatus.DRAFT,
+      createdAt: Date.now(),
+      updatedAt: Date.now(),
+      inputs: {
+        topic: item.viralTitle, // Auto-fill
+        corePoint: item.viralTitle, // Auto-fill as core point initially
+        audience: '大众',
+        duration: '10分钟',
+        tone: '信息丰富且引人入胜',
+        language: '中文'
+      }
+    };
+
+    await storage.saveProject(newProject);
+    navigate(`/project/${newId}`);
   };
 
   const resetModal = () => {
@@ -52,18 +109,16 @@ const InspirationRepo: React.FC = () => {
     const rows = rawContent.trim().split('\n').filter(r => r.trim());
     
     // --- Strategy 1: Tab-Separated Values (Standard Excel Copy) ---
-    // Check if any row looks like it has tabs (Excel standard)
     if (rows.some(r => r.includes('\t'))) {
         const parsed: Partial<Inspiration>[] = [];
         let startIndex = 0;
-        let catIdx = 1; // Default: Index(0), Category(1), Title(2)
+        let catIdx = 1; 
         let titleIdx = 2;
-        let ratingIdx = 3; // Default Rating index
+        let ratingIdx = 3;
 
         // Smart Header Detection
         for(let i=0; i<Math.min(rows.length, 5); i++) {
             const rowStr = rows[i];
-            // Check for keywords in the row
             if (rowStr.includes('分类') || rowStr.includes('标题')) {
                 const cols = rowStr.split('\t');
                 const cIdx = cols.findIndex(c => c.includes('分类'));
@@ -74,15 +129,13 @@ const InspirationRepo: React.FC = () => {
                 if (tIdx !== -1) titleIdx = tIdx;
                 if (rIdx !== -1) ratingIdx = rIdx;
                 
-                startIndex = i + 1; // Start data after header
+                startIndex = i + 1; 
                 break;
             }
         }
 
         for (let i = startIndex; i < rows.length; i++) {
             const cols = rows[i].split('\t').map(c => c.trim());
-            
-            // Try to map based on indices
             const category = cols[catIdx];
             const title = cols[titleIdx];
             const rating = cols[ratingIdx];
@@ -96,9 +149,8 @@ const InspirationRepo: React.FC = () => {
                     content: rows[i]
                 });
             } else if (startIndex === 0) {
-                 // Fallback: No header detected
+                 // Fallback strategies
                  if (cols.length >= 4) {
-                     // Assume: Index, Cat, Title, Rating
                      parsed.push({
                         category: cols[1] || '未分类',
                         viralTitle: cols[2],
@@ -107,7 +159,6 @@ const InspirationRepo: React.FC = () => {
                         content: rows[i]
                     });
                  } else if (cols.length === 2) {
-                     // Assume: Category, Title
                      parsed.push({
                         category: cols[0] || '未分类',
                         viralTitle: cols[1],
@@ -126,26 +177,14 @@ const InspirationRepo: React.FC = () => {
     }
 
     // --- Strategy 2: Vertical Block (Specific User Format) ---
-    // User Format: Index -> Category -> Title -> Rating (4 lines per record)
     if (rows.length >= 4) {
-         // Check for headers in first few lines matching user description
          const headerStr = rows.slice(0, 4).join(' ');
          const isVerticalHeader = headerStr.includes('序号') && headerStr.includes('分类') && headerStr.includes('标题');
-         
-         // If headers detected, start from line 4. If not, assume raw data starts at 0 if pattern matches.
          let startLine = isVerticalHeader ? 4 : 0;
-         
-         // Check modulo to see if rows allow for a 4-line structure
-         // We iterate by 4 lines
          const parsed: Partial<Inspiration>[] = [];
          
          for (let i = startLine; i < rows.length; i += 4) {
             if (i + 3 < rows.length) {
-                 // Format:
-                 // rows[i] = Index
-                 // rows[i+1] = Category
-                 // rows[i+2] = Title
-                 // rows[i+3] = Rating
                  const cat = rows[i+1].trim();
                  const title = rows[i+2].trim();
                  const rating = rows[i+3].trim();
@@ -239,8 +278,8 @@ const InspirationRepo: React.FC = () => {
   };
 
   return (
-    <div className="space-y-8">
-      <div className="flex justify-between items-end">
+    <div className="space-y-8 h-full flex flex-col">
+      <div className="flex justify-between items-end flex-shrink-0">
         <div>
           <h1 className="text-4xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-amber-500 to-orange-600 mb-2 tracking-tight flex items-center gap-3">
             <Lightbulb className="w-8 h-8 text-amber-500" />
@@ -261,51 +300,88 @@ const InspirationRepo: React.FC = () => {
           <Loader2 className="w-10 h-10 text-amber-500 animate-spin" />
         </div>
       ) : (
-        <div className="bg-white rounded-3xl border border-slate-100 shadow-[0_2px_20px_-5px_rgba(0,0,0,0.05)] overflow-hidden">
-          <div className="overflow-x-auto">
+        <div className="bg-white rounded-3xl border border-slate-100 shadow-[0_2px_20px_-5px_rgba(0,0,0,0.05)] overflow-hidden flex-1 flex flex-col">
+          <div className="overflow-y-auto flex-1">
             <table className="w-full text-left border-collapse">
-              <thead>
-                <tr className="bg-slate-50/50 border-b border-slate-100">
-                  <th className="py-5 px-6 text-xs font-bold text-slate-400 uppercase tracking-wider w-20 text-center">序号</th>
-                  <th className="py-5 px-6 text-xs font-bold text-slate-400 uppercase tracking-wider w-32">分类</th>
-                  <th className="py-5 px-6 text-xs font-bold text-slate-400 uppercase tracking-wider">标题</th>
-                  <th className="py-5 px-6 text-xs font-bold text-slate-400 uppercase tracking-wider w-24 text-center">评分</th>
-                  <th className="py-5 px-6 text-xs font-bold text-slate-400 uppercase tracking-wider w-20 text-center">操作</th>
+              <thead className="sticky top-0 bg-slate-50/95 backdrop-blur z-10 shadow-sm">
+                <tr className="border-b border-slate-200">
+                  <th className="py-3 px-4 text-xs font-bold text-slate-500 uppercase tracking-wider w-16 text-center">#</th>
+                  <th className="py-3 px-4 text-xs font-bold text-slate-500 uppercase tracking-wider w-32">分类</th>
+                  <th className="py-3 px-4 text-xs font-bold text-slate-500 uppercase tracking-wider">标题</th>
+                  <th 
+                    className="py-3 px-4 text-xs font-bold text-slate-500 uppercase tracking-wider w-28 text-center cursor-pointer hover:bg-slate-100 transition-colors select-none group"
+                    onClick={() => handleSort('rating')}
+                  >
+                    <div className="flex items-center justify-center gap-1">
+                        评分 
+                        {sortConfig.key === 'rating' ? (
+                            sortConfig.direction === 'desc' ? <ArrowDown className="w-3 h-3 text-orange-500"/> : <ArrowUp className="w-3 h-3 text-orange-500"/>
+                        ) : (
+                            <ArrowUpDown className="w-3 h-3 text-slate-300 group-hover:text-slate-500" />
+                        )}
+                    </div>
+                  </th>
+                  <th className="py-3 px-4 text-xs font-bold text-slate-500 uppercase tracking-wider w-48 text-right pr-6">操作</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-50">
-                {inspirations.length === 0 ? (
+                {sortedInspirations.length === 0 ? (
                     <tr>
                         <td colSpan={5} className="text-center py-12 text-slate-400">
                             暂无灵感，快去记录第一条吧！
                         </td>
                     </tr>
                 ) : (
-                    inspirations.map((item, index) => (
+                    sortedInspirations.map((item, index) => (
                     <tr key={item.id} className="group hover:bg-amber-50/30 transition-colors">
-                        <td className="py-5 px-6 text-center text-sm font-bold text-slate-400">{index + 1}</td>
-                        <td className="py-5 px-6">
-                        <span className="bg-slate-100 text-slate-600 px-2.5 py-1 rounded-md text-xs font-bold border border-slate-200">
-                            {item.category}
-                        </span>
+                        <td className="py-3 px-4 text-center text-xs font-bold text-slate-400">{index + 1}</td>
+                        <td className="py-3 px-4">
+                            <span className="bg-white text-slate-600 px-2 py-0.5 rounded text-[10px] font-bold border border-slate-200 shadow-sm inline-block truncate max-w-[100px]" title={item.category}>
+                                {item.category}
+                            </span>
                         </td>
-                        <td className="py-5 px-6 font-bold text-slate-800 text-lg relative">
-                            {item.viralTitle}
+                        <td className="py-3 px-4">
+                            <div className="font-bold text-slate-800 text-sm leading-snug">
+                                {item.viralTitle}
+                            </div>
                         </td>
-                        <td className="py-5 px-6 text-center">
+                        <td className="py-3 px-4 text-center">
                             {item.rating && (
-                                <span className="inline-flex items-center gap-1 text-sm font-bold text-orange-500 bg-orange-50 px-2 py-1 rounded-lg">
-                                    <Star className="w-3 h-3 fill-orange-500" /> {item.rating}
+                                <span className="inline-flex items-center gap-1 text-xs font-bold text-orange-600 bg-orange-50 px-2 py-1 rounded-md border border-orange-100">
+                                    <Star className="w-3 h-3 fill-orange-500 text-orange-500" /> {item.rating}
                                 </span>
                             )}
                         </td>
-                        <td className="py-5 px-6 text-center">
-                        <button 
-                            onClick={() => handleDelete(item.id)}
-                            className="p-2 text-slate-300 hover:text-rose-500 hover:bg-rose-50 rounded-lg transition-all"
-                        >
-                            <Trash2 className="w-4.5 h-4.5" />
-                        </button>
+                        <td className="py-3 px-4 text-right pr-6">
+                            <div className="flex items-center justify-end gap-3">
+                                <button 
+                                    onClick={() => handleApprove(item)}
+                                    className="px-3 py-1.5 bg-gradient-to-r from-violet-600 to-indigo-600 text-white text-xs font-bold rounded-lg shadow-md shadow-indigo-500/20 hover:shadow-indigo-500/30 hover:-translate-y-0.5 transition-all flex items-center gap-1.5"
+                                    title="采纳此灵感并创建新项目"
+                                >
+                                    <Rocket className="w-3 h-3" /> 采纳批准
+                                </button>
+                                
+                                <div className="w-px h-4 bg-slate-200"></div>
+
+                                {deleteConfirmId === item.id ? (
+                                    <button 
+                                        onClick={() => handleDelete(item.id)}
+                                        className="text-xs bg-rose-50 text-rose-600 border border-rose-200 px-2 py-1.5 rounded-lg font-bold hover:bg-rose-100 transition-colors animate-in fade-in duration-200"
+                                        onMouseLeave={() => setDeleteConfirmId(null)}
+                                    >
+                                        确认删除?
+                                    </button>
+                                ) : (
+                                    <button 
+                                        onClick={() => setDeleteConfirmId(item.id)}
+                                        className="p-1.5 text-slate-300 hover:text-rose-500 hover:bg-rose-50 rounded-lg transition-all"
+                                        title="删除"
+                                    >
+                                        <Trash2 className="w-4 h-4" />
+                                    </button>
+                                )}
+                            </div>
                         </td>
                     </tr>
                     ))
