@@ -139,11 +139,13 @@ const Settings: React.FC = () => {
                 
                 <div className="flex justify-between items-start mb-6">
                   <div>
-                    <h3 className="text-xl font-bold text-slate-800 flex items-center gap-2">
-                        <span className="text-slate-200 font-black text-2xl italic select-none">#{index + 1}</span>
+                    <h3 className="text-xl font-bold text-slate-800 flex items-center gap-3">
+                        <span className="flex-shrink-0 w-7 h-7 rounded-full bg-rose-500 text-white text-sm font-bold flex items-center justify-center shadow-lg shadow-rose-500/30 select-none">
+                            {index + 1}
+                        </span>
                         {prompt.name}
                     </h3>
-                    <p className="text-xs font-medium text-slate-400 mt-1 pl-9">{prompt.description}</p>
+                    <p className="text-xs font-medium text-slate-400 mt-1 pl-10">{prompt.description}</p>
                   </div>
                   <div className="flex flex-col items-end gap-3">
                     {/* Key Tag */}
