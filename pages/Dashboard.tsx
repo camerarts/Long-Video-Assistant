@@ -9,15 +9,22 @@ const Dashboard: React.FC = () => {
   const navigate = useNavigate();
   const [projects, setProjects] = useState<ProjectData[]>([]);
   const [loading, setLoading] = useState(true);
+  const [refreshTime, setRefreshTime] = useState('');
 
   useEffect(() => {
     loadProjects();
   }, []);
 
+  const formatDate = (date: Date) => {
+    const pad = (n: number) => n.toString().padStart(2, '0');
+    return `刷新数据时间：${date.getFullYear()}年${date.getMonth() + 1}月${date.getDate()}日/${pad(date.getHours())}：${pad(date.getMinutes())}：${pad(date.getSeconds())}`;
+  };
+
   const loadProjects = async () => {
     setLoading(true);
     const data = await storage.getProjects();
     setProjects(data.sort((a, b) => b.updatedAt - a.updatedAt));
+    setRefreshTime(formatDate(new Date()));
     setLoading(false);
   };
 
@@ -61,12 +68,17 @@ const Dashboard: React.FC = () => {
           <h1 className="text-4xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-slate-900 to-slate-600 mb-2 tracking-tight">项目列表</h1>
           <p className="text-slate-500 font-medium">管理您的长视频创作流水线。</p>
         </div>
-        <button 
-          onClick={handleCreate}
-          className="bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-500 hover:to-indigo-500 text-white px-6 py-3 rounded-xl font-semibold transition-all shadow-lg shadow-indigo-500/30 hover:shadow-indigo-500/40 hover:-translate-y-0.5 flex items-center gap-2"
-        >
-          <Plus className="w-5 h-5" /> 新建项目
-        </button>
+        <div className="flex flex-col items-end gap-2">
+            <span className="text-[10px] font-bold text-slate-400 tracking-wider bg-slate-50 px-2 py-1 rounded-md border border-slate-100">
+                {refreshTime}
+            </span>
+            <button 
+              onClick={handleCreate}
+              className="bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-500 hover:to-indigo-500 text-white px-6 py-3 rounded-xl font-semibold transition-all shadow-lg shadow-indigo-500/30 hover:shadow-indigo-500/40 hover:-translate-y-0.5 flex items-center gap-2"
+            >
+              <Plus className="w-5 h-5" /> 新建项目
+            </button>
+        </div>
       </div>
 
       {loading ? (
