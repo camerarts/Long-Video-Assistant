@@ -3,12 +3,13 @@ import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ProjectData } from '../types';
 import * as storage from '../services/storageService';
-import { Calendar, Loader2, Image as ImageIcon, AlertCircle, CheckCircle2 } from 'lucide-react';
+import { Calendar, Loader2, Image as ImageIcon, AlertCircle, CheckCircle2, Trash2 } from 'lucide-react';
 
 const ImageWorkshopList: React.FC = () => {
   const navigate = useNavigate();
   const [projects, setProjects] = useState<ProjectData[]>([]);
   const [loading, setLoading] = useState(true);
+  const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
 
   useEffect(() => {
     loadProjects();
@@ -19,6 +20,13 @@ const ImageWorkshopList: React.FC = () => {
     const data = await storage.getProjects();
     setProjects(data.sort((a, b) => b.updatedAt - a.updatedAt));
     setLoading(false);
+  };
+
+  const handleDelete = async (e: React.MouseEvent, id: string) => {
+    e.stopPropagation();
+    await storage.deleteProject(id);
+    setProjects(prev => prev.filter(p => p.id !== id));
+    setDeleteConfirmId(null);
   };
 
   const getImageProgress = (project: ProjectData) => {
@@ -75,6 +83,7 @@ const ImageWorkshopList: React.FC = () => {
                             <th className="py-5 px-6 text-xs font-bold text-slate-400 uppercase tracking-wider">主题 / 核心观点</th>
                             <th className="py-5 px-6 text-xs font-bold text-slate-400 uppercase tracking-wider w-48">生图进度</th>
                             <th className="py-5 px-6 text-xs font-bold text-slate-400 uppercase tracking-wider w-40">完成日期</th>
+                            <th className="py-5 px-6 text-xs font-bold text-slate-400 uppercase tracking-wider w-24 text-right">操作</th>
                         </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-50">
@@ -137,6 +146,30 @@ const ImageWorkshopList: React.FC = () => {
                                             <Calendar className="w-4 h-4 text-slate-300" />
                                             {new Date(project.updatedAt).toLocaleDateString('zh-CN')}
                                         </div>
+                                    </td>
+                                    <td className="py-5 px-6 text-right">
+                                        {deleteConfirmId === project.id ? (
+                                            <button 
+                                                onClick={(e) => handleDelete(e, project.id)}
+                                                className="text-xs bg-rose-50 text-rose-600 border border-rose-200 px-2 py-1.5 rounded-lg font-bold hover:bg-rose-100 transition-colors animate-in fade-in duration-200 whitespace-nowrap"
+                                                onMouseLeave={() => setDeleteConfirmId(null)}
+                                                onMouseDown={(e) => e.stopPropagation()}
+                                            >
+                                                确认删除
+                                            </button>
+                                        ) : (
+                                            <button 
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    setDeleteConfirmId(project.id);
+                                                }}
+                                                className="p-2 text-slate-300 hover:text-rose-500 hover:bg-rose-50 rounded-lg transition-all"
+                                                title="删除项目"
+                                                onMouseDown={(e) => e.stopPropagation()}
+                                            >
+                                                <Trash2 className="w-4.5 h-4.5" />
+                                            </button>
+                                        )}
                                     </td>
                                 </tr>
                             );
