@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { LayoutDashboard, Settings, Video, Plus, Image as ImageIcon, Lightbulb } from 'lucide-react';
@@ -26,7 +25,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
       {/* App Sidebar (Global Navigation) */}
       <aside className="w-24 flex-shrink-0 border-r border-slate-200/60 bg-white/80 backdrop-blur-md flex flex-col items-center py-8 z-30 transition-all duration-300">
         <div className="flex flex-col items-center mb-10 gap-2">
-            <Link to="/" className="w-11 h-11 bg-gradient-to-br from-violet-600 to-indigo-600 rounded-2xl flex items-center justify-center shadow-lg shadow-indigo-500/30 hover:scale-105 transition-transform duration-300">
+            <Link to="/dashboard" className="w-11 h-11 bg-gradient-to-br from-violet-600 to-indigo-600 rounded-2xl flex items-center justify-center shadow-lg shadow-indigo-500/30 hover:scale-105 transition-transform duration-300">
               <Video className="text-white w-6 h-6" />
             </Link>
             <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">助手</span>
@@ -46,14 +45,14 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
           <div className="w-8 h-px bg-slate-100 my-2"></div>
 
           <Link
-            to="/"
+            to="/dashboard"
             className={`flex flex-col items-center justify-center py-3.5 px-2 w-full rounded-2xl transition-all gap-1.5 duration-300 ${
-              location.pathname === '/' 
+              isActive('/dashboard') 
                 ? 'bg-violet-50 text-violet-700 shadow-sm' 
                 : 'text-slate-400 hover:bg-slate-50 hover:text-slate-700'
             }`}
           >
-            <LayoutDashboard className={`w-5 h-5 ${location.pathname === '/' ? 'stroke-[2.5px]' : 'stroke-2'}`} />
+            <LayoutDashboard className={`w-5 h-5 ${isActive('/dashboard') ? 'stroke-[2.5px]' : 'stroke-2'}`} />
             <span className="text-[10px] font-bold tracking-wide">项目列表</span>
           </Link>
           
