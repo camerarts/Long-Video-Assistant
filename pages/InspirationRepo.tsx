@@ -353,7 +353,7 @@ const InspirationRepo: React.FC = () => {
         <div className="bg-white rounded-3xl border border-slate-100 shadow-[0_2px_20px_-5px_rgba(0,0,0,0.05)] overflow-hidden flex-1 flex flex-col">
           <div className="overflow-y-auto flex-1">
             <table className="w-full text-left border-collapse">
-              <thead className="sticky top-0 bg-slate-100 text-slate-600 border-b border-slate-200 z-10 shadow-sm">
+              <thead className="sticky top-0 bg-slate-100 text-slate-600 border-b border-slate-200 z-10">
                 <tr>
                   <th className="py-4 px-4 text-xs font-bold uppercase tracking-wider w-16 text-center">#</th>
                   <th className="py-4 px-4 text-xs font-bold uppercase tracking-wider w-32 text-center relative group">
