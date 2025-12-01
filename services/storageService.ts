@@ -1,4 +1,3 @@
-
 import { ProjectData, PromptTemplate, DEFAULT_PROMPTS, ProjectStatus, Inspiration } from '../types';
 
 // API Endpoints
@@ -108,22 +107,21 @@ const projectMutex = new Mutex();
 // --- Service Methods ---
 
 export const getProjects = async (): Promise<ProjectData[]> => {
-  // Strategy: Try Local IDB first (fastest & works offline), then background sync if needed.
+  // Strategy: ALWAYS fetch from API to ensure sync across devices.
+  // Merge server data into local IDB, then return local IDB content.
   try {
-    const localData = await dbGetAll<ProjectData>(STORE_PROJECTS);
-    // If local is empty, try API (first load scenario)
-    if (localData.length === 0) {
-        try {
-            const res = await fetch(`${API_BASE}/projects`);
-            if (res.ok) {
-                const apiData = await res.json();
-                // Sync to IDB
-                for (const p of apiData) await dbPut(STORE_PROJECTS, p);
-                return apiData;
-            }
-        } catch (e) { /* ignore api error */ }
+    try {
+        const res = await fetch(`${API_BASE}/projects`);
+        if (res.ok) {
+            const apiData = await res.json();
+            // Sync to IDB
+            for (const p of apiData) await dbPut(STORE_PROJECTS, p);
+        }
+    } catch (e) { 
+        console.warn("Project sync failed, falling back to local data", e);
     }
-    return localData;
+    
+    return await dbGetAll<ProjectData>(STORE_PROJECTS);
   } catch (error) {
     console.error("DB Error", error);
     return [];
@@ -131,7 +129,7 @@ export const getProjects = async (): Promise<ProjectData[]> => {
 };
 
 export const getProject = async (id: string): Promise<ProjectData | undefined> => {
-  // Try IDB
+  // Try IDB first for speed
   try {
     const project = await dbGet<ProjectData>(STORE_PROJECTS, id);
     if (project) return project;
@@ -232,9 +230,23 @@ export const deleteProject = async (id: string): Promise<void> => {
   }
 };
 
-// --- Prompts (Keep in LocalStorage) ---
+// --- Prompts (Sync to API + LocalStorage) ---
 
 export const getPrompts = async (): Promise<Record<string, PromptTemplate>> => {
+  // 1. Try fetch from API
+  try {
+    const res = await fetch(`${API_BASE}/prompts`);
+    if (res.ok) {
+        const serverPrompts = await res.json();
+        if (serverPrompts) {
+             const merged = { ...DEFAULT_PROMPTS, ...serverPrompts };
+             localStorage.setItem(KEY_PROMPTS, JSON.stringify(merged));
+             return merged;
+        }
+    }
+  } catch (e) { /* ignore */ }
+
+  // 2. Fallback to local
   try {
     const local = localStorage.getItem(KEY_PROMPTS);
     if (local) {
@@ -245,19 +257,38 @@ export const getPrompts = async (): Promise<Record<string, PromptTemplate>> => {
 };
 
 export const savePrompts = async (prompts: Record<string, PromptTemplate>): Promise<void> => {
+  // Save local
   localStorage.setItem(KEY_PROMPTS, JSON.stringify(prompts));
+  // Save remote
+  try {
+    await fetch(`${API_BASE}/prompts`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(prompts)
+    });
+  } catch (e) {
+      console.warn("Failed to sync prompts to server", e);
+  }
 };
 
 export const resetPrompts = async (): Promise<void> => {
   await savePrompts(DEFAULT_PROMPTS);
 };
 
-// --- Inspiration Methods (Migrated to IDB) ---
+// --- Inspiration Methods (Migrated to IDB + Sync) ---
 
 export const getInspirations = async (): Promise<Inspiration[]> => {
   try {
-    const localData = await dbGetAll<Inspiration>(STORE_INSPIRATIONS);
-    return localData;
+    // Always sync from server
+    try {
+        const res = await fetch(`${API_BASE}/inspirations`);
+        if (res.ok) {
+            const apiData = await res.json();
+            for (const item of apiData) await dbPut(STORE_INSPIRATIONS, item);
+        }
+    } catch (e) { /* ignore */ }
+
+    return await dbGetAll<Inspiration>(STORE_INSPIRATIONS);
   } catch (e) {
     return [];
   }
