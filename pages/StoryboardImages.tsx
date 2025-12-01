@@ -1,11 +1,10 @@
 
-
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { ProjectData, StoryboardFrame, PromptTemplate } from '../types';
 import * as storage from '../services/storageService';
 import * as gemini from '../services/geminiService';
-import { ArrowLeft, Download, Loader2, Sparkles, Image as ImageIcon, RefreshCw, X, AlertCircle, Maximize2, Save as SaveIcon } from 'lucide-react';
+import { ArrowLeft, Download, Loader2, Sparkles, Image as ImageIcon, RefreshCw, X, Maximize2 } from 'lucide-react';
 import JSZip from 'jszip';
 
 const StoryboardImages: React.FC = () => {
@@ -24,27 +23,29 @@ const StoryboardImages: React.FC = () => {
   // State for Downloads and UI
   const [downloading, setDownloading] = useState(false);
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
+  
+  const mountedRef = useRef(true);
+
+  useEffect(() => {
+    mountedRef.current = true;
+    return () => { mountedRef.current = false; };
+  }, []);
 
   useEffect(() => {
     const init = async () => {
         if (id) {
             const p = await storage.getProject(id);
             if (p) {
-                setProject(p);
+                if (mountedRef.current) setProject(p);
             } else {
-                navigate('/');
+                if (mountedRef.current) navigate('/');
             }
         }
         const loadedPrompts = await storage.getPrompts();
-        setPrompts(loadedPrompts);
+        if (mountedRef.current) setPrompts(loadedPrompts);
     };
     init();
   }, [id, navigate]);
-
-  const saveProject = async (updatedProject: ProjectData) => {
-    await storage.saveProject(updatedProject);
-    setProject(updatedProject);
-  };
 
   const handlePromptChange = async (frameId: string, newPrompt: string) => {
     if (!project || !project.storyboard) return;
@@ -68,7 +69,7 @@ const StoryboardImages: React.FC = () => {
     return template.replace(/\{\{(\w+)\}\}/g, (_, key) => data[key] || '');
   };
 
-  const generateSingleImage = async (frame: StoryboardFrame, isBatch = false): Promise<string | null> => {
+  const generateSingleImage = async (frame: StoryboardFrame): Promise<string | null> => {
       try {
         const prompt = frame.imagePrompt || interpolatePrompt(prompts.IMAGE_GEN?.template || '', { description: frame.description });
         // If prompt was empty, save the interpolated one for reference
@@ -88,41 +89,72 @@ const StoryboardImages: React.FC = () => {
     setGenerating(true);
     setBatchProgress({ planned: framesToGenerate.length, completed: 0, failed: 0 });
 
-    // Track active IDs for UI spinners
-    const ids = new Set(framesToGenerate.map(f => f.id));
-    setCurrentGenIds(ids);
+    const CONCURRENCY_LIMIT = 3; // Prevent freezing by limiting parallel requests
+    let activeCount = 0;
+    let index = 0;
+    const results: Promise<void>[] = [];
 
-    // Create a pool of promises
-    const promises = framesToGenerate.map(async (frame) => {
-        const base64 = await generateSingleImage(frame, true);
+    const processNext = async () => {
+        if (index >= framesToGenerate.length) return;
+
+        const frame = framesToGenerate[index++];
         
-        // Remove from active set in UI
-        setCurrentGenIds(prev => {
-            const next = new Set(prev);
-            next.delete(frame.id);
-            return next;
-        });
-
-        if (base64) {
-             // Atomic Update to Storage
-             const updated = await storage.updateProject(id!, (latest) => {
-                 const newSb = latest.storyboard?.map(f => 
-                    f.id === frame.id ? { ...f, imageUrl: base64 } : f
-                 );
-                 return { ...latest, storyboard: newSb };
-             });
-             
-             // Update UI with the atomic result to ensure consistency
-             if (updated) setProject(updated);
-             
-             setBatchProgress(prev => ({ ...prev, completed: prev.completed + 1 }));
-        } else {
-             setBatchProgress(prev => ({ ...prev, failed: prev.failed + 1 }));
+        // Update UI: Mark as loading
+        if (mountedRef.current) {
+            setCurrentGenIds(prev => new Set(prev).add(frame.id));
         }
-    });
 
-    await Promise.all(promises);
-    setGenerating(false);
+        try {
+            const base64 = await generateSingleImage(frame);
+
+            if (base64) {
+                 // Atomic Update to Storage (Thread-safe via Mutex in service)
+                 const updated = await storage.updateProject(id!, (latest) => {
+                     const newSb = latest.storyboard?.map(f => 
+                        f.id === frame.id ? { ...f, imageUrl: base64 } : f
+                     );
+                     return { ...latest, storyboard: newSb };
+                 });
+                 
+                 // Update UI with the atomic result to ensure consistency
+                 if (mountedRef.current && updated) {
+                    setProject(updated);
+                    setBatchProgress(prev => ({ ...prev, completed: prev.completed + 1 }));
+                 }
+            } else {
+                 if (mountedRef.current) {
+                    setBatchProgress(prev => ({ ...prev, failed: prev.failed + 1 }));
+                 }
+            }
+        } finally {
+             // UI: Unmark loading
+             if (mountedRef.current) {
+                setCurrentGenIds(prev => {
+                    const next = new Set(prev);
+                    next.delete(frame.id);
+                    return next;
+                });
+             }
+        }
+    };
+
+    // Queue Manager
+    const runQueue = async () => {
+        const workerPromises = [];
+        for (let i = 0; i < CONCURRENCY_LIMIT; i++) {
+            workerPromises.push(
+                (async () => {
+                    while (index < framesToGenerate.length) {
+                        await processNext();
+                    }
+                })()
+            );
+        }
+        await Promise.all(workerPromises);
+    };
+
+    await runQueue();
+    if (mountedRef.current) setGenerating(false);
   };
 
   const handleGenerateAll = () => {
