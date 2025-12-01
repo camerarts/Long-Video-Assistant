@@ -55,6 +55,15 @@ export interface ProjectData {
   };
 }
 
+export interface Inspiration {
+  id: string;
+  content: string; // Original text/link
+  category: string;
+  trafficLogic: string;
+  viralTitle: string;
+  createdAt: number;
+}
+
 export interface PromptTemplate {
   id: string;
   name: string;
@@ -65,8 +74,8 @@ export interface PromptTemplate {
 export const DEFAULT_PROMPTS: Record<string, PromptTemplate> = {
   SCRIPT: {
     id: 'script_gen',
-    name: '脚本生成',
-    description: '生成完整的视频脚本文案',
+    name: '视频文案',
+    description: '生成完整的视频文案',
     template: `你是一位专业的长视频脚本撰稿人。请为一个视频创作详细的脚本，确保内容深度和逻辑性。
     
 主题: {{topic}}
@@ -160,6 +169,28 @@ export const DEFAULT_PROMPTS: Record<string, PromptTemplate> = {
   {"visual": "极度震惊的表情特写，背景是燃烧的红色火焰", "copy": "彻底崩盘！"},
   {"visual": "左右分屏对比，左边是贫穷的街道，右边是未来城市", "copy": "逆袭翻身"}
 ]
+`
+  },
+  INSPIRATION_EXTRACT: {
+    id: 'insp_extract',
+    name: '灵感提取助手',
+    description: '从杂乱文本中提取结构化灵感信息',
+    template: `请分析以下灵感文本（可能是一段笔记、文章摘要或视频脚本草稿），并提取关键信息。
+
+灵感文本：
+{{content}}
+
+请返回一个纯 JSON 对象（不要Markdown格式），包含以下字段：
+- "category": 归属的视频赛道/类目（例如：科技数码、商业思维、生活Vlog、情感励志等）。
+- "trafficLogic": 分析这个选题为什么能获得流量（流量逻辑）。
+- "viralTitle": 基于此灵感拟定一个爆款标题。
+
+示例：
+{
+  "category": "商业思维",
+  "trafficLogic": "利用信息差，满足用户对副业赚钱的渴望，通过具体案例增加可信度。",
+  "viralTitle": "普通人翻身机会！2025年这3个风口搞钱项目，错过再等十年"
+}
 `
   }
 };
