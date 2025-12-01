@@ -2,7 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { PromptTemplate } from '../types';
 import * as storage from '../services/storageService';
-import { Save, RefreshCw, AlertTriangle, ClipboardPaste, Check, Maximize2, X, Loader2 } from 'lucide-react';
+import { Save, RefreshCw, AlertTriangle, ClipboardPaste, Check, Maximize2, X, Loader2, Copy } from 'lucide-react';
 
 const Settings: React.FC = () => {
   const [prompts, setPrompts] = useState<Record<string, PromptTemplate>>({});
@@ -65,6 +65,16 @@ const Settings: React.FC = () => {
       [key]: { ...prev[key], template: value }
     }));
     setDirtyKeys(prev => new Set(prev).add(key));
+  };
+
+  const handleCopy = (text: string) => {
+    if (navigator.clipboard) {
+        navigator.clipboard.writeText(text);
+        setMessage("已复制到剪贴板");
+        setTimeout(() => setMessage(null), 1500);
+    } else {
+        alert("无法访问剪贴板");
+    }
   };
 
   const handlePaste = async (key: string) => {
@@ -144,6 +154,13 @@ const Settings: React.FC = () => {
                             {index + 1}
                         </span>
                         {prompt.name}
+                        <button 
+                            onClick={() => handleCopy(prompt.template)}
+                            className="ml-1 p-1.5 text-slate-400 hover:text-violet-600 bg-transparent hover:bg-violet-50 rounded-lg transition-colors"
+                            title="复制内容"
+                        >
+                            <Copy className="w-4 h-4" />
+                        </button>
                     </h3>
                     <p className="text-xs font-medium text-slate-400 mt-1 pl-10">{prompt.description}</p>
                   </div>
