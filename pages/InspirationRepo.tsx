@@ -1,3 +1,4 @@
+
 import React, { useEffect, useState } from 'react';
 import { Inspiration, PromptTemplate } from '../types';
 import * as storage from '../services/storageService';
