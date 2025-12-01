@@ -77,13 +77,13 @@ const ImageWorkshopList: React.FC = () => {
         <div className="bg-white rounded-3xl border border-slate-100 shadow-[0_2px_20px_-5px_rgba(0,0,0,0.05)] overflow-hidden">
             <div className="overflow-x-auto">
                 <table className="w-full text-left border-collapse">
-                    <thead>
-                        <tr className="bg-slate-50/50 border-b border-slate-100">
-                            <th className="py-5 px-6 text-xs font-bold text-slate-400 uppercase tracking-wider w-20 text-center">序号</th>
-                            <th className="py-5 px-6 text-xs font-bold text-slate-400 uppercase tracking-wider">主题 / 核心观点</th>
-                            <th className="py-5 px-6 text-xs font-bold text-slate-400 uppercase tracking-wider w-48">生图进度</th>
-                            <th className="py-5 px-6 text-xs font-bold text-slate-400 uppercase tracking-wider w-40">完成日期</th>
-                            <th className="py-5 px-6 text-xs font-bold text-slate-400 uppercase tracking-wider w-24 text-right">操作</th>
+                    <thead className="bg-slate-900 text-slate-100">
+                        <tr>
+                            <th className="py-4 px-6 text-xs font-bold uppercase tracking-wider w-20 text-center">序号</th>
+                            <th className="py-4 px-6 text-xs font-bold uppercase tracking-wider text-center">主题 / 核心观点</th>
+                            <th className="py-4 px-6 text-xs font-bold uppercase tracking-wider w-48 text-center">生图进度</th>
+                            <th className="py-4 px-6 text-xs font-bold uppercase tracking-wider w-40 text-center">完成日期</th>
+                            <th className="py-4 px-6 text-xs font-bold uppercase tracking-wider w-24 text-center">操作</th>
                         </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-50">
@@ -142,12 +142,12 @@ const ImageWorkshopList: React.FC = () => {
                                         )}
                                     </td>
                                     <td className="py-5 px-6">
-                                        <div className="flex items-center gap-2 text-sm font-medium text-slate-500">
+                                        <div className="flex items-center justify-center gap-2 text-sm font-medium text-slate-500">
                                             <Calendar className="w-4 h-4 text-slate-300" />
                                             {new Date(project.updatedAt).toLocaleDateString('zh-CN')}
                                         </div>
                                     </td>
-                                    <td className="py-5 px-6 text-right">
+                                    <td className="py-5 px-6 text-center">
                                         {deleteConfirmId === project.id ? (
                                             <button 
                                                 onClick={(e) => handleDelete(e, project.id)}
