@@ -12,10 +12,13 @@ const InspirationRepo: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
   
-  // Sorting State
-  const [sortConfig, setSortConfig] = useState<{ key: 'rating' | 'createdAt'; direction: 'asc' | 'desc' }>({
-    key: 'createdAt',
-    direction: 'desc'
+  // Sorting State - Initialize from localStorage if available
+  const [sortConfig, setSortConfig] = useState<{ key: 'rating' | 'createdAt'; direction: 'asc' | 'desc' }>(() => {
+    try {
+        const saved = localStorage.getItem('lva_inspiration_sort');
+        if (saved) return JSON.parse(saved);
+    } catch(e) {}
+    return { key: 'createdAt', direction: 'desc' };
   });
 
   // UI Flow State
@@ -31,6 +34,11 @@ const InspirationRepo: React.FC = () => {
   useEffect(() => {
     loadData();
   }, []);
+
+  // Persist sort config whenever it changes
+  useEffect(() => {
+    localStorage.setItem('lva_inspiration_sort', JSON.stringify(sortConfig));
+  }, [sortConfig]);
 
   const loadData = async () => {
     setLoading(true);
