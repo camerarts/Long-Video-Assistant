@@ -3,7 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { Lock, ArrowRight, ShieldCheck } from 'lucide-react';
 
 const AUTH_KEY = 'lva_auth_expiry';
-const SESSION_DURATION = 30 * 60 * 1000; // 30 minutes
+const SESSION_DURATION = 3 * 60 * 60 * 1000; // 3 hours
 const DEFAULT_PASS = '1211';
 
 interface AuthGuardProps {
@@ -86,7 +86,7 @@ const AuthGuard: React.FC<AuthGuardProps> = ({ children }) => {
         
         <div className="mt-8 flex items-center justify-center gap-2 text-xs text-slate-400 font-medium">
             <ShieldCheck className="w-3.5 h-3.5" />
-            <span>安全会话保持 30 分钟</span>
+            <span>安全会话保持 3 小时</span>
         </div>
       </div>
     </div>
