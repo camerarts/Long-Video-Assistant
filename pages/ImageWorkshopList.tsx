@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ProjectData } from '../types';
@@ -69,7 +68,7 @@ const ImageWorkshopList: React.FC = () => {
           </div>
           <h3 className="text-2xl font-bold text-slate-800 mb-3">暂无项目</h3>
           <p className="text-slate-500 mb-8 max-w-md mx-auto">请先在项目列表中创建项目并生成分镜。</p>
-          <button onClick={() => navigate('/')} className="text-fuchsia-600 hover:text-fuchsia-700 font-bold hover:underline decoration-2 underline-offset-4">
+          <button onClick={() => navigate('/dashboard')} className="text-fuchsia-600 hover:text-fuchsia-700 font-bold hover:underline decoration-2 underline-offset-4">
             前往项目列表 &rarr;
           </button>
         </div>
