@@ -1,5 +1,4 @@
 
-
 import React, { useEffect, useState, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { ProjectData, StoryboardFrame, ProjectStatus, PromptTemplate, TitleItem, CoverOption } from '../types';
@@ -141,8 +140,13 @@ const ProjectWorkspace: React.FC = () => {
   const [isPanning, setIsPanning] = useState(false);
 
   // Processing State
-  const [saving, setSaving] = useState(false);
-  const [saveSuccess, setSaveSuccess] = useState(false);
+  // Separated states for the two different save buttons
+  const [savingOverview, setSavingOverview] = useState(false);
+  const [overviewSuccess, setOverviewSuccess] = useState(false);
+
+  const [savingGlobal, setSavingGlobal] = useState(false);
+  const [globalSuccess, setGlobalSuccess] = useState(false);
+
   const [generatingNodes, setGeneratingNodes] = useState<Set<string>>(new Set());
   const [error, setError] = useState<string | null>(null);
 
@@ -222,30 +226,51 @@ const ProjectWorkspace: React.FC = () => {
     };
   }, []);
 
-  const saveWork = async (updatedProject: ProjectData) => {
-    if (mountedRef.current) {
-        setSaving(true);
-        setSaveSuccess(false);
-    }
-    
-    // Optimistic Update
-    if (mountedRef.current) {
-        setProject(updatedProject);
-        if (updatedProject.inputs.topic) {
-            setShowInitModal(false);
-        }
-    }
-    
-    // API Call
-    await storage.saveProject(updatedProject);
-    
-    if (mountedRef.current) {
-        setSaving(false);
-        setSaveSuccess(true);
-        setTimeout(() => {
-            if (mountedRef.current) setSaveSuccess(false);
-        }, 2000);
-    }
+  // Left Sidebar: Save only Title and Core Point/Inputs
+  const handleSaveOverview = async () => {
+      if (!project || !mountedRef.current) return;
+      
+      setSavingOverview(true);
+      setOverviewSuccess(false);
+
+      // Atomic update to ensure we only update metadata and don't overwrite ongoing generation
+      await storage.updateProject(project.id, (latest) => ({
+          ...latest,
+          title: project.title,
+          inputs: project.inputs,
+          updatedAt: Date.now()
+      }));
+
+      if (mountedRef.current) {
+          setSavingOverview(false);
+          setOverviewSuccess(true);
+          setTimeout(() => {
+              if (mountedRef.current) setOverviewSuccess(false);
+          }, 2000);
+      }
+  };
+
+  // Top Right: Save All (Global Checkpoint)
+  const handleSaveGlobal = async () => {
+      if (!project || !mountedRef.current) return;
+
+      setSavingGlobal(true);
+      setGlobalSuccess(false);
+
+      // Snapshot save of the current project state
+      await storage.updateProject(project.id, (latest) => ({
+          ...latest,
+          ...project, // Merge current UI state into storage
+          updatedAt: Date.now()
+      }));
+
+      if (mountedRef.current) {
+          setSavingGlobal(false);
+          setGlobalSuccess(true);
+          setTimeout(() => {
+              if (mountedRef.current) setGlobalSuccess(false);
+          }, 2000);
+      }
   };
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
@@ -276,7 +301,11 @@ const ProjectWorkspace: React.FC = () => {
             corePoint: content 
         }
     };
-    saveWork(updatedProject);
+    
+    // Initial save
+    setProject(updatedProject);
+    storage.saveProject(updatedProject);
+    setShowInitModal(false);
   };
 
   const handleInitPaste = async () => {
@@ -548,7 +577,8 @@ const ProjectWorkspace: React.FC = () => {
                   visual: { type: "STRING" },
                   copy: { type: "STRING" },
                   score: { type: "NUMBER" }
-              }
+              },
+              required: ["copy", "score"]
           }
       });
       
@@ -998,16 +1028,16 @@ const ProjectWorkspace: React.FC = () => {
 
             <div className="pt-4 mt-auto">
                 <button 
-                    onClick={() => saveWork(project)}
-                    disabled={saving || saveSuccess}
+                    onClick={handleSaveOverview}
+                    disabled={savingOverview || overviewSuccess}
                     className={`w-full flex items-center justify-center gap-2 py-3.5 rounded-xl text-sm font-bold shadow-lg transition-all ${
-                        saveSuccess 
+                        overviewSuccess 
                         ? 'bg-emerald-500 text-white shadow-emerald-500/20' 
                         : 'bg-slate-900 text-white hover:bg-slate-800 shadow-slate-900/10 hover:shadow-slate-900/20'
                     }`}
                 >
-                    {saving ? <Loader2 className="w-3.5 h-3.5 animate-spin"/> : saveSuccess ? <Check className="w-3.5 h-3.5" /> : <Save className="w-3.5 h-3.5"/>}
-                    {saveSuccess ? '已保存' : '保存概览信息'}
+                    {savingOverview ? <Loader2 className="w-3.5 h-3.5 animate-spin"/> : overviewSuccess ? <Check className="w-3.5 h-3.5" /> : <Save className="w-3.5 h-3.5"/>}
+                    {overviewSuccess ? '已保存' : '保存概览信息'}
                 </button>
             </div>
         </div>
@@ -1054,16 +1084,16 @@ const ProjectWorkspace: React.FC = () => {
             </button>
 
             <button 
-                onClick={() => saveWork(project)}
-                disabled={saving || saveSuccess}
+                onClick={handleSaveGlobal}
+                disabled={savingGlobal || globalSuccess}
                 className={`px-5 py-2.5 rounded-xl transition-all flex items-center gap-2 font-medium text-sm backdrop-blur-md ${
-                    saveSuccess 
+                    globalSuccess 
                     ? 'bg-emerald-500 text-white shadow-lg shadow-emerald-500/20' 
                     : 'bg-gradient-to-r from-slate-900 to-slate-800 text-white hover:shadow-lg hover:shadow-slate-500/20 hover:-translate-y-0.5'
                 }`}
             >
-                {saving ? <Loader2 className="w-4 h-4 animate-spin"/> : saveSuccess ? <Check className="w-4 h-4" /> : <Save className="w-4 h-4"/>}
-                {saveSuccess ? '已保存' : '保存进度'}
+                {savingGlobal ? <Loader2 className="w-4 h-4 animate-spin"/> : globalSuccess ? <Check className="w-4 h-4" /> : <Save className="w-4 h-4"/>}
+                {globalSuccess ? '已保存' : '保存进度'}
             </button>
         </div>
 
