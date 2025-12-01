@@ -50,32 +50,50 @@ const InspirationRepo: React.FC = () => {
     if (!rawContent.trim()) return;
 
     // --- 1. Excel/TSV Detection Logic ---
-    // Check if the content looks like tab-separated values
-    const rows = rawContent.trim().split('\n').filter(r => r.trim());
-    const firstRowCols = rows[0].split('\t');
+    // User request format: [序号, 分类, 标题]
+    // Copy-pasting from Excel usually results in Tab-separated values (TSV)
     
-    // Heuristic: If we have 3+ columns, it matches the [序号, 分类, 标题] format
-    if (firstRowCols.length >= 3) {
+    const rows = rawContent.trim().split('\n').filter(r => r.trim());
+    
+    // Check first meaningful row for tabs or if we have content resembling the structure
+    // We assume tab separation for Excel copy-paste
+    if (rows.length > 0 && rows[0].includes('\t')) {
         const parsed: Partial<Inspiration>[] = [];
         let startIndex = 0;
 
-        // Skip header row if identified
+        // Detect Header Row: Look for keywords provided by user
+        const firstRowCols = rows[0].split('\t');
         if (firstRowCols.some(c => c.includes('分类') || c.includes('标题'))) {
             startIndex = 1;
         }
 
         for (let i = startIndex; i < rows.length; i++) {
             const cols = rows[i].split('\t');
+            
+            // We need at least 3 columns to match [序号, 分类, 标题]
+            // cols[0] = 序号 (ignored)
+            // cols[1] = 分类
+            // cols[2] = 标题
+            
+            let category = '';
+            let title = '';
+            
             if (cols.length >= 3) {
-                // Mapping based on user request: [序号, 分类, 标题]
-                // Index 0: 序号 (Ignored/Ref)
-                // Index 1: 分类 -> category
-                // Index 2: 标题 -> viralTitle
+                 // Format: 序号 | 分类 | 标题
+                 category = cols[1].trim();
+                 title = cols[2].trim();
+            } else if (cols.length === 2) {
+                 // Fallback: Maybe user just copied Category | Title
+                 category = cols[0].trim();
+                 title = cols[1].trim();
+            }
+
+            if (title) {
                 parsed.push({
-                    category: cols[1].trim(),
-                    viralTitle: cols[2].trim(),
-                    trafficLogic: '', // Not present in Excel import
-                    content: rows[i] // Store original row as source content
+                    category: category || '未分类',
+                    viralTitle: title,
+                    trafficLogic: '', // Not in Excel
+                    content: rows[i] // Store raw row
                 });
             }
         }
@@ -138,7 +156,6 @@ const InspirationRepo: React.FC = () => {
   const handleSaveBatch = async () => {
     if (batchData.length === 0) return;
     
-    // Convert parsed batch data to full Inspiration objects
     const newItems: Inspiration[] = batchData.map(item => ({
         id: crypto.randomUUID(),
         content: item.content || '',
@@ -148,11 +165,9 @@ const InspirationRepo: React.FC = () => {
         createdAt: Date.now()
     }));
 
-    // Optimistically update UI
     setInspirations(prev => [...newItems, ...prev]);
     resetModal();
 
-    // Persist in background
     for (const item of newItems) {
         await storage.saveInspiration(item);
     }
@@ -188,7 +203,6 @@ const InspirationRepo: React.FC = () => {
                 <tr className="bg-slate-50/50 border-b border-slate-100">
                   <th className="py-5 px-6 text-xs font-bold text-slate-400 uppercase tracking-wider w-20 text-center">序号</th>
                   <th className="py-5 px-6 text-xs font-bold text-slate-400 uppercase tracking-wider w-32">分类</th>
-                  {/* Traffic Logic hidden as requested to match Excel headers */}
                   <th className="py-5 px-6 text-xs font-bold text-slate-400 uppercase tracking-wider">标题</th>
                   <th className="py-5 px-6 text-xs font-bold text-slate-400 uppercase tracking-wider w-20 text-center">操作</th>
                 </tr>
@@ -252,18 +266,17 @@ const InspirationRepo: React.FC = () => {
                   <div className="bg-blue-50/50 p-4 rounded-xl border border-blue-100 flex items-start gap-3">
                       <div className="mt-0.5"><FileSpreadsheet className="w-4 h-4 text-blue-500" /></div>
                       <div className="text-sm text-blue-800">
-                          <p className="font-bold mb-1">支持 Excel 粘贴自动识别</p>
-                          <p className="opacity-80">直接从 Excel 复制内容，必须包含<strong>【分类、标题】</strong>列，支持批量导入，将自动跳过 AI 处理。</p>
+                          <p className="font-bold mb-1">Excel 快捷导入模式</p>
+                          <p className="opacity-80">直接从表格复制包含<strong>【序号、分类、标题】</strong>的内容粘贴到下方，系统将自动识别并跳过 AI 处理。</p>
                       </div>
                   </div>
                   
-                  <label className="block text-sm font-bold text-slate-700">内容输入</label>
                   <textarea
                     autoFocus
                     value={rawContent}
                     onChange={(e) => setRawContent(e.target.value)}
-                    className="w-full h-48 bg-slate-50 border border-slate-200 rounded-xl p-4 text-sm focus:ring-2 focus:ring-amber-500/20 focus:border-amber-400 outline-none resize-none font-mono"
-                    placeholder={`粘贴 Excel 数据 (推荐列序: 序号 | 分类 | 标题)\n或者粘贴一段文本让 AI 自动提取...`}
+                    className="w-full h-48 bg-slate-50 border border-slate-200 rounded-xl p-4 text-sm focus:ring-2 focus:ring-amber-500/20 focus:border-amber-400 outline-none resize-none font-mono placeholder:text-slate-400"
+                    placeholder={`请粘贴内容，例如：\n序号	分类	标题\n1	健康	早起第一杯水怎么喝...`}
                   />
                   <div className="flex justify-end pt-2">
                     <button
@@ -274,7 +287,7 @@ const InspirationRepo: React.FC = () => {
                       {extracting ? (
                           <><Loader2 className="w-4 h-4 animate-spin" /> 处理中...</>
                       ) : (
-                          <><Sparkles className="w-4 h-4" /> 智能识别 / 提取</>
+                          <><Sparkles className="w-4 h-4" /> 识别 / 导入</>
                       )}
                     </button>
                   </div>
@@ -335,7 +348,7 @@ const InspirationRepo: React.FC = () => {
                         <table className="w-full text-left border-collapse text-sm">
                             <thead>
                                 <tr className="bg-slate-50 border-b border-slate-200">
-                                    <th className="p-3 font-bold text-slate-500 w-16 text-center">#</th>
+                                    <th className="p-3 font-bold text-slate-500 w-16 text-center">序号</th>
                                     <th className="p-3 font-bold text-slate-500 w-32">分类</th>
                                     <th className="p-3 font-bold text-slate-500">标题</th>
                                 </tr>
