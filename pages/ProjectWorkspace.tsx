@@ -1,4 +1,5 @@
 
+
 import React, { useEffect, useState, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { ProjectData, StoryboardFrame, ProjectStatus, PromptTemplate, TitleItem, CoverOption } from '../types';
@@ -475,7 +476,8 @@ const ProjectWorkspace: React.FC = () => {
               type: "OBJECT",
               properties: {
                   visual: { type: "STRING" },
-                  copy: { type: "STRING" }
+                  copy: { type: "STRING" },
+                  score: { type: "NUMBER" }
               }
           }
       });
@@ -1404,23 +1406,34 @@ const ProjectWorkspace: React.FC = () => {
                              {/* STRUCTURED TABLE VIEW */}
                              {project.coverOptions && project.coverOptions.length > 0 ? (
                                 <TableResultBox 
-                                    headers={["方案", "画面描述 (Visual)", "大字文案 (Copy)"]}
+                                    headers={["序号", "封面文案", "得分"]} 
                                     data={project.coverOptions}
                                     renderRow={(item: CoverOption, index) => (
                                         <tr key={index} className="hover:bg-rose-50/30 transition-colors group">
                                             <td className="py-4 px-5 text-sm font-bold text-slate-300 w-16 text-center">#{index + 1}</td>
-                                            <td className="py-4 px-5 text-sm text-slate-700 leading-relaxed w-[60%] align-top">
-                                                {item.visual}
+                                            <td className="py-4 px-5 align-top">
+                                                <div className="flex flex-col gap-2">
+                                                    <div className="relative group/copy w-fit">
+                                                        <span className="text-2xl font-black text-transparent bg-clip-text bg-gradient-to-r from-rose-600 to-pink-600 tracking-tight">
+                                                            {item.copy}
+                                                        </span>
+                                                         <button onClick={() => navigator.clipboard.writeText(item.copy)} className="absolute -right-8 top-1/2 -translate-y-1/2 opacity-0 group-hover/copy:opacity-100 p-1.5 text-rose-500 hover:bg-rose-50 rounded-lg transition-all" title="复制文案">
+                                                            <Copy className="w-3.5 h-3.5" />
+                                                        </button>
+                                                    </div>
+                                                    <p className="text-xs text-slate-500 bg-slate-50 p-2 rounded-lg border border-slate-100 leading-relaxed">
+                                                        <span className="font-bold text-slate-400 mr-1">画面:</span>
+                                                        {item.visual}
+                                                    </p>
+                                                </div>
                                             </td>
                                             <td className="py-4 px-5 align-top">
-                                                <div className="relative group/copy">
-                                                    <span className="text-2xl font-black text-transparent bg-clip-text bg-gradient-to-r from-rose-600 to-pink-600 tracking-tight">
-                                                        {item.copy}
-                                                    </span>
-                                                     <button onClick={() => navigator.clipboard.writeText(item.copy)} className="absolute -right-6 top-1/2 -translate-y-1/2 opacity-0 group-hover/copy:opacity-100 p-1 text-rose-500 hover:bg-rose-50 rounded transition-all" title="复制文案">
-                                                        <Copy className="w-3.5 h-3.5" />
-                                                    </button>
-                                                </div>
+                                                 {item.score && (
+                                                    <div className="flex items-center gap-1 font-bold text-rose-600 bg-rose-50 px-2.5 py-1 rounded-lg border border-rose-100 w-fit">
+                                                        <Zap className="w-3.5 h-3.5 fill-rose-500" />
+                                                        {item.score}
+                                                    </div>
+                                                 )}
                                             </td>
                                         </tr>
                                     )}
