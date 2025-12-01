@@ -1,5 +1,4 @@
 
-
 import React, { useEffect, useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Inspiration, ProjectData, ProjectStatus } from '../types';
@@ -185,33 +184,51 @@ const InspirationRepo: React.FC = () => {
     }
 
     // --- Strategy 2: Vertical Block (Specific User Format) ---
-    if (rows.length >= 4) {
-         const headerStr = rows.slice(0, 4).join(' ');
-         const isVerticalHeader = headerStr.includes('序号') && headerStr.includes('分类') && headerStr.includes('标题');
-         let startLine = isVerticalHeader ? 4 : 0;
-         const parsed: Partial<Inspiration>[] = [];
-         
-         for (let i = startLine; i < rows.length; i += 4) {
-            if (i + 3 < rows.length) {
-                 const cat = rows[i+1].trim();
-                 const title = rows[i+2].trim();
-                 const rating = rows[i+3].trim();
-                 
-                 if (title) {
-                    parsed.push({
-                        category: cat || '未分类',
-                        viralTitle: title,
-                        rating: rating,
-                        content: `${rows[i]} ${cat} ${title} ${rating}`
-                    });
-                 }
+    // Detect block size based on headers if present, or infer from data structure
+    // We assume the data is cleaned of empty lines
+    if (rows.length >= 3) {
+        // Check for headers in the first few lines
+        const headerRange = rows.slice(0, 10).join(' ');
+        const hasRating = headerRange.includes('评分');
+        const blockSize = hasRating ? 4 : 3;
+        
+        // Find where the data starts (skip headers)
+        // Heuristic: First line that is a pure number (Index)
+        let startIndex = -1;
+        for(let i=0; i<rows.length; i++) {
+            if (/^\d+$/.test(rows[i])) {
+                startIndex = i;
+                break;
             }
-         }
+        }
 
-         if (parsed.length > 0) {
-            setBatchData(parsed);
-            setViewMode('batch');
-            return;
+        if (startIndex !== -1) {
+             const parsed: Partial<Inspiration>[] = [];
+             
+             for (let i = startIndex; i < rows.length; i += blockSize) {
+                // Ensure we have enough lines for a full block
+                if (i + (blockSize - 1) < rows.length) {
+                     const category = rows[i+1];
+                     const title = rows[i+2];
+                     const rating = hasRating ? rows[i+3] : '';
+                     
+                     // Basic validation: Title shouldn't be a number (in case sync is lost)
+                     if (title && !/^\d+$/.test(title)) {
+                        parsed.push({
+                            category: category,
+                            viralTitle: title,
+                            rating: rating,
+                            content: rows.slice(i, i+blockSize).join(' | ')
+                        });
+                     }
+                }
+             }
+
+             if (parsed.length > 0) {
+                setBatchData(parsed);
+                setViewMode('batch');
+                return;
+            }
         }
     }
 
@@ -500,67 +517,64 @@ const InspirationRepo: React.FC = () => {
                             className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-sm font-bold text-slate-800"
                         />
                    </div>
-                   <div>
-                        <label className="block text-xs font-bold text-slate-500 uppercase mb-1">流量逻辑分析</label>
-                        <textarea 
-                            value={singleData.trafficLogic} 
-                            onChange={(e) => setSingleData({...singleData, trafficLogic: e.target.value})}
-                            rows={3}
-                            className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-sm text-slate-700 resize-none"
-                        />
-                   </div>
                    
-                   <div className="flex gap-3 pt-4 border-t border-slate-100 mt-4">
-                      <button onClick={() => setViewMode('input')} className="flex-1 py-3 bg-slate-100 text-slate-600 font-bold rounded-xl hover:bg-slate-200 transition-colors">
-                        返回修改
-                      </button>
-                      <button onClick={handleSaveSingle} className="flex-1 py-3 bg-amber-500 text-white font-bold rounded-xl hover:bg-amber-600 shadow-lg shadow-amber-500/20 transition-colors flex items-center justify-center gap-2">
-                        <Save className="w-4 h-4" /> 确认入库
-                      </button>
+                   <div className="flex justify-end pt-4">
+                        <button 
+                            onClick={handleSaveSingle}
+                            className="bg-amber-500 hover:bg-amber-600 text-white px-6 py-2.5 rounded-xl font-bold transition-all shadow-md shadow-amber-500/20"
+                        >
+                            保存到灵感库
+                        </button>
                    </div>
                 </div>
               )}
 
-              {/* --- VIEW: BATCH REVIEW (EXCEL) --- */}
+              {/* --- VIEW: BATCH PREVIEW --- */}
               {viewMode === 'batch' && (
-                <div className="flex flex-col h-full animate-in slide-in-from-right-4 duration-300">
-                    <div className="bg-emerald-50 border border-emerald-100 p-3 rounded-lg mb-4 flex items-center gap-2 text-emerald-700 text-sm font-medium">
-                        <CheckCircle2 className="w-4 h-4" />
-                        成功识别 {batchData.length} 条数据，请确认后导入。
-                    </div>
-                    
-                    <div className="flex-1 overflow-auto border border-slate-200 rounded-xl mb-6 max-h-96">
-                        <table className="w-full text-left border-collapse text-sm">
-                            <thead className="sticky top-0 bg-slate-50 z-10">
-                                <tr className="border-b border-slate-200">
-                                    <th className="p-3 font-bold text-slate-500 w-16 text-center">序号</th>
-                                    <th className="p-3 font-bold text-slate-500 w-32">分类</th>
-                                    <th className="p-3 font-bold text-slate-500">标题</th>
-                                    <th className="p-3 font-bold text-slate-500 w-20 text-center">评分</th>
-                                </tr>
-                            </thead>
-                            <tbody className="divide-y divide-slate-100">
-                                {batchData.map((item, i) => (
-                                    <tr key={i}>
-                                        <td className="p-3 text-center text-slate-400 font-mono">{i + 1}</td>
-                                        <td className="p-3 font-bold text-slate-700">{item.category}</td>
-                                        <td className="p-3 text-slate-600">{item.viralTitle}</td>
-                                        <td className="p-3 text-center font-bold text-orange-500">{item.rating}</td>
-                                    </tr>
-                                ))}
-                            </tbody>
-                        </table>
-                    </div>
+                  <div className="space-y-6 h-full flex flex-col">
+                      <div className="bg-emerald-50 text-emerald-800 p-4 rounded-xl text-sm border border-emerald-100 flex items-center gap-2">
+                          <CheckCircle2 className="w-5 h-5" />
+                          <span>成功解析 <strong>{batchData.length}</strong> 条数据。请检查下方列表是否正确。</span>
+                      </div>
 
-                    <div className="flex gap-3 mt-auto">
-                      <button onClick={() => setViewMode('input')} className="px-6 py-3 bg-slate-100 text-slate-600 font-bold rounded-xl hover:bg-slate-200 transition-colors flex items-center gap-2">
-                        <ArrowLeft className="w-4 h-4" /> 返回
-                      </button>
-                      <button onClick={handleSaveBatch} className="flex-1 py-3 bg-emerald-600 text-white font-bold rounded-xl hover:bg-emerald-700 shadow-lg shadow-emerald-500/20 transition-colors flex items-center justify-center gap-2">
-                        <Save className="w-4 h-4" /> 确认批量导入 ({batchData.length})
-                      </button>
-                   </div>
-                </div>
+                      <div className="flex-1 overflow-y-auto border border-slate-200 rounded-xl">
+                          <table className="w-full text-left text-sm">
+                              <thead className="bg-slate-50 sticky top-0">
+                                  <tr>
+                                      <th className="p-3 font-bold text-slate-500 border-b">#</th>
+                                      <th className="p-3 font-bold text-slate-500 border-b">分类</th>
+                                      <th className="p-3 font-bold text-slate-500 border-b">标题</th>
+                                      <th className="p-3 font-bold text-slate-500 border-b w-20">评分</th>
+                                  </tr>
+                              </thead>
+                              <tbody className="divide-y divide-slate-100">
+                                  {batchData.map((item, i) => (
+                                      <tr key={i}>
+                                          <td className="p-3 text-slate-400">{i + 1}</td>
+                                          <td className="p-3 font-medium">{item.category}</td>
+                                          <td className="p-3">{item.viralTitle}</td>
+                                          <td className="p-3 text-orange-500 font-bold">{item.rating}</td>
+                                      </tr>
+                                  ))}
+                              </tbody>
+                          </table>
+                      </div>
+
+                      <div className="flex justify-between items-center pt-2">
+                          <button 
+                             onClick={() => setViewMode('input')}
+                             className="text-slate-400 hover:text-slate-600 font-bold text-sm"
+                          >
+                             返回修改
+                          </button>
+                          <button 
+                            onClick={handleSaveBatch}
+                            className="bg-emerald-500 hover:bg-emerald-600 text-white px-8 py-3 rounded-xl font-bold shadow-lg shadow-emerald-500/20 hover:scale-105 transition-all flex items-center gap-2"
+                          >
+                            <Save className="w-4 h-4" /> 确认导入全部
+                          </button>
+                      </div>
+                  </div>
               )}
 
             </div>
