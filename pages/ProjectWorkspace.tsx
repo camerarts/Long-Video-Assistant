@@ -83,8 +83,9 @@ const ProjectWorkspace: React.FC = () => {
   const navigate = useNavigate();
   const [project, setProject] = useState<ProjectData | null>(null);
   
-  // Ref to hold the latest project state for async operations to avoid stale closures
+  // Refs for background execution stability
   const projectRef = useRef<ProjectData | null>(null);
+  const mountedRef = useRef(true);
   
   const [prompts, setPrompts] = useState<Record<string, PromptTemplate>>({});
   
@@ -119,6 +120,12 @@ const ProjectWorkspace: React.FC = () => {
   const [isAutoGenerating, setIsAutoGenerating] = useState(false);
   const [nodeErrors, setNodeErrors] = useState<Set<string>>(new Set());
 
+  // Component Lifecycle Tracking
+  useEffect(() => {
+    mountedRef.current = true;
+    return () => { mountedRef.current = false; };
+  }, []);
+
   // Sync ref with state
   useEffect(() => {
     projectRef.current = project;
@@ -131,24 +138,26 @@ const ProjectWorkspace: React.FC = () => {
             try {
               const p = await storage.getProject(id);
               if (p) {
-                  setProject(p);
-                  if (!p.inputs.topic) {
-                      setShowInitModal(true);
-                      setInitFormData({ topic: '', corePoint: '' });
-                  } else {
-                      setShowInitModal(false);
+                  if (mountedRef.current) {
+                    setProject(p);
+                    if (!p.inputs.topic) {
+                        setShowInitModal(true);
+                        setInitFormData({ topic: '', corePoint: '' });
+                    } else {
+                        setShowInitModal(false);
+                    }
                   }
               } else {
-                  navigate('/');
+                  if (mountedRef.current) navigate('/');
               }
             } catch (e) {
               console.error("Failed to load project", e);
-              setError("加载项目失败，请返回列表重试");
+              if (mountedRef.current) setError("加载项目失败，请返回列表重试");
             }
         }
         try {
           const loadedPrompts = await storage.getPrompts();
-          setPrompts(loadedPrompts);
+          if (mountedRef.current) setPrompts(loadedPrompts);
         } catch (e) {
           console.error("Failed to load prompts", e);
         }
@@ -184,16 +193,18 @@ const ProjectWorkspace: React.FC = () => {
   }, []);
 
   const saveWork = async (updatedProject: ProjectData) => {
-    setSaving(true);
+    if (mountedRef.current) setSaving(true);
     // Optimistic Update
-    setProject(updatedProject);
-    if (updatedProject.inputs.topic) {
-        setShowInitModal(false);
+    if (mountedRef.current) {
+        setProject(updatedProject);
+        if (updatedProject.inputs.topic) {
+            setShowInitModal(false);
+        }
     }
     
     // API Call
     await storage.saveProject(updatedProject);
-    setSaving(false);
+    if (mountedRef.current) setSaving(false);
   };
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
@@ -234,7 +245,7 @@ const ProjectWorkspace: React.FC = () => {
     }
     try {
       const text = await navigator.clipboard.readText();
-      if (text) {
+      if (text && mountedRef.current) {
         setInitFormData(prev => ({ ...prev, topic: text }));
       }
     } catch (err) {
@@ -262,8 +273,11 @@ const ProjectWorkspace: React.FC = () => {
     return false;
   };
 
-  // --- Generation Logic (Concurrent) ---
+  // --- Generation Logic (Concurrent & Atomic) ---
+  
+  // Safe state setter for loading
   const setNodeLoading = (nodeId: string, isLoading: boolean) => {
+    if (!mountedRef.current) return;
     setGeneratingNodes(prev => {
         const next = new Set(prev);
         if (isLoading) {
@@ -277,29 +291,39 @@ const ProjectWorkspace: React.FC = () => {
 
   const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
-  // --- Individual Generators (return boolean for success) ---
+  // --- Individual Generators (Using storage.updateProject for Atomicity) ---
 
   const handleGenerateScript = async (): Promise<boolean> => {
-    const currentProject = projectRef.current;
-    if (!currentProject) return false;
+    // 1. Capture Inputs
+    const currentInputs = projectRef.current?.inputs;
+    if (!currentInputs) return false;
     
     if (!prompts.SCRIPT) {
-        setError("提示词模版未加载，请刷新页面。");
+        if (mountedRef.current) setError("提示词模版未加载，请刷新页面。");
         return false;
     }
 
     setNodeLoading('script', true);
-    setError(null);
+    if (mountedRef.current) setError(null);
+    
     try {
-      const promptText = interpolatePrompt(prompts.SCRIPT.template, { ...currentProject.inputs });
+      // 2. Heavy AI Work
+      const promptText = interpolatePrompt(prompts.SCRIPT.template, { ...currentInputs });
       const script = await gemini.generateText(promptText);
       
-      const updated = { ...currentProject, script, status: ProjectStatus.IN_PROGRESS };
-      await saveWork(updated);
+      // 3. Atomic Update to Storage (Background Safe)
+      const updated = await storage.updateProject(id!, (latest) => ({
+          ...latest,
+          script,
+          status: ProjectStatus.IN_PROGRESS
+      }));
+
+      // 4. Update UI if still mounted
+      if (mountedRef.current && updated) setProject(updated);
       return true;
     } catch (e: any) {
       console.error("Generate Script Error:", e);
-      setError(`生成脚本失败: ${e.message || '未知错误'}`);
+      if (mountedRef.current) setError(`生成脚本失败: ${e.message || '未知错误'}`);
       return false;
     } finally {
       setNodeLoading('script', false);
@@ -307,18 +331,17 @@ const ProjectWorkspace: React.FC = () => {
   };
 
   const handleGenerateStoryboardText = async (): Promise<boolean> => {
-    const currentProject = projectRef.current;
-    if (!currentProject || !currentProject.script) return false;
+    // 1. Capture Inputs
+    const currentScript = projectRef.current?.script;
+    if (!currentScript) return false;
     
-    if (!prompts.STORYBOARD_TEXT) {
-        setError("提示词模版错误。");
-        return false;
-    }
+    if (!prompts.STORYBOARD_TEXT) return false;
 
     setNodeLoading('sb_text', true);
-    setError(null);
+    if (mountedRef.current) setError(null);
     try {
-      const promptText = interpolatePrompt(prompts.STORYBOARD_TEXT.template, { script: currentProject.script });
+      // 2. Heavy AI Work
+      const promptText = interpolatePrompt(prompts.STORYBOARD_TEXT.template, { script: currentScript });
       const framesData = await gemini.generateJSON<{description: string}[]>(promptText, {
         type: "ARRAY",
         items: {
@@ -334,14 +357,17 @@ const ProjectWorkspace: React.FC = () => {
         imagePrompt: interpolatePrompt(prompts.IMAGE_GEN?.template || '', { description: f.description })
       }));
 
-      // IMPORTANT: Merge with LATEST state
-      const latest = projectRef.current || currentProject;
-      const updated = { ...latest, storyboard: newFrames };
-      await saveWork(updated);
+      // 3. Atomic Update to Storage
+      const updated = await storage.updateProject(id!, (latest) => ({
+          ...latest,
+          storyboard: newFrames
+      }));
+      
+      if (mountedRef.current && updated) setProject(updated);
       return true;
     } catch (e: any) {
       console.error("Generate Storyboard Error:", e);
-      setError(`生成分镜失败: ${e.message}`);
+      if (mountedRef.current) setError(`生成分镜失败: ${e.message}`);
       return false;
     } finally {
       setNodeLoading('sb_text', false);
@@ -349,23 +375,20 @@ const ProjectWorkspace: React.FC = () => {
   };
 
   const handleGenerateTitles = async (): Promise<boolean> => {
-    const currentProject = projectRef.current;
-    if (!currentProject || !currentProject.script) return false;
+    const currentInputs = projectRef.current?.inputs;
+    const currentScript = projectRef.current?.script;
+    if (!currentScript || !currentInputs) return false;
     
-    if (!prompts.TITLES) {
-        setError("提示词模版错误。");
-        return false;
-    }
+    if (!prompts.TITLES) return false;
 
     setNodeLoading('titles', true);
-    setError(null);
+    if (mountedRef.current) setError(null);
     try {
       const promptText = interpolatePrompt(prompts.TITLES.template, { 
-          ...currentProject.inputs,
-          script: currentProject.script 
+          ...currentInputs,
+          script: currentScript 
       });
       
-      // Use generateJSON to get structured output
       const titles = await gemini.generateJSON<TitleItem[]>(promptText, {
         type: "ARRAY",
         items: {
@@ -377,13 +400,16 @@ const ProjectWorkspace: React.FC = () => {
         }
       });
       
-      // IMPORTANT: Merge with LATEST state
-      const latest = projectRef.current || currentProject;
-      const updated = { ...latest, titles: titles };
-      await saveWork(updated);
+      // Atomic Update
+      const updated = await storage.updateProject(id!, (latest) => ({
+          ...latest,
+          titles
+      }));
+      
+      if (mountedRef.current && updated) setProject(updated);
       return true;
     } catch (e: any) {
-      setError(`生成标题失败: ${e.message}`);
+      if (mountedRef.current) setError(`生成标题失败: ${e.message}`);
       return false;
     } finally {
       setNodeLoading('titles', false);
@@ -391,27 +417,27 @@ const ProjectWorkspace: React.FC = () => {
   };
 
   const handleGenerateSummary = async (): Promise<boolean> => {
-    const currentProject = projectRef.current;
-    if (!currentProject || !currentProject.script) return false;
+    const currentScript = projectRef.current?.script;
+    if (!currentScript) return false;
     
-    if (!prompts.SUMMARY) {
-      setError("提示词模版错误。");
-      return false;
-    }
+    if (!prompts.SUMMARY) return false;
 
     setNodeLoading('summary', true);
-    setError(null);
+    if (mountedRef.current) setError(null);
     try {
-      const promptText = interpolatePrompt(prompts.SUMMARY.template, { script: currentProject.script });
+      const promptText = interpolatePrompt(prompts.SUMMARY.template, { script: currentScript });
       const summary = await gemini.generateText(promptText);
       
-      // IMPORTANT: Merge with LATEST state
-      const latest = projectRef.current || currentProject;
-      const updated = { ...latest, summary };
-      await saveWork(updated);
+      // Atomic Update
+      const updated = await storage.updateProject(id!, (latest) => ({
+          ...latest,
+          summary
+      }));
+      
+      if (mountedRef.current && updated) setProject(updated);
       return true;
     } catch (e: any) {
-      setError(`生成总结失败: ${e.message}`);
+      if (mountedRef.current) setError(`生成总结失败: ${e.message}`);
       return false;
     } finally {
       setNodeLoading('summary', false);
@@ -419,23 +445,20 @@ const ProjectWorkspace: React.FC = () => {
   };
 
   const handleGenerateCover = async (): Promise<boolean> => {
-    const currentProject = projectRef.current;
-    if (!currentProject || !currentProject.script) return false;
+    const currentInputs = projectRef.current?.inputs;
+    const currentScript = projectRef.current?.script;
+    if (!currentScript || !currentInputs) return false;
     
-    if (!prompts.COVER_GEN) {
-      setError("提示词模版错误。");
-      return false;
-    }
+    if (!prompts.COVER_GEN) return false;
 
     setNodeLoading('cover', true);
-    setError(null);
+    if (mountedRef.current) setError(null);
     try {
       const promptText = interpolatePrompt(prompts.COVER_GEN.template, { 
-          ...currentProject.inputs,
-          script: currentProject.script
+          ...currentInputs,
+          script: currentScript
       });
       
-      // Use generateJSON for structured cover options
       const coverOptions = await gemini.generateJSON<CoverOption[]>(promptText, {
           type: "ARRAY",
           items: {
@@ -447,17 +470,17 @@ const ProjectWorkspace: React.FC = () => {
           }
       });
       
-      // IMPORTANT: Merge with LATEST state
-      const latest = projectRef.current || currentProject;
-      const updated = { 
-        ...latest, 
-        coverOptions: coverOptions, 
-        status: ProjectStatus.COMPLETED 
-      };
-      await saveWork(updated);
+      // Atomic Update
+      const updated = await storage.updateProject(id!, (latest) => ({
+          ...latest,
+          coverOptions,
+          status: ProjectStatus.COMPLETED
+      }));
+      
+      if (mountedRef.current && updated) setProject(updated);
       return true;
     } catch (e: any) {
-      setError(`生成封面方案失败: ${e.message}`);
+      if (mountedRef.current) setError(`生成封面方案失败: ${e.message}`);
       return false;
     } finally {
       setNodeLoading('cover', false);
@@ -512,20 +535,22 @@ const ProjectWorkspace: React.FC = () => {
 
         if (!success) {
             console.error(`[OneClick] ${nodeId} failed after retry.`);
-            setNodeErrors(prev => new Set(prev).add(nodeId));
+            if (mountedRef.current) setNodeErrors(prev => new Set(prev).add(nodeId));
         } else {
-             setNodeErrors(prev => {
-                const next = new Set(prev);
-                next.delete(nodeId);
-                return next;
-             });
+             if (mountedRef.current) {
+                 setNodeErrors(prev => {
+                    const next = new Set(prev);
+                    next.delete(nodeId);
+                    return next;
+                 });
+             }
         }
     };
 
     // Run all concurrently
     await Promise.all(targetNodes.map(nodeId => executeTaskWithRetry(nodeId)));
 
-    setIsAutoGenerating(false);
+    if (mountedRef.current) setIsAutoGenerating(false);
   };
 
 
