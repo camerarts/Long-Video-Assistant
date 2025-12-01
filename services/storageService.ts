@@ -1,4 +1,5 @@
 
+
 import { ProjectData, PromptTemplate, DEFAULT_PROMPTS, ProjectStatus, Inspiration } from '../types';
 
 // API Endpoints
@@ -111,6 +112,40 @@ export const saveProject = async (project: ProjectData): Promise<void> => {
   } catch (error) {
     console.warn("Background API Sync Failed (saved locally):", error);
   }
+};
+
+/**
+ * Atomic Update: Ensures that concurrent updates don't overwrite each other.
+ * Essential for parallel AI generation tasks.
+ */
+export const updateProject = async (id: string, updater: (current: ProjectData) => ProjectData): Promise<ProjectData | null> => {
+  // 1. Read fresh from LocalStorage (Sync Source of Truth)
+  const projects = getLocalProjects();
+  const index = projects.findIndex(p => p.id === id);
+  
+  if (index === -1) return null;
+
+  // 2. Apply Update using the callback
+  const current = projects[index];
+  const updated = updater(current);
+  updated.updatedAt = Date.now();
+  
+  // 3. Save back synchronously
+  projects[index] = updated;
+  saveLocalProjects(projects);
+
+  // 4. Fire API sync in background
+  try {
+    fetch(`${API_BASE}/projects`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(updated)
+    }).catch(e => console.warn("Background sync failed", e));
+  } catch (error) {
+    // Ignore network errors
+  }
+
+  return updated;
 };
 
 export const createProject = async (): Promise<string> => {
