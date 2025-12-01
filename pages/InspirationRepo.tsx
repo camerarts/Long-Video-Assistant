@@ -1,10 +1,11 @@
 
+
 import React, { useEffect, useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Inspiration, ProjectData, ProjectStatus } from '../types';
 import * as storage from '../services/storageService';
 import * as gemini from '../services/geminiService';
-import { Lightbulb, Plus, Trash2, Loader2, Sparkles, X, Save, FileSpreadsheet, ArrowLeft, CheckCircle2, Star, ArrowUpDown, ArrowUp, ArrowDown, Rocket } from 'lucide-react';
+import { Lightbulb, Plus, Trash2, Loader2, Sparkles, X, Save, FileSpreadsheet, ArrowLeft, CheckCircle2, Star, ArrowUpDown, ArrowUp, ArrowDown, Rocket, CheckSquare, Square } from 'lucide-react';
 
 const InspirationRepo: React.FC = () => {
   const navigate = useNavigate();
@@ -67,6 +68,13 @@ const InspirationRepo: React.FC = () => {
     await storage.deleteInspiration(id);
     setInspirations(prev => prev.filter(i => i.id !== id));
     setDeleteConfirmId(null);
+  };
+
+  const handleToggleMark = async (item: Inspiration) => {
+    const updated = { ...item, marked: !item.marked };
+    // Optimistic update
+    setInspirations(prev => prev.map(i => i.id === item.id ? updated : i));
+    await storage.saveInspiration(updated);
   };
 
   const handleApprove = async (item: Inspiration) => {
@@ -321,7 +329,7 @@ const InspirationRepo: React.FC = () => {
                         )}
                     </div>
                   </th>
-                  <th className="py-3 px-4 text-xs font-bold text-slate-500 uppercase tracking-wider w-48 text-right pr-6">操作</th>
+                  <th className="py-3 px-4 text-xs font-bold text-slate-500 uppercase tracking-wider w-56 text-right pr-6">操作</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-50">
@@ -333,7 +341,10 @@ const InspirationRepo: React.FC = () => {
                     </tr>
                 ) : (
                     sortedInspirations.map((item, index) => (
-                    <tr key={item.id} className="group hover:bg-amber-50/30 transition-colors">
+                    <tr 
+                        key={item.id} 
+                        className={`group transition-colors ${item.marked ? 'bg-emerald-50 hover:bg-emerald-100/60' : 'hover:bg-amber-50/30'}`}
+                    >
                         <td className="py-3 px-4 text-center text-xs font-bold text-slate-400">{index + 1}</td>
                         <td className="py-3 px-4">
                             <span className="bg-white text-slate-600 px-2 py-0.5 rounded text-[10px] font-bold border border-slate-200 shadow-sm inline-block truncate max-w-[100px]" title={item.category}>
@@ -341,7 +352,7 @@ const InspirationRepo: React.FC = () => {
                             </span>
                         </td>
                         <td className="py-3 px-4">
-                            <div className="font-bold text-slate-800 text-sm leading-snug">
+                            <div className={`font-bold text-sm leading-snug transition-colors ${item.marked ? 'text-emerald-800' : 'text-slate-800'}`}>
                                 {item.viralTitle}
                             </div>
                         </td>
@@ -363,6 +374,19 @@ const InspirationRepo: React.FC = () => {
                                 </button>
                                 
                                 <div className="w-px h-4 bg-slate-200"></div>
+
+                                {/* Marking/Selection Toggle */}
+                                <button
+                                    onClick={() => handleToggleMark(item)}
+                                    className={`p-1.5 rounded-lg transition-all ${
+                                        item.marked 
+                                        ? 'text-emerald-600 bg-emerald-100 hover:bg-emerald-200' 
+                                        : 'text-slate-300 hover:text-emerald-500 hover:bg-emerald-50'
+                                    }`}
+                                    title={item.marked ? "取消标记" : "标记为已处理"}
+                                >
+                                    {item.marked ? <CheckSquare className="w-4 h-4" /> : <Square className="w-4 h-4" />}
+                                </button>
 
                                 {deleteConfirmId === item.id ? (
                                     <button 
