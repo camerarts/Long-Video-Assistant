@@ -2,13 +2,16 @@
 import React, { useState, useEffect } from 'react';
 import { PromptTemplate } from '../types';
 import * as storage from '../services/storageService';
-import { Save, RefreshCw, AlertTriangle, ClipboardPaste, Check, Maximize2, X } from 'lucide-react';
+import { Save, RefreshCw, AlertTriangle, ClipboardPaste, Check, Maximize2, X, Loader2 } from 'lucide-react';
 
 const Settings: React.FC = () => {
   const [prompts, setPrompts] = useState<Record<string, PromptTemplate>>({});
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [expandedKey, setExpandedKey] = useState<string | null>(null);
+  
+  // Track modified prompts that haven't been saved
+  const [dirtyKeys, setDirtyKeys] = useState<Set<string>>(new Set());
 
   // Define the strict display order
   const ORDERED_KEYS = [
@@ -29,12 +32,18 @@ const Settings: React.FC = () => {
     setPrompts(data);
   };
 
-  const handleSave = async () => {
+  const handleSaveModule = async (key: string) => {
     setLoading(true);
+    // Since storage handles the whole object, we save all, but conceptually we are "saving the module"
+    // This cleans up the dirty state for this specific module (and technically others if we wanted, but let's be precise or broad)
     await storage.savePrompts(prompts);
+    
+    // Clear dirty state for all, as the whole state is now persisted
+    setDirtyKeys(new Set());
+    
     setTimeout(() => {
       setLoading(false);
-      setMessage("提示词保存成功！");
+      setMessage("配置已保存！");
       setTimeout(() => setMessage(null), 3000);
     }, 500);
   };
@@ -44,6 +53,7 @@ const Settings: React.FC = () => {
       await storage.resetPrompts();
       const defaults = await storage.getPrompts();
       setPrompts(defaults);
+      setDirtyKeys(new Set());
       setMessage("已恢复默认设置。");
       setTimeout(() => setMessage(null), 3000);
     }
@@ -54,6 +64,7 @@ const Settings: React.FC = () => {
       ...prev,
       [key]: { ...prev[key], template: value }
     }));
+    setDirtyKeys(prev => new Set(prev).add(key));
   };
 
   const handlePaste = async (key: string) => {
@@ -93,13 +104,6 @@ const Settings: React.FC = () => {
           >
             <RefreshCw className="w-4 h-4" /> 恢复默认
           </button>
-          <button 
-            onClick={handleSave}
-            disabled={loading}
-            className="bg-violet-600 hover:bg-violet-700 text-white px-8 py-3 rounded-xl font-bold transition-all shadow-lg shadow-violet-500/30 flex items-center gap-2 hover:-translate-y-0.5"
-          >
-            {loading ? '保存中...' : <><Save className="w-4 h-4" /> 保存所有配置</>}
-          </button>
         </div>
       </div>
 
@@ -128,9 +132,10 @@ const Settings: React.FC = () => {
           {ORDERED_KEYS.map((key, index) => {
             const prompt = prompts[key];
             if (!prompt) return null;
+            const isDirty = dirtyKeys.has(key);
 
             return (
-              <div key={key} className="bg-white border border-slate-100 rounded-3xl p-8 shadow-[0_2px_10px_-4px_rgba(0,0,0,0.05)] relative group hover:shadow-[0_20px_40px_-12px_rgba(0,0,0,0.1)] transition-all hover:-translate-y-1">
+              <div key={key} className="bg-white border border-slate-100 rounded-3xl p-8 shadow-[0_2px_10px_-4px_rgba(0,0,0,0.05)] relative group hover:shadow-[0_20px_40px_-12px_rgba(0,0,0,0.1)] transition-all hover:-translate-y-1 flex flex-col">
                 {/* Red Badge Index - Vibrant */}
                 <div className="absolute -top-3 -right-3 w-10 h-10 rounded-2xl bg-gradient-to-br from-rose-500 to-orange-500 text-white flex items-center justify-center font-bold shadow-lg shadow-orange-500/30 border-4 border-[#F8F9FC] z-10 text-lg">
                   {index + 1}
@@ -158,11 +163,15 @@ const Settings: React.FC = () => {
                   </div>
                 </div>
                 
-                <div className="relative group/textarea">
+                <div className="relative group/textarea flex-1 mb-4">
                     <textarea
                         value={prompt.template}
                         onChange={(e) => handlePromptChange(key, e.target.value)}
-                        className="w-full h-56 bg-[#FAFAFA] border border-slate-200 rounded-2xl p-5 text-slate-700 font-mono text-xs leading-loose focus:ring-2 focus:ring-violet-500/20 focus:border-violet-400 focus:bg-white outline-none transition-all placeholder:text-slate-400 resize-none selection:bg-violet-100"
+                        className={`w-full h-56 rounded-2xl p-5 font-mono text-xs leading-loose outline-none transition-all resize-none selection:bg-violet-100 ${
+                            isDirty 
+                            ? 'bg-rose-50 border-2 border-rose-200 text-slate-800 focus:border-rose-400' 
+                            : 'bg-[#FAFAFA] border border-slate-200 text-slate-700 focus:ring-2 focus:ring-violet-500/20 focus:border-violet-400 focus:bg-white'
+                        }`}
                     />
                     <button 
                         onClick={() => setExpandedKey(key)}
@@ -170,6 +179,20 @@ const Settings: React.FC = () => {
                         title="全屏编辑"
                     >
                         <Maximize2 className="w-4 h-4" />
+                    </button>
+                </div>
+
+                <div className="pt-2">
+                    <button
+                        onClick={() => handleSaveModule(key)}
+                        className={`w-full py-3 rounded-xl font-bold text-sm transition-all flex items-center justify-center gap-2 ${
+                            isDirty
+                            ? 'bg-rose-500 hover:bg-rose-600 text-white shadow-lg shadow-rose-500/30'
+                            : 'bg-slate-100 hover:bg-slate-200 text-slate-500'
+                        }`}
+                    >
+                        {loading && isDirty ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+                        {isDirty ? '保存配置' : '已是最新'}
                     </button>
                 </div>
               </div>
@@ -198,7 +221,11 @@ const Settings: React.FC = () => {
                         autoFocus
                         value={prompts[expandedKey].template}
                         onChange={(e) => handlePromptChange(expandedKey, e.target.value)}
-                        className="w-full h-full bg-white border border-slate-200 rounded-2xl p-8 text-slate-800 font-mono text-sm leading-loose focus:ring-0 focus:border-violet-400 outline-none transition-all resize-none shadow-sm selection:bg-violet-100"
+                        className={`w-full h-full border rounded-2xl p-8 text-slate-800 font-mono text-sm leading-loose focus:ring-0 outline-none transition-all resize-none shadow-sm selection:bg-violet-100 ${
+                            dirtyKeys.has(expandedKey)
+                            ? 'bg-rose-50 border-rose-200'
+                            : 'bg-white border-slate-200 focus:border-violet-400'
+                        }`}
                         placeholder="输入提示词..."
                     />
                 </div>
@@ -210,10 +237,19 @@ const Settings: React.FC = () => {
                         <ClipboardPaste className="w-4 h-4 inline mr-1.5" /> 粘贴剪贴板
                     </button>
                     <button 
-                        onClick={() => setExpandedKey(null)}
-                        className="px-6 py-2 bg-slate-900 text-white font-bold rounded-xl hover:bg-slate-800 transition-colors shadow-lg shadow-slate-900/10"
+                        onClick={() => {
+                            if (dirtyKeys.has(expandedKey)) {
+                                handleSaveModule(expandedKey);
+                            }
+                            setExpandedKey(null);
+                        }}
+                        className={`px-6 py-2 font-bold rounded-xl transition-colors shadow-lg ${
+                            dirtyKeys.has(expandedKey)
+                            ? 'bg-rose-500 text-white hover:bg-rose-600 shadow-rose-500/20'
+                            : 'bg-slate-900 text-white hover:bg-slate-800 shadow-slate-900/10'
+                        }`}
                     >
-                        完成编辑
+                        {dirtyKeys.has(expandedKey) ? '保存并关闭' : '关闭'}
                     </button>
                 </div>
             </div>
