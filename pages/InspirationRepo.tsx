@@ -11,6 +11,7 @@ const InspirationRepo: React.FC = () => {
   const [inspirations, setInspirations] = useState<Inspiration[]>([]);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
+  const [refreshTime, setRefreshTime] = useState('');
   
   // Sorting State - Initialize from localStorage if available
   const [sortConfig, setSortConfig] = useState<{ key: 'rating' | 'createdAt'; direction: 'asc' | 'desc' }>(() => {
@@ -44,10 +45,16 @@ const InspirationRepo: React.FC = () => {
     localStorage.setItem('lva_inspiration_sort', JSON.stringify(sortConfig));
   }, [sortConfig]);
 
+  const formatDate = (date: Date) => {
+    const pad = (n: number) => n.toString().padStart(2, '0');
+    return `刷新数据时间：${date.getFullYear()}年${date.getMonth() + 1}月${date.getDate()}日/${pad(date.getHours())}：${pad(date.getMinutes())}：${pad(date.getSeconds())}`;
+  };
+
   const loadData = async () => {
     setLoading(true);
     const data = await storage.getInspirations();
     setInspirations(data);
+    setRefreshTime(formatDate(new Date()));
     setLoading(false);
   };
 
@@ -371,19 +378,24 @@ const InspirationRepo: React.FC = () => {
           </h1>
           <p className="text-slate-500 font-medium">收集灵感，打造爆款选题库。</p>
         </div>
-        <div className="flex gap-3">
-            <button 
-                onClick={handleDownloadExcel}
-                className="bg-white border border-slate-200 text-slate-600 hover:text-amber-600 hover:border-amber-200 px-4 py-3 rounded-xl font-bold shadow-sm transition-all flex items-center gap-2"
-            >
-                <Download className="w-5 h-5" /> 导出表格
-            </button>
-            <button 
-                onClick={() => setShowModal(true)}
-                className="bg-amber-500 hover:bg-amber-600 text-white px-6 py-3 rounded-xl font-bold shadow-lg shadow-amber-500/30 flex items-center gap-2 transition-all hover:-translate-y-0.5"
-            >
-                <Plus className="w-5 h-5" /> 记录新灵感
-            </button>
+        <div className="flex flex-col items-end gap-2">
+            <span className="text-[10px] font-bold text-slate-400 tracking-wider bg-slate-50 px-2 py-1 rounded-md border border-slate-100">
+                {refreshTime}
+            </span>
+            <div className="flex gap-3">
+                <button 
+                    onClick={handleDownloadExcel}
+                    className="bg-white border border-slate-200 text-slate-600 hover:text-amber-600 hover:border-amber-200 px-4 py-3 rounded-xl font-bold shadow-sm transition-all flex items-center gap-2"
+                >
+                    <Download className="w-5 h-5" /> 导出表格
+                </button>
+                <button 
+                    onClick={() => setShowModal(true)}
+                    className="bg-amber-500 hover:bg-amber-600 text-white px-6 py-3 rounded-xl font-bold shadow-lg shadow-amber-500/30 flex items-center gap-2 transition-all hover:-translate-y-0.5"
+                >
+                    <Plus className="w-5 h-5" /> 记录新灵感
+                </button>
+            </div>
         </div>
       </div>
 
