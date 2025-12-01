@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { ProjectData, StoryboardFrame, ProjectStatus, PromptTemplate, TitleItem, CoverOption } from '../types';
@@ -182,7 +181,7 @@ const ProjectWorkspace: React.FC = () => {
                     }
                   }
               } else {
-                  if (mountedRef.current) navigate('/');
+                  if (mountedRef.current) navigate('/dashboard');
               }
             } catch (e) {
               console.error("Failed to load project", e);
@@ -968,7 +967,7 @@ const ProjectWorkspace: React.FC = () => {
                         type="button" 
                         onClick={async () => {
                             if (project.id) await storage.deleteProject(project.id);
-                            navigate('/');
+                            navigate('/dashboard');
                         }}
                         className="flex-1 py-4 bg-slate-100 hover:bg-slate-200 text-slate-600 font-bold rounded-xl transition-colors"
                     >
