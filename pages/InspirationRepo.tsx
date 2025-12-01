@@ -4,7 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import { Inspiration, ProjectData, ProjectStatus } from '../types';
 import * as storage from '../services/storageService';
 import * as gemini from '../services/geminiService';
-import { Lightbulb, Plus, Trash2, Loader2, Sparkles, X, Save, FileSpreadsheet, ArrowLeft, CheckCircle2, Star, ArrowUpDown, ArrowUp, ArrowDown, Rocket, CheckSquare, Square } from 'lucide-react';
+import { Lightbulb, Plus, Trash2, Loader2, Sparkles, X, Save, FileSpreadsheet, ArrowLeft, CheckCircle2, Star, ArrowUpDown, ArrowUp, ArrowDown, Rocket, CheckSquare, Square, Filter } from 'lucide-react';
 
 const InspirationRepo: React.FC = () => {
   const navigate = useNavigate();
@@ -20,6 +20,10 @@ const InspirationRepo: React.FC = () => {
     } catch(e) {}
     return { key: 'createdAt', direction: 'desc' };
   });
+
+  // Filtering State
+  const [selectedCategory, setSelectedCategory] = useState<string>('ALL');
+  const [showCategoryFilter, setShowCategoryFilter] = useState(false);
 
   // UI Flow State
   const [viewMode, setViewMode] = useState<'input' | 'single' | 'batch'>('input');
@@ -47,10 +51,23 @@ const InspirationRepo: React.FC = () => {
     setLoading(false);
   };
 
-  // Sorting Logic
+  // Extract unique categories for filter dropdown
+  const uniqueCategories = useMemo(() => {
+    const categories = new Set(inspirations.map(i => i.category).filter(c => c && c !== '未分类'));
+    return Array.from(categories).sort();
+  }, [inspirations]);
+
+  // Filtering & Sorting Logic
   const sortedInspirations = useMemo(() => {
-    const sorted = [...inspirations];
-    sorted.sort((a, b) => {
+    let data = [...inspirations];
+
+    // 1. Filter
+    if (selectedCategory !== 'ALL') {
+        data = data.filter(i => i.category === selectedCategory);
+    }
+
+    // 2. Sort
+    data.sort((a, b) => {
         if (sortConfig.key === 'rating') {
             const rateA = parseFloat(a.rating || '0');
             const rateB = parseFloat(b.rating || '0');
@@ -61,8 +78,8 @@ const InspirationRepo: React.FC = () => {
             return sortConfig.direction === 'asc' ? a.createdAt - b.createdAt : b.createdAt - a.createdAt;
         }
     });
-    return sorted;
-  }, [inspirations, sortConfig]);
+    return data;
+  }, [inspirations, sortConfig, selectedCategory]);
 
   const handleSort = (key: 'rating' | 'createdAt') => {
       setSortConfig(prev => ({
@@ -336,13 +353,47 @@ const InspirationRepo: React.FC = () => {
         <div className="bg-white rounded-3xl border border-slate-100 shadow-[0_2px_20px_-5px_rgba(0,0,0,0.05)] overflow-hidden flex-1 flex flex-col">
           <div className="overflow-y-auto flex-1">
             <table className="w-full text-left border-collapse">
-              <thead className="sticky top-0 bg-slate-900 text-slate-100 z-10 shadow-md">
-                <tr className="border-b border-slate-700">
+              <thead className="sticky top-0 bg-slate-100 text-slate-600 border-b border-slate-200 z-10 shadow-sm">
+                <tr>
                   <th className="py-4 px-4 text-xs font-bold uppercase tracking-wider w-16 text-center">#</th>
-                  <th className="py-4 px-4 text-xs font-bold uppercase tracking-wider w-32 text-center">分类</th>
+                  <th className="py-4 px-4 text-xs font-bold uppercase tracking-wider w-32 text-center relative group">
+                     {/* Category Header with Filter Dropdown */}
+                     <button 
+                        onClick={(e) => { e.stopPropagation(); setShowCategoryFilter(!showCategoryFilter); }}
+                        className={`flex items-center justify-center gap-1 mx-auto transition-colors ${selectedCategory !== 'ALL' ? 'text-amber-600 font-extrabold' : 'hover:text-slate-800'}`}
+                        title="点击筛选分类"
+                     >
+                        {selectedCategory === 'ALL' ? '分类' : selectedCategory}
+                        <Filter className={`w-3 h-3 ${selectedCategory !== 'ALL' ? 'fill-amber-600' : ''}`} />
+                     </button>
+                     
+                     {showCategoryFilter && (
+                        <>
+                            <div className="fixed inset-0 z-10 cursor-default" onClick={() => setShowCategoryFilter(false)} />
+                            <div className="absolute top-full left-1/2 -translate-x-1/2 mt-2 w-40 bg-white rounded-xl shadow-xl border border-slate-100 z-20 overflow-hidden text-left py-1 animate-in fade-in zoom-in-95 duration-200">
+                                <div 
+                                    onClick={() => { setSelectedCategory('ALL'); setShowCategoryFilter(false); }}
+                                    className={`px-4 py-2.5 text-xs font-bold hover:bg-slate-50 cursor-pointer ${selectedCategory === 'ALL' ? 'text-amber-600 bg-amber-50' : 'text-slate-600'}`}
+                                >
+                                    全部全类
+                                </div>
+                                {uniqueCategories.map(cat => (
+                                    <div 
+                                        key={cat}
+                                        onClick={() => { setSelectedCategory(cat); setShowCategoryFilter(false); }}
+                                        className={`px-4 py-2.5 text-xs font-bold hover:bg-slate-50 cursor-pointer truncate ${selectedCategory === cat ? 'text-amber-600 bg-amber-50' : 'text-slate-600'}`}
+                                        title={cat}
+                                    >
+                                        {cat}
+                                    </div>
+                                ))}
+                            </div>
+                        </>
+                     )}
+                  </th>
                   <th className="py-4 px-4 text-xs font-bold uppercase tracking-wider text-center">标题</th>
                   <th 
-                    className="py-4 px-4 text-xs font-bold uppercase tracking-wider w-28 text-center cursor-pointer hover:bg-slate-800 transition-colors select-none group"
+                    className="py-4 px-4 text-xs font-bold uppercase tracking-wider w-28 text-center cursor-pointer hover:bg-slate-200/50 transition-colors select-none group"
                     onClick={() => handleSort('rating')}
                   >
                     <div className="flex items-center justify-center gap-1">
@@ -350,7 +401,7 @@ const InspirationRepo: React.FC = () => {
                         {sortConfig.key === 'rating' ? (
                             sortConfig.direction === 'desc' ? <ArrowDown className="w-3 h-3 text-orange-500"/> : <ArrowUp className="w-3 h-3 text-orange-500"/>
                         ) : (
-                            <ArrowUpDown className="w-3 h-3 text-slate-500 group-hover:text-slate-300" />
+                            <ArrowUpDown className="w-3 h-3 text-slate-400 group-hover:text-slate-600" />
                         )}
                     </div>
                   </th>
@@ -361,7 +412,7 @@ const InspirationRepo: React.FC = () => {
                 {sortedInspirations.length === 0 ? (
                     <tr>
                         <td colSpan={5} className="text-center py-12 text-slate-400">
-                            暂无灵感，快去记录第一条吧！
+                            {inspirations.length === 0 ? "暂无灵感，快去记录第一条吧！" : "没有符合当前筛选条件的灵感。"}
                         </td>
                     </tr>
                 ) : (
