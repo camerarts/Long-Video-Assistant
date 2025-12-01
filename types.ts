@@ -61,6 +61,7 @@ export interface Inspiration {
   category: string;
   trafficLogic: string;
   viralTitle: string;
+  rating?: string; // Added rating field
   createdAt: number;
 }
 
