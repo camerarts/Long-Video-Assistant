@@ -80,6 +80,33 @@ const CONNECTIONS = [
   { from: 'script', to: 'cover' },
 ];
 
+// --- Helper Components ---
+
+const RowCopyButton = ({ text }: { text: string }) => {
+  const [copied, setCopied] = useState(false);
+  
+  const handleCopy = (e: React.MouseEvent) => {
+      e.stopPropagation();
+      navigator.clipboard.writeText(text);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+  };
+
+  return (
+      <button 
+          onClick={handleCopy}
+          className={`p-2 rounded-lg transition-all border ${
+              copied 
+              ? 'bg-emerald-50 text-emerald-600 border-emerald-200' 
+              : 'bg-white text-slate-400 border-slate-100 hover:text-violet-600 hover:border-violet-200 hover:shadow-sm'
+          }`}
+          title={copied ? "已复制" : "复制内容"}
+      >
+          {copied ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
+      </button>
+  );
+};
+
 const ProjectWorkspace: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
@@ -826,7 +853,7 @@ const ProjectWorkspace: React.FC = () => {
                     <thead>
                         <tr className="bg-slate-50/80 border-b border-slate-100">
                             {headers.map((h, i) => (
-                                <th key={i} className="py-4 px-5 text-sm font-extrabold text-slate-700 uppercase tracking-wide whitespace-nowrap">{h}</th>
+                                <th key={i} className={`py-4 px-5 text-sm font-extrabold text-slate-700 uppercase tracking-wide whitespace-nowrap ${h === '操作' ? 'text-right' : ''}`}>{h}</th>
                             ))}
                         </tr>
                     </thead>
@@ -1190,7 +1217,7 @@ const ProjectWorkspace: React.FC = () => {
 
                     {selectedNodeId === 'titles' && project.titles && (
                         <TableResultBox 
-                            headers={['序号', '爆款标题', '得分']} 
+                            headers={['序号', '爆款标题', '得分', '操作']} 
                             data={project.titles}
                             renderRow={(item: TitleItem, idx) => (
                                 <tr key={idx} className="hover:bg-slate-50 transition-colors border-b border-slate-50">
@@ -1206,6 +1233,9 @@ const ProjectWorkspace: React.FC = () => {
                                         }`}>
                                             {item.score || '-'}
                                         </span>
+                                    </td>
+                                    <td className="py-4 px-6 text-right">
+                                        <RowCopyButton text={item.title} />
                                     </td>
                                 </tr>
                             )}
@@ -1250,7 +1280,7 @@ const ProjectWorkspace: React.FC = () => {
 
                     {selectedNodeId === 'cover' && (
                          <TableResultBox 
-                            headers={['封面文案', '得分']} 
+                            headers={['封面文案', '得分', '操作']} 
                             data={project.coverOptions || []}
                             renderRow={(item: CoverOption, idx) => (
                                 <tr key={idx} className="hover:bg-slate-50 transition-colors border-b border-slate-50 last:border-0">
@@ -1271,6 +1301,9 @@ const ProjectWorkspace: React.FC = () => {
                                         }`}>
                                             {item.score || '-'}
                                         </span>
+                                    </td>
+                                    <td className="py-6 px-6 text-right align-top">
+                                        <RowCopyButton text={item.copy} />
                                     </td>
                                 </tr>
                             )}
