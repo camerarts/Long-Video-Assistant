@@ -9,6 +9,7 @@ const Settings: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [expandedKey, setExpandedKey] = useState<string | null>(null);
+  const [refreshTime, setRefreshTime] = useState('');
   
   // Track modified prompts that haven't been saved
   const [dirtyKeys, setDirtyKeys] = useState<Set<string>>(new Set());
@@ -27,9 +28,15 @@ const Settings: React.FC = () => {
     loadPrompts();
   }, []);
 
+  const formatDate = (date: Date) => {
+    const pad = (n: number) => n.toString().padStart(2, '0');
+    return `刷新数据时间：${date.getFullYear()}年${date.getMonth() + 1}月${date.getDate()}日/${pad(date.getHours())}：${pad(date.getMinutes())}：${pad(date.getSeconds())}`;
+  };
+
   const loadPrompts = async () => {
     const data = await storage.getPrompts();
     setPrompts(data);
+    setRefreshTime(formatDate(new Date()));
   };
 
   const handleSaveModule = async (key: string) => {
@@ -107,13 +114,18 @@ const Settings: React.FC = () => {
           <h1 className="text-4xl font-extrabold text-slate-900 mb-2 tracking-tight">AI 提示词配置</h1>
           <p className="text-slate-500 font-medium">精细化控制内容生成的每一个环节。</p>
         </div>
-        <div className="flex gap-4">
-          <button 
-            onClick={handleReset}
-            className="text-slate-500 hover:text-rose-500 px-5 py-2.5 text-sm font-bold transition-colors flex items-center gap-2"
-          >
-            <RefreshCw className="w-4 h-4" /> 恢复默认
-          </button>
+        <div className="flex flex-col items-end gap-2">
+            <span className="text-[10px] font-bold text-slate-400 tracking-wider bg-slate-50 px-2 py-1 rounded-md border border-slate-100">
+                {refreshTime}
+            </span>
+            <div className="flex gap-4">
+              <button 
+                onClick={handleReset}
+                className="text-slate-500 hover:text-rose-500 px-5 py-2.5 text-sm font-bold transition-colors flex items-center gap-2"
+              >
+                <RefreshCw className="w-4 h-4" /> 恢复默认
+              </button>
+            </div>
         </div>
       </div>
 
