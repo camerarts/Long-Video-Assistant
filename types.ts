@@ -1,4 +1,5 @@
 
+
 export enum ProjectStatus {
   DRAFT = 'DRAFT',
   IN_PROGRESS = 'IN_PROGRESS',
@@ -61,7 +62,8 @@ export interface Inspiration {
   category: string;
   trafficLogic: string;
   viralTitle: string;
-  rating?: string; // Added rating field
+  rating?: string;
+  marked?: boolean; // New field for selection/marking state
   createdAt: number;
 }
 
