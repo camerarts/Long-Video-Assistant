@@ -1,3 +1,4 @@
+
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ProjectData } from '../types';
@@ -76,7 +77,7 @@ const ImageWorkshopList: React.FC = () => {
         <div className="bg-white rounded-3xl border border-slate-100 shadow-[0_2px_20px_-5px_rgba(0,0,0,0.05)] overflow-hidden">
             <div className="overflow-x-auto">
                 <table className="w-full text-left border-collapse">
-                    <thead className="bg-slate-900 text-slate-100">
+                    <thead className="bg-slate-100 border-b border-slate-200 text-slate-600">
                         <tr>
                             <th className="py-4 px-6 text-xs font-bold uppercase tracking-wider w-20 text-center">序号</th>
                             <th className="py-4 px-6 text-xs font-bold uppercase tracking-wider text-center">主题 / 核心观点</th>
