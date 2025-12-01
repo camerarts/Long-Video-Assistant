@@ -1,3 +1,4 @@
+
 import { ProjectData, PromptTemplate, DEFAULT_PROMPTS, ProjectStatus, Inspiration } from '../types';
 
 // API Endpoints
