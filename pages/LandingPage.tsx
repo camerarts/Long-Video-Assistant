@@ -1,8 +1,9 @@
+
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { 
-  Video, Sparkles, ArrowRight, Lock, Play, Layers, 
-  Image as ImageIcon, Wand2, Zap, ShieldCheck, X 
+  Video, Sparkles, ArrowRight, Lock, 
+  Image as ImageIcon, Wand2, Zap, ShieldCheck, X, Layers 
 } from 'lucide-react';
 
 const AUTH_KEY = 'lva_auth_expiry';
@@ -36,116 +37,116 @@ const LandingPage: React.FC = () => {
   };
 
   const FeatureCard = ({ icon: Icon, title, desc }: any) => (
-    <div className={`group relative p-8 rounded-3xl bg-white/5 border border-white/10 hover:border-violet-500/50 hover:bg-white/10 transition-all duration-500 hover:-translate-y-2`}>
-      <div className="absolute inset-0 bg-gradient-to-br from-violet-600/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity rounded-3xl" />
-      <div className="relative z-10">
-        <div className="w-14 h-14 bg-gradient-to-br from-violet-500 to-indigo-600 rounded-2xl flex items-center justify-center mb-6 shadow-lg shadow-violet-500/20 group-hover:scale-110 transition-transform duration-500">
-          <Icon className="w-7 h-7 text-white" />
+    <div className="group relative p-5 rounded-2xl bg-white/5 border border-white/10 hover:border-violet-500/50 hover:bg-white/10 transition-all duration-500">
+      <div className="absolute inset-0 bg-gradient-to-br from-violet-600/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity rounded-2xl" />
+      <div className="relative z-10 flex flex-col items-center text-center">
+        <div className="w-10 h-10 bg-gradient-to-br from-violet-500 to-indigo-600 rounded-xl flex items-center justify-center mb-3 shadow-lg shadow-violet-500/20 group-hover:scale-110 transition-transform duration-500">
+          <Icon className="w-5 h-5 text-white" />
         </div>
-        <h3 className="text-xl font-bold text-white mb-3">{title}</h3>
-        <p className="text-slate-400 leading-relaxed text-sm">{desc}</p>
+        <h3 className="text-sm font-bold text-white mb-1.5">{title}</h3>
+        <p className="text-slate-400 text-xs leading-relaxed line-clamp-2">{desc}</p>
       </div>
     </div>
   );
 
   return (
-    <div className="min-h-screen bg-[#020617] text-white selection:bg-violet-500 selection:text-white font-sans overflow-x-hidden">
-      {/* Background Effects */}
-      <div className="fixed inset-0 z-0 pointer-events-none">
-        <div className="absolute top-[-20%] left-[-10%] w-[50%] h-[50%] bg-violet-900/20 rounded-full blur-[120px]" />
-        <div className="absolute bottom-[-20%] right-[-10%] w-[50%] h-[50%] bg-indigo-900/20 rounded-full blur-[120px]" />
-        <div className="absolute top-[20%] left-[20%] w-full h-full bg-[radial-gradient(#ffffff05_1px,transparent_1px)] [background-size:24px_24px] opacity-30" />
+    <div className="h-screen bg-[#020617] text-white selection:bg-violet-500 selection:text-white font-sans overflow-hidden flex flex-col relative">
+      {/* Tech Grid Background */}
+      <div className="absolute inset-0 z-0 pointer-events-none">
+        <div className="absolute top-[-20%] left-[-10%] w-[50%] h-[60%] bg-violet-900/20 rounded-full blur-[120px]" />
+        <div className="absolute bottom-[-20%] right-[-10%] w-[50%] h-[60%] bg-indigo-900/20 rounded-full blur-[120px]" />
+        {/* Horizontal Lines */}
+        <div className="absolute top-1/3 left-0 w-full h-px bg-gradient-to-r from-transparent via-white/10 to-transparent"></div>
+        <div className="absolute bottom-1/3 left-0 w-full h-px bg-gradient-to-r from-transparent via-white/10 to-transparent"></div>
+        {/* Vertical Lines */}
+        <div className="absolute top-0 left-1/4 h-full w-px bg-gradient-to-b from-transparent via-white/5 to-transparent"></div>
+        <div className="absolute top-0 right-1/4 h-full w-px bg-gradient-to-b from-transparent via-white/5 to-transparent"></div>
+        {/* Radial Grid */}
+        <div className="absolute inset-0 bg-[radial-gradient(#ffffff05_1px,transparent_1px)] [background-size:32px_32px] opacity-20" />
       </div>
 
       {/* Navigation */}
-      <nav className="relative z-50 px-8 py-6 flex justify-between items-center max-w-7xl mx-auto">
+      <nav className="relative z-50 px-8 py-5 flex justify-between items-center max-w-7xl mx-auto w-full border-b border-white/5 bg-[#020617]/50 backdrop-blur-sm">
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 bg-gradient-to-br from-violet-600 to-indigo-600 rounded-xl flex items-center justify-center shadow-lg shadow-violet-500/30">
-            <Video className="text-white w-5 h-5" />
+          <div className="w-9 h-9 bg-gradient-to-br from-violet-600 to-indigo-600 rounded-lg flex items-center justify-center shadow-lg shadow-violet-500/30">
+            <Video className="text-white w-4 h-4" />
           </div>
-          <span className="text-lg font-bold tracking-tight">长视频助手 <span className="text-violet-500">Pro</span></span>
+          <span className="text-base font-bold tracking-tight">长视频助手 <span className="text-violet-500">Pro</span></span>
         </div>
         
         <div className="flex items-center gap-4">
             {isLoggedIn ? (
                 <button 
                     onClick={() => navigate('/dashboard')}
-                    className="px-6 py-2.5 bg-white/10 hover:bg-white/20 border border-white/10 rounded-full text-sm font-bold transition-all flex items-center gap-2"
+                    className="px-5 py-2 bg-white/10 hover:bg-white/20 border border-white/10 rounded-full text-xs font-bold transition-all flex items-center gap-2"
                 >
-                    进入工作台 <ArrowRight className="w-4 h-4" />
+                    进入工作台 <ArrowRight className="w-3.5 h-3.5" />
                 </button>
             ) : (
                 <button 
                     onClick={() => setShowLogin(true)}
-                    className="px-6 py-2.5 bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-500 hover:to-indigo-500 text-white rounded-full text-sm font-bold shadow-lg shadow-violet-500/30 transition-all hover:-translate-y-0.5 flex items-center gap-2"
+                    className="px-5 py-2 bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-500 hover:to-indigo-500 text-white rounded-full text-xs font-bold shadow-lg shadow-violet-500/30 transition-all hover:-translate-y-0.5 flex items-center gap-2"
                 >
-                    <Lock className="w-3.5 h-3.5" /> 登录访问
+                    <Lock className="w-3 h-3" /> 登录访问
                 </button>
             )}
         </div>
       </nav>
 
-      {/* Hero Section */}
-      <div className="relative z-10 pt-20 pb-32 px-6">
-        <div className="max-w-5xl mx-auto text-center">
-            <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white/5 border border-white/10 text-xs font-bold text-violet-300 mb-8 animate-fade-in-up">
-                <Sparkles className="w-3.5 h-3.5" /> AI 驱动的全流程视频生产工作流
+      {/* Main Content Area - Flex Center */}
+      <main className="flex-1 flex flex-col justify-center items-center relative z-10 w-full max-w-7xl mx-auto px-6 gap-12">
+        
+        {/* Hero Text */}
+        <div className="text-center max-w-4xl mx-auto relative">
+            {/* Decor Line */}
+            <div className="absolute -top-12 left-1/2 -translate-x-1/2 w-px h-12 bg-gradient-to-b from-transparent to-violet-500/50"></div>
+            
+            <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/5 border border-white/10 text-[10px] font-bold text-violet-300 mb-6 animate-fade-in-up">
+                <Sparkles className="w-3 h-3" /> AI 驱动的全流程视频生产工作流
             </div>
-            <h1 className="text-5xl md:text-7xl font-extrabold tracking-tight mb-8 leading-tight">
+            
+            <h1 className="text-5xl md:text-7xl font-extrabold tracking-tight mb-6 leading-tight">
                 从灵感到爆款视频 <br/>
                 <span className="text-transparent bg-clip-text bg-gradient-to-r from-violet-400 via-fuchsia-400 to-white">
                     只需一个核心观点
                 </span>
             </h1>
-            <p className="text-lg md:text-xl text-slate-400 max-w-2xl mx-auto mb-12 leading-relaxed">
-                自动化完成脚本撰写、分镜设计、画面生成与封面策划。
-                专为内容创作者打造的智能生产力引擎。
-            </p>
             
-            <div className="flex flex-col md:flex-row items-center justify-center gap-6">
-                 <button 
-                    onClick={() => isLoggedIn ? navigate('/dashboard') : setShowLogin(true)}
-                    className="h-14 px-10 bg-white text-slate-950 rounded-full font-bold text-lg hover:bg-slate-100 transition-all flex items-center gap-2 shadow-xl shadow-white/10"
-                >
-                    {isLoggedIn ? '继续创作' : '立即开始'} <ArrowRight className="w-5 h-5" />
-                 </button>
-                 <button className="h-14 px-10 bg-white/5 text-white border border-white/10 rounded-full font-bold text-lg hover:bg-white/10 transition-all flex items-center gap-2 backdrop-blur-md">
-                    <Play className="w-5 h-5 fill-white" /> 观看演示
-                 </button>
-            </div>
+            <p className="text-base md:text-lg text-slate-400 max-w-2xl mx-auto leading-relaxed">
+                自动化完成脚本撰写、分镜设计、画面生成与封面策划。
+                <br className="hidden md:block" />专为内容创作者打造的智能生产力引擎。
+            </p>
         </div>
-      </div>
 
-      {/* Feature Grid */}
-      <div className="relative z-10 px-6 pb-32">
-         <div className="max-w-7xl mx-auto">
-             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        {/* Feature Grid - Compressed */}
+        <div className="w-full">
+             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                  <FeatureCard 
                     icon={Wand2} 
                     title="智能脚本生成" 
-                    desc="基于Gemini 2.5大模型，深度解析核心观点，自动生成逻辑严密、引人入胜的长视频脚本。" 
+                    desc="深度解析核心观点，自动生成逻辑严密脚本。" 
                  />
                  <FeatureCard 
                     icon={Layers} 
                     title="分镜自动化" 
-                    desc="一键将文案拆解为可视化的分镜描述，精确控制画面构图、光影与运镜方式。" 
+                    desc="一键拆解画面描述，精确控制构图与运镜。" 
                  />
                  <FeatureCard 
                     icon={ImageIcon} 
                     title="批量生图工坊" 
-                    desc="集成AI绘图能力，并行生成高分辨率分镜画面，支持16:9电影质感输出。" 
+                    desc="集成AI绘图能力，并行生成高分辨率画面。" 
                  />
                  <FeatureCard 
                     icon={Zap} 
                     title="爆款标题策划" 
-                    desc="基于全网热门逻辑，智能生成高点击率标题与封面文案，提升视频完播率。" 
+                    desc="基于热门逻辑，智能生成高点击率标题封面。" 
                  />
              </div>
-         </div>
-      </div>
+        </div>
+      </main>
 
       {/* Footer */}
-      <footer className="relative z-10 border-t border-white/5 py-12 text-center text-slate-500 text-sm">
+      <footer className="relative z-10 border-t border-white/5 py-6 text-center text-slate-600 text-xs bg-[#020617]/50 backdrop-blur-sm">
          <p>© 2025 Long Video Assistant Pro. Powered by Google Gemini.</p>
       </footer>
 
@@ -153,22 +154,22 @@ const LandingPage: React.FC = () => {
       {showLogin && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
             <div className="absolute inset-0 bg-black/80 backdrop-blur-sm" onClick={() => setShowLogin(false)} />
-            <div className="bg-slate-900 border border-white/10 rounded-3xl p-10 w-full max-w-md relative shadow-2xl shadow-violet-500/10 animate-in zoom-in-95 duration-200">
+            <div className="bg-slate-900 border border-white/10 rounded-3xl p-8 w-full max-w-sm relative shadow-2xl shadow-violet-500/10 animate-in zoom-in-95 duration-200">
                 <button 
                     onClick={() => setShowLogin(false)}
                     className="absolute top-4 right-4 text-slate-500 hover:text-white transition-colors"
                 >
-                    <X className="w-6 h-6" />
+                    <X className="w-5 h-5" />
                 </button>
 
-                <div className="w-16 h-16 bg-gradient-to-br from-violet-600 to-indigo-600 rounded-2xl flex items-center justify-center mx-auto mb-6 shadow-lg shadow-violet-500/20">
-                    <ShieldCheck className="w-8 h-8 text-white" />
+                <div className="w-12 h-12 bg-gradient-to-br from-violet-600 to-indigo-600 rounded-xl flex items-center justify-center mx-auto mb-4 shadow-lg shadow-violet-500/20">
+                    <ShieldCheck className="w-6 h-6 text-white" />
                 </div>
                 
-                <h2 className="text-2xl font-bold text-center mb-2">欢迎回来</h2>
-                <p className="text-slate-400 text-center mb-8 text-sm">请输入访问密码进入私人工作空间</p>
+                <h2 className="text-xl font-bold text-center mb-1">欢迎回来</h2>
+                <p className="text-slate-400 text-center mb-6 text-xs">请输入访问密码进入私人工作空间</p>
 
-                <form onSubmit={handleLogin} className="space-y-6">
+                <form onSubmit={handleLogin} className="space-y-4">
                     <div>
                         <input 
                             type="password" 
@@ -179,19 +180,19 @@ const LandingPage: React.FC = () => {
                                 setPassword(e.target.value);
                                 setError(false);
                             }}
-                            className={`w-full bg-black/50 border ${error ? 'border-rose-500/50 text-rose-500' : 'border-white/10 focus:border-violet-500'} rounded-xl px-4 py-4 text-center text-lg font-bold tracking-widest outline-none transition-all placeholder:text-slate-600 text-white`}
+                            className={`w-full bg-black/50 border ${error ? 'border-rose-500/50 text-rose-500' : 'border-white/10 focus:border-violet-500'} rounded-xl px-4 py-3 text-center text-base font-bold tracking-widest outline-none transition-all placeholder:text-slate-600 text-white`}
                         />
                          {error && (
-                            <p className="text-rose-500 text-xs font-bold text-center mt-2 animate-pulse">
+                            <p className="text-rose-500 text-[10px] font-bold text-center mt-2 animate-pulse">
                                 密码错误，请重试
                             </p>
                         )}
                     </div>
                     <button 
                         type="submit"
-                        className="w-full py-4 bg-white text-slate-950 font-bold rounded-xl hover:bg-slate-200 transition-all flex items-center justify-center gap-2"
+                        className="w-full py-3 bg-white text-slate-950 font-bold rounded-xl hover:bg-slate-200 transition-all flex items-center justify-center gap-2 text-sm"
                     >
-                        立即进入 <ArrowRight className="w-5 h-5" />
+                        立即进入 <ArrowRight className="w-4 h-4" />
                     </button>
                 </form>
             </div>
