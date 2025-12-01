@@ -23,6 +23,7 @@ export interface TitleItem {
 export interface CoverOption {
   visual: string; // Scene description
   copy: string;   // Text on image
+  score?: number; // Recommendation score
 }
 
 export interface ProjectData {
@@ -160,17 +161,19 @@ export const DEFAULT_PROMPTS: Record<string, PromptTemplate> = {
     description: '基于脚本内容生成封面方案',
     template: `请基于以下视频脚本，策划 3 个高点击率的封面（Thumbnail）方案。
     
+主题: {{title}}
 脚本内容:
 {{script}}
 
-请返回一个纯 JSON 数组（不要Markdown格式），数组中每个对象包含两个字段：
+请返回一个纯 JSON 数组（不要Markdown格式），数组中每个对象包含三个字段：
 - "visual": 详细的画面描述（包含主体、表情、背景颜色、氛围）。
 - "copy": 封面上的醒目大字文案（Copywriting），通常少于8个字，极具冲击力。
+- "score": 推荐指数（1-100分）。
 
 示例：
 [
-  {"visual": "极度震惊的表情特写，背景是燃烧的红色火焰", "copy": "彻底崩盘！"},
-  {"visual": "左右分屏对比，左边是贫穷的街道，右边是未来城市", "copy": "逆袭翻身"}
+  {"visual": "极度震惊的表情特写，背景是燃烧的红色火焰", "copy": "彻底崩盘！", "score": 95},
+  {"visual": "左右分屏对比，左边是贫穷的街道，右边是未来城市", "copy": "逆袭翻身", "score": 88}
 ]
 `
   },
