@@ -419,7 +419,8 @@ const ProjectWorkspace: React.FC = () => {
                 title: { type: "STRING" },
                 type: { type: "STRING" },
                 score: { type: "NUMBER" }
-            }
+            },
+            required: ["title", "score"]
         }
       });
       
@@ -1196,11 +1197,6 @@ const ProjectWorkspace: React.FC = () => {
                                     <td className="py-4 px-6 text-center text-sm font-bold text-slate-400">{idx + 1}</td>
                                     <td className="py-4 px-6">
                                         <div className="font-bold text-slate-700 text-sm leading-relaxed">{item.title}</div>
-                                        <div className="mt-1">
-                                            <span className="text-[10px] font-bold bg-blue-50 text-blue-600 px-2 py-0.5 rounded border border-blue-100 inline-block">
-                                                {item.type}
-                                            </span>
-                                        </div>
                                     </td>
                                     <td className="py-4 px-6 text-center">
                                          <span className={`inline-flex items-center justify-center w-8 h-8 rounded-lg text-sm font-extrabold shadow-sm ${
