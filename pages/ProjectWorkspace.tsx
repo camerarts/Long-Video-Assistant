@@ -827,21 +827,34 @@ const ProjectWorkspace: React.FC = () => {
       )}
 
       {/* Left Panel: Settings */}
-      <div className={`${showSettings ? 'w-64 translate-x-0 opacity-100' : 'w-0 -translate-x-full opacity-0'} transition-all duration-300 ease-out border-r border-slate-200 bg-white/90 backdrop-blur-xl flex flex-col h-full flex-shrink-0 z-20 shadow-[4px_0_24px_rgba(0,0,0,0.02)]`}>
+      <div className={`${showSettings ? 'w-80 translate-x-0 opacity-100' : 'w-0 -translate-x-full opacity-0'} transition-all duration-300 ease-out border-r border-slate-200 bg-white/90 backdrop-blur-xl flex flex-col h-full flex-shrink-0 z-20 shadow-[4px_0_24px_rgba(0,0,0,0.02)]`}>
         <div className="p-5 border-b border-slate-100 flex items-center justify-between">
             <h2 className="font-bold text-slate-800 flex items-center gap-2 text-sm tracking-wide">
                 <Settings2 className="w-4 h-4 text-violet-600" /> 项目概览
             </h2>
         </div>
         
-        <div className="flex-1 overflow-y-auto p-5 space-y-7">
-            <div className="space-y-2">
+        <div className="flex-1 overflow-y-auto p-5 space-y-8">
+            <div className="space-y-3">
                 <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">项目名称</label>
                 <input 
                     name="title"
                     value={project.title}
                     onChange={(e) => setProject({...project, title: e.target.value})}
-                    className="w-full text-base border-b border-slate-200 py-2 focus:border-violet-500 outline-none bg-transparent font-semibold text-slate-800 transition-colors" 
+                    className="w-full text-base font-bold border-b border-slate-200 py-2 focus:border-violet-500 outline-none bg-transparent text-slate-800 transition-colors placeholder:text-slate-300"
+                    placeholder="输入项目名称"
+                />
+            </div>
+
+             <div className="space-y-3">
+                <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">核心观点 / 核心意图</label>
+                <textarea
+                    name="corePoint"
+                    value={project.inputs.corePoint}
+                    onChange={handleInputChange}
+                    rows={6}
+                    className="w-full bg-slate-50 border border-slate-200 rounded-xl p-4 text-sm text-slate-700 leading-relaxed focus:ring-2 focus:ring-violet-500/10 focus:border-violet-500 outline-none transition-all resize-none placeholder:text-slate-400"
+                    placeholder="主要的论点、受众痛点或独特的叙事角度..."
                 />
             </div>
 
@@ -855,10 +868,10 @@ const ProjectWorkspace: React.FC = () => {
             <div className="pt-4 mt-auto">
                 <button 
                     onClick={() => saveWork(project)}
-                    className="w-full flex items-center justify-center gap-2 bg-white border border-slate-200 text-slate-700 py-3 rounded-xl text-sm hover:bg-slate-50 hover:text-violet-700 hover:border-violet-200 transition-all font-medium shadow-sm"
+                    className="w-full flex items-center justify-center gap-2 bg-slate-900 text-white py-3.5 rounded-xl text-sm hover:bg-slate-800 transition-all font-bold shadow-lg shadow-slate-900/10 hover:shadow-slate-900/20"
                 >
                     {saving ? <Loader2 className="w-3.5 h-3.5 animate-spin"/> : <Save className="w-3.5 h-3.5"/>}
-                    保存设置
+                    保存概览信息
                 </button>
             </div>
         </div>
@@ -878,9 +891,20 @@ const ProjectWorkspace: React.FC = () => {
         <button 
             onClick={() => setShowSettings(!showSettings)}
             className="absolute left-6 top-6 z-30 p-2.5 bg-white border border-slate-200 rounded-xl text-slate-500 hover:text-violet-600 shadow-sm transition-all hover:scale-105 hover:shadow-md"
+            title={showSettings ? "收起侧边栏" : "展开侧边栏"}
         >
             {showSettings ? <PanelLeftClose className="w-5 h-5"/> : <PanelLeftOpen className="w-5 h-5"/>}
         </button>
+
+        {/* Collapsed State Title Header */}
+        {!showSettings && (
+             <div className="absolute left-20 top-6 z-30 animate-in fade-in slide-in-from-left-4 duration-300 pointer-events-none">
+                <div className="bg-white/80 backdrop-blur-md border border-slate-200/60 px-5 py-2.5 rounded-xl shadow-sm flex items-center gap-3">
+                    <div className="w-2 h-2 rounded-full bg-violet-500"></div>
+                    <span className="font-bold text-slate-800 text-sm">{project.title}</span>
+                </div>
+             </div>
+        )}
 
         <div className="absolute right-6 top-6 z-30 flex items-center gap-3">
              <button 
