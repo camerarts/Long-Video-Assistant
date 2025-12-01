@@ -2,12 +2,13 @@
 import React, { useState, useEffect } from 'react';
 import { PromptTemplate } from '../types';
 import * as storage from '../services/storageService';
-import { Save, RefreshCw, AlertTriangle, ClipboardPaste, Check } from 'lucide-react';
+import { Save, RefreshCw, AlertTriangle, ClipboardPaste, Check, Maximize2, X } from 'lucide-react';
 
 const Settings: React.FC = () => {
   const [prompts, setPrompts] = useState<Record<string, PromptTemplate>>({});
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
+  const [expandedKey, setExpandedKey] = useState<string | null>(null);
 
   // Define the strict display order
   const ORDERED_KEYS = [
@@ -157,16 +158,67 @@ const Settings: React.FC = () => {
                   </div>
                 </div>
                 
-                <textarea
-                  value={prompt.template}
-                  onChange={(e) => handlePromptChange(key, e.target.value)}
-                  className="w-full h-56 bg-[#FAFAFA] border border-slate-200 rounded-2xl p-5 text-slate-700 font-mono text-xs leading-loose focus:ring-2 focus:ring-violet-500/20 focus:border-violet-400 focus:bg-white outline-none transition-all placeholder:text-slate-400 resize-none selection:bg-violet-100"
-                />
+                <div className="relative group/textarea">
+                    <textarea
+                        value={prompt.template}
+                        onChange={(e) => handlePromptChange(key, e.target.value)}
+                        className="w-full h-56 bg-[#FAFAFA] border border-slate-200 rounded-2xl p-5 text-slate-700 font-mono text-xs leading-loose focus:ring-2 focus:ring-violet-500/20 focus:border-violet-400 focus:bg-white outline-none transition-all placeholder:text-slate-400 resize-none selection:bg-violet-100"
+                    />
+                    <button 
+                        onClick={() => setExpandedKey(key)}
+                        className="absolute top-3 right-3 p-2 bg-white/90 backdrop-blur text-slate-400 hover:text-violet-600 rounded-lg shadow-sm border border-slate-200 opacity-0 group-hover/textarea:opacity-100 transition-all hover:scale-105"
+                        title="全屏编辑"
+                    >
+                        <Maximize2 className="w-4 h-4" />
+                    </button>
+                </div>
               </div>
             );
           })}
         </div>
       </div>
+
+      {/* Full Screen Editor Modal */}
+      {expandedKey && prompts[expandedKey] && (
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in duration-200">
+            <div className="bg-white rounded-3xl shadow-2xl w-[90vw] h-[85vh] flex flex-col overflow-hidden animate-in zoom-in-95 duration-200">
+                <div className="px-8 py-5 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
+                    <div>
+                        <h2 className="text-xl font-extrabold text-slate-800 flex items-center gap-2">
+                            {prompts[expandedKey].name}
+                            <span className="text-sm font-medium text-slate-400 bg-white px-2 py-0.5 rounded border border-slate-200">{expandedKey}</span>
+                        </h2>
+                    </div>
+                    <button onClick={() => setExpandedKey(null)} className="p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-full transition-colors">
+                        <X className="w-6 h-6" />
+                    </button>
+                </div>
+                <div className="flex-1 p-6 bg-[#FAFAFA]">
+                    <textarea
+                        autoFocus
+                        value={prompts[expandedKey].template}
+                        onChange={(e) => handlePromptChange(expandedKey, e.target.value)}
+                        className="w-full h-full bg-white border border-slate-200 rounded-2xl p-8 text-slate-800 font-mono text-sm leading-loose focus:ring-0 focus:border-violet-400 outline-none transition-all resize-none shadow-sm selection:bg-violet-100"
+                        placeholder="输入提示词..."
+                    />
+                </div>
+                <div className="px-8 py-4 border-t border-slate-100 bg-white flex justify-end gap-3">
+                    <button 
+                        onClick={() => handlePaste(expandedKey)}
+                        className="px-4 py-2 text-slate-500 hover:text-violet-600 font-bold text-sm bg-slate-50 hover:bg-violet-50 rounded-xl transition-colors border border-slate-200 hover:border-violet-200"
+                    >
+                        <ClipboardPaste className="w-4 h-4 inline mr-1.5" /> 粘贴剪贴板
+                    </button>
+                    <button 
+                        onClick={() => setExpandedKey(null)}
+                        className="px-6 py-2 bg-slate-900 text-white font-bold rounded-xl hover:bg-slate-800 transition-colors shadow-lg shadow-slate-900/10"
+                    >
+                        完成编辑
+                    </button>
+                </div>
+            </div>
+        </div>
+      )}
     </div>
   );
 };
