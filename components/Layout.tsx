@@ -31,30 +31,30 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
   return (
     <div className="h-screen flex bg-[#F8F9FC] text-slate-900 font-sans overflow-hidden">
       {/* App Sidebar (Global Navigation) */}
-      <aside className="w-24 flex-shrink-0 border-r border-slate-200/60 bg-white/80 backdrop-blur-md flex flex-col items-center py-8 z-30 transition-all duration-300">
-        <div className="flex flex-col items-center mb-10 gap-2">
+      <aside className="w-24 flex-shrink-0 border-r border-slate-200/60 bg-white/80 backdrop-blur-md flex flex-col items-center py-6 z-30 transition-all duration-300">
+        <div className="flex flex-col items-center mb-6 gap-2">
             <Link to="/dashboard" className="w-11 h-11 bg-gradient-to-br from-violet-600 to-indigo-600 rounded-2xl flex items-center justify-center shadow-lg shadow-indigo-500/30 hover:scale-105 transition-transform duration-300">
               <Video className="text-white w-6 h-6" />
             </Link>
             <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">助手</span>
         </div>
 
-        <nav className="flex-1 flex flex-col gap-5 w-full px-3 items-center">
+        <nav className="flex-1 flex flex-col gap-2 w-full px-3 items-center">
           
           {/* Big Add Button - High End Gradient */}
           <button
             onClick={handleCreateProject}
-            className="w-14 h-14 bg-gradient-to-r from-violet-600 to-fuchsia-600 text-white rounded-2xl flex items-center justify-center shadow-lg shadow-violet-500/30 hover:shadow-violet-500/50 hover:scale-105 transition-all duration-300 group mb-4"
+            className="w-12 h-12 bg-gradient-to-r from-violet-600 to-fuchsia-600 text-white rounded-2xl flex items-center justify-center shadow-lg shadow-violet-500/30 hover:shadow-violet-500/50 hover:scale-105 transition-all duration-300 group mb-2"
             title="新建项目"
           >
-            <Plus className="w-8 h-8 group-hover:rotate-90 transition-transform duration-500" />
+            <Plus className="w-6 h-6 group-hover:rotate-90 transition-transform duration-500" />
           </button>
 
-          <div className="w-8 h-px bg-slate-100 my-2"></div>
+          <div className="w-8 h-px bg-slate-100 my-1"></div>
 
           <Link
             to="/dashboard"
-            className={`flex flex-col items-center justify-center py-3.5 px-2 w-full rounded-2xl transition-all gap-1.5 duration-300 ${
+            className={`flex flex-col items-center justify-center py-2.5 px-2 w-full rounded-2xl transition-all gap-1 duration-300 ${
               isActive('/dashboard') 
                 ? 'bg-violet-50 text-violet-700 shadow-sm' 
                 : 'text-slate-400 hover:bg-slate-50 hover:text-slate-700'
@@ -66,7 +66,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
           
           <Link
             to="/images"
-            className={`flex flex-col items-center justify-center py-3.5 px-2 w-full rounded-2xl transition-all gap-1.5 duration-300 ${
+            className={`flex flex-col items-center justify-center py-2.5 px-2 w-full rounded-2xl transition-all gap-1 duration-300 ${
               isActive('/images') 
                 ? 'bg-fuchsia-50 text-fuchsia-700 shadow-sm' 
                 : 'text-slate-400 hover:bg-slate-50 hover:text-slate-700'
@@ -78,7 +78,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
 
           <Link
             to="/inspiration"
-            className={`flex flex-col items-center justify-center py-3.5 px-2 w-full rounded-2xl transition-all gap-1.5 duration-300 ${
+            className={`flex flex-col items-center justify-center py-2.5 px-2 w-full rounded-2xl transition-all gap-1 duration-300 ${
               isActive('/inspiration') 
                 ? 'bg-amber-50 text-amber-600 shadow-sm' 
                 : 'text-slate-400 hover:bg-slate-50 hover:text-slate-700'
@@ -90,7 +90,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
 
           <Link
             to="/settings"
-            className={`flex flex-col items-center justify-center py-3.5 px-2 w-full rounded-2xl transition-all gap-1.5 duration-300 ${
+            className={`flex flex-col items-center justify-center py-2.5 px-2 w-full rounded-2xl transition-all gap-1 duration-300 ${
               isActive('/settings') 
                 ? 'bg-violet-50 text-violet-700 shadow-sm' 
                 : 'text-slate-400 hover:bg-slate-50 hover:text-slate-700'
@@ -102,7 +102,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
 
           <button
             onClick={handleLogout}
-            className="mt-auto flex flex-col items-center justify-center py-3.5 px-2 w-full rounded-2xl transition-all gap-1.5 duration-300 text-slate-400 hover:bg-rose-50 hover:text-rose-600"
+            className="mt-auto flex flex-col items-center justify-center py-2.5 px-2 w-full rounded-2xl transition-all gap-1 duration-300 text-slate-400 hover:bg-rose-50 hover:text-rose-600"
             title="退出登录"
           >
             <LogOut className="w-5 h-5 stroke-2" />
