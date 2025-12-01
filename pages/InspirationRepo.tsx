@@ -336,13 +336,13 @@ const InspirationRepo: React.FC = () => {
         <div className="bg-white rounded-3xl border border-slate-100 shadow-[0_2px_20px_-5px_rgba(0,0,0,0.05)] overflow-hidden flex-1 flex flex-col">
           <div className="overflow-y-auto flex-1">
             <table className="w-full text-left border-collapse">
-              <thead className="sticky top-0 bg-slate-50/95 backdrop-blur z-10 shadow-sm">
-                <tr className="border-b border-slate-200">
-                  <th className="py-3 px-4 text-xs font-bold text-slate-500 uppercase tracking-wider w-16 text-center">#</th>
-                  <th className="py-3 px-4 text-xs font-bold text-slate-500 uppercase tracking-wider w-32">分类</th>
-                  <th className="py-3 px-4 text-xs font-bold text-slate-500 uppercase tracking-wider">标题</th>
+              <thead className="sticky top-0 bg-slate-900 text-slate-100 z-10 shadow-md">
+                <tr className="border-b border-slate-700">
+                  <th className="py-4 px-4 text-xs font-bold uppercase tracking-wider w-16 text-center">#</th>
+                  <th className="py-4 px-4 text-xs font-bold uppercase tracking-wider w-32 text-center">分类</th>
+                  <th className="py-4 px-4 text-xs font-bold uppercase tracking-wider text-center">标题</th>
                   <th 
-                    className="py-3 px-4 text-xs font-bold text-slate-500 uppercase tracking-wider w-28 text-center cursor-pointer hover:bg-slate-100 transition-colors select-none group"
+                    className="py-4 px-4 text-xs font-bold uppercase tracking-wider w-28 text-center cursor-pointer hover:bg-slate-800 transition-colors select-none group"
                     onClick={() => handleSort('rating')}
                   >
                     <div className="flex items-center justify-center gap-1">
@@ -350,11 +350,11 @@ const InspirationRepo: React.FC = () => {
                         {sortConfig.key === 'rating' ? (
                             sortConfig.direction === 'desc' ? <ArrowDown className="w-3 h-3 text-orange-500"/> : <ArrowUp className="w-3 h-3 text-orange-500"/>
                         ) : (
-                            <ArrowUpDown className="w-3 h-3 text-slate-300 group-hover:text-slate-500" />
+                            <ArrowUpDown className="w-3 h-3 text-slate-500 group-hover:text-slate-300" />
                         )}
                     </div>
                   </th>
-                  <th className="py-3 px-4 text-xs font-bold text-slate-500 uppercase tracking-wider w-56 text-right pr-6">操作</th>
+                  <th className="py-4 px-4 text-xs font-bold uppercase tracking-wider w-56 text-center">操作</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-50">
@@ -389,7 +389,7 @@ const InspirationRepo: React.FC = () => {
                             )}
                         </td>
                         <td className="py-3 px-4 text-right pr-6">
-                            <div className="flex items-center justify-end gap-3">
+                            <div className="flex items-center justify-center gap-3">
                                 <button 
                                     onClick={() => handleApprove(item)}
                                     className="px-3 py-1.5 bg-gradient-to-r from-violet-600 to-indigo-600 text-white text-xs font-bold rounded-lg shadow-md shadow-indigo-500/20 hover:shadow-indigo-500/30 hover:-translate-y-0.5 transition-all flex items-center gap-1.5"
