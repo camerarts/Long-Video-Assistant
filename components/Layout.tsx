@@ -54,7 +54,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
             }`}
           >
             <LayoutDashboard className={`w-5 h-5 ${location.pathname === '/' ? 'stroke-[2.5px]' : 'stroke-2'}`} />
-            <span className="text-[10px] font-bold tracking-wide">列表</span>
+            <span className="text-[10px] font-bold tracking-wide">项目列表</span>
           </Link>
           
           <Link
@@ -66,7 +66,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
             }`}
           >
             <ImageIcon className={`w-5 h-5 ${isActive('/images') ? 'stroke-[2.5px]' : 'stroke-2'}`} />
-            <span className="text-[10px] font-bold tracking-wide">图片</span>
+            <span className="text-[10px] font-bold tracking-wide">生图列表</span>
           </Link>
 
           <Link
@@ -78,7 +78,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
             }`}
           >
             <Lightbulb className={`w-5 h-5 ${isActive('/inspiration') ? 'stroke-[2.5px]' : 'stroke-2'}`} />
-            <span className="text-[10px] font-bold tracking-wide">灵感</span>
+            <span className="text-[10px] font-bold tracking-wide">灵感仓库</span>
           </Link>
 
           <Link
@@ -90,7 +90,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
             }`}
           >
             <Settings className={`w-5 h-5 ${isActive('/settings') ? 'stroke-[2.5px]' : 'stroke-2'}`} />
-            <span className="text-[10px] font-bold tracking-wide">设置</span>
+            <span className="text-[10px] font-bold tracking-wide">系统设置</span>
           </Link>
         </nav>
       </aside>
