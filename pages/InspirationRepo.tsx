@@ -423,7 +423,7 @@ const InspirationRepo: React.FC = () => {
                     >
                         <td className="py-3 px-4 text-center text-xs font-bold text-slate-400">{index + 1}</td>
                         <td className="py-3 px-4">
-                            <span className="bg-white text-slate-600 px-2 py-0.5 rounded text-[10px] font-bold border border-slate-200 shadow-sm inline-block truncate max-w-[100px]" title={item.category}>
+                            <span className="bg-white text-slate-600 px-2 py-0.5 rounded text-[10px] font-bold border border-slate-200 shadow-sm inline-block whitespace-normal break-words" title={item.category}>
                                 {item.category}
                             </span>
                         </td>
