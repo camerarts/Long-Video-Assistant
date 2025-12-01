@@ -1,9 +1,8 @@
-
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { 
   Video, Sparkles, ArrowRight, Lock, 
-  Image as ImageIcon, Wand2, Zap, ShieldCheck, X, Layers, Cpu, Radio
+  Image as ImageIcon, Wand2, Zap, ShieldCheck, X, Layers
 } from 'lucide-react';
 
 const AUTH_KEY = 'lva_auth_expiry';
@@ -37,185 +36,161 @@ const LandingPage: React.FC = () => {
   };
 
   const FeatureCard = ({ icon: Icon, title, desc }: any) => (
-    <div className="group relative p-6 rounded-2xl bg-black/40 border border-white/5 hover:border-violet-500/50 transition-all duration-500 hover:-translate-y-1 overflow-hidden backdrop-blur-sm">
-      {/* Hover Glow */}
-      <div className="absolute inset-0 bg-gradient-to-br from-violet-600/10 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
-      
-      <div className="relative z-10 flex flex-col items-start text-left">
-        <div className="w-12 h-12 bg-[#1a1a2e] border border-white/10 rounded-xl flex items-center justify-center mb-4 group-hover:shadow-[0_0_20px_rgba(139,92,246,0.3)] transition-all duration-500 group-hover:border-violet-500/30">
-          <Icon className="w-5 h-5 text-violet-400 group-hover:text-white transition-colors" />
+    <div className="group relative p-6 rounded-2xl bg-white/5 border border-white/10 hover:border-violet-500/50 hover:bg-white/10 transition-all duration-500 hover:-translate-y-1">
+      <div className="absolute inset-0 bg-gradient-to-br from-violet-600/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity rounded-2xl" />
+      <div className="relative z-10">
+        <div className="w-10 h-10 bg-gradient-to-br from-violet-500 to-indigo-600 rounded-xl flex items-center justify-center mb-4 shadow-lg shadow-violet-500/20 group-hover:scale-110 transition-transform duration-500">
+          <Icon className="w-5 h-5 text-white" />
         </div>
-        <h3 className="text-base font-bold text-white mb-2 tracking-wide group-hover:text-violet-200 transition-colors">{title}</h3>
+        <h3 className="text-lg font-bold text-white mb-2">{title}</h3>
         <p className="text-slate-400 text-xs leading-relaxed">{desc}</p>
       </div>
     </div>
   );
 
   return (
-    <div className="h-screen bg-[#050508] text-white font-sans overflow-hidden flex flex-col relative selection:bg-violet-500/30">
-      
-      {/* --- Sci-Fi Background --- */}
-      <div className="absolute inset-0 z-0 pointer-events-none overflow-hidden">
-        {/* Deep Nebula Glows */}
-        <div className="absolute top-[-20%] left-[20%] w-[60%] h-[60%] bg-violet-900/20 rounded-full blur-[180px] animate-pulse-slow" />
-        <div className="absolute bottom-[-10%] right-[10%] w-[50%] h-[50%] bg-indigo-900/10 rounded-full blur-[150px]" />
-        
-        {/* Subtle Starfield / Noise */}
-        <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/stardust.png')] opacity-10"></div>
-        
-        {/* Central Vignette */}
-        <div className="absolute inset-0 bg-gradient-to-t from-[#050508] via-transparent to-[#050508]/80"></div>
+    <div className="h-screen bg-[#020617] text-white font-sans overflow-hidden flex flex-col relative selection:bg-violet-500 selection:text-white">
+      {/* Background Effects */}
+      <div className="absolute inset-0 z-0 pointer-events-none">
+        <div className="absolute top-[-20%] left-[-10%] w-[50%] h-[50%] bg-violet-900/20 rounded-full blur-[120px]" />
+        <div className="absolute bottom-[-20%] right-[-10%] w-[50%] h-[50%] bg-indigo-900/20 rounded-full blur-[120px]" />
+        <div className="absolute top-[20%] left-[20%] w-full h-full bg-[radial-gradient(#ffffff05_1px,transparent_1px)] [background-size:24px_24px] opacity-30" />
       </div>
 
-      {/* --- Header / Nav --- */}
+      {/* Tech Lines */}
+      <div className="absolute top-[25%] left-0 w-full h-px bg-gradient-to-r from-transparent via-violet-500/30 to-transparent" />
+      <div className="absolute bottom-[35%] left-0 w-full h-px bg-gradient-to-r from-transparent via-indigo-500/30 to-transparent" />
+      <div className="absolute left-[20%] top-0 h-full w-px bg-gradient-to-b from-transparent via-white/5 to-transparent" />
+      <div className="absolute right-[20%] top-0 h-full w-px bg-gradient-to-b from-transparent via-white/5 to-transparent" />
+
+      {/* Navigation */}
       <nav className="relative z-50 px-8 py-6 flex justify-between items-center max-w-7xl mx-auto w-full">
         <div className="flex items-center gap-3">
-          <div className="relative">
-             <div className="absolute inset-0 bg-violet-600 blur-md opacity-50"></div>
-             <div className="relative w-10 h-10 bg-black border border-white/10 rounded-lg flex items-center justify-center">
-                <Video className="text-white w-5 h-5" />
-             </div>
+          <div className="w-10 h-10 bg-gradient-to-br from-violet-600 to-indigo-600 rounded-xl flex items-center justify-center shadow-lg shadow-violet-500/30">
+            <Video className="text-white w-5 h-5" />
           </div>
-          <div className="flex flex-col">
-             <span className="text-lg font-bold tracking-tight text-white leading-none">LVA <span className="text-violet-500">PRO</span></span>
-             <span className="text-[10px] text-slate-500 tracking-[0.2em] font-medium mt-0.5">GENERATIVE AI</span>
-          </div>
+          <span className="text-lg font-bold tracking-tight">长视频助手 <span className="text-violet-500">Pro</span></span>
         </div>
         
         <div className="flex items-center gap-4">
             {isLoggedIn ? (
                 <button 
                     onClick={() => navigate('/dashboard')}
-                    className="px-5 py-2 bg-white/5 hover:bg-white/10 border border-white/10 rounded-full text-xs font-bold transition-all flex items-center gap-2 group text-slate-300 hover:text-white"
+                    className="px-6 py-2 bg-white/10 hover:bg-white/20 border border-white/10 rounded-full text-xs font-bold transition-all flex items-center gap-2"
                 >
-                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
-                    WORKBENCH <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-0.5 transition-transform" />
+                    进入工作台 <ArrowRight className="w-3.5 h-3.5" />
                 </button>
             ) : (
                 <button 
                     onClick={() => setShowLogin(true)}
-                    className="px-6 py-2 bg-white text-black hover:bg-violet-50 rounded-full text-xs font-bold shadow-[0_0_20px_rgba(255,255,255,0.2)] hover:shadow-[0_0_30px_rgba(139,92,246,0.4)] transition-all flex items-center gap-2"
+                    className="px-6 py-2 bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-500 hover:to-indigo-500 text-white rounded-full text-xs font-bold shadow-lg shadow-violet-500/30 transition-all hover:-translate-y-0.5 flex items-center gap-2"
                 >
-                    <Lock className="w-3 h-3" /> ACCESS
+                    <Lock className="w-3.5 h-3.5" /> 登录访问
                 </button>
             )}
         </div>
       </nav>
 
-      {/* --- Main Content --- */}
-      <main className="flex-1 flex flex-col justify-center items-center relative z-10 w-full max-w-7xl mx-auto px-6 gap-16">
+      {/* Main Content */}
+      <main className="flex-1 flex flex-col justify-center items-center relative z-10 w-full max-w-7xl mx-auto px-6">
         
-        {/* Hero Section */}
-        <div className="text-center max-w-4xl mx-auto">
-            {/* Status Pill */}
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/5 border border-white/10 text-[10px] font-mono text-violet-300 mb-8 backdrop-blur-md">
-                <Radio className="w-3 h-3 animate-pulse" /> SYSTEM ONLINE // GEMINI 2.5 ACTIVE
+        <div className="text-center max-w-4xl mx-auto mb-16">
+            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/5 border border-white/10 text-xs font-bold text-violet-300 mb-8 animate-fade-in-up">
+                <Sparkles className="w-3.5 h-3.5" /> AI 驱动的全流程视频生产工作流
             </div>
-            
-            <h1 className="text-5xl md:text-8xl font-black tracking-tighter mb-6 leading-none text-transparent bg-clip-text bg-gradient-to-b from-white via-white to-white/50 drop-shadow-2xl">
-                FUTURE OF <br/>
-                VIDEO CREATION
+            <h1 className="text-5xl md:text-7xl font-extrabold tracking-tight mb-8 leading-tight">
+                从灵感到爆款视频 <br/>
+                <span className="text-transparent bg-clip-text bg-gradient-to-r from-violet-400 via-fuchsia-400 to-white">
+                    只需一个核心观点
+                </span>
             </h1>
-            
-            <p className="text-base md:text-lg text-slate-400 max-w-2xl mx-auto leading-relaxed font-light tracking-wide">
-                由下一代大语言模型驱动的智能生产引擎。<br className="hidden md:block"/>
-                <span className="text-slate-500">脚本 / 分镜 / 画面 / 策略</span> 一站式自动化生成。
+            <p className="text-lg text-slate-400 max-w-2xl mx-auto leading-relaxed">
+                自动化完成脚本撰写、分镜设计、画面生成与封面策划。
+                专为内容创作者打造的智能生产力引擎。
             </p>
         </div>
 
         {/* Feature Grid */}
-        <div className="w-full max-w-6xl">
-             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="w-full">
+             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
                  <FeatureCard 
-                    icon={Cpu} 
-                    title="核心逻辑解析" 
-                    desc="Deep logic analysis for core concepts." 
+                    icon={Wand2} 
+                    title="智能脚本生成" 
+                    desc="基于Gemini 2.5大模型，深度解析核心观点，自动生成逻辑严密、引人入胜的长视频脚本。" 
                  />
                  <FeatureCard 
                     icon={Layers} 
-                    title="分镜系统" 
-                    desc="Automated storyboard breakdown." 
+                    title="分镜自动化" 
+                    desc="一键将文案拆解为可视化的分镜描述，精确控制画面构图、光影与运镜方式。" 
                  />
                  <FeatureCard 
                     icon={ImageIcon} 
-                    title="视觉生成" 
-                    desc="High-fidelity image synthesis." 
+                    title="批量生图工坊" 
+                    desc="集成AI绘图能力，并行生成高分辨率分镜画面，支持16:9电影质感输出。" 
                  />
                  <FeatureCard 
                     icon={Zap} 
-                    title="流量策略" 
-                    desc="Viral title & thumbnail optimization." 
+                    title="爆款标题策划" 
+                    desc="基于全网热门逻辑，智能生成高点击率标题与封面文案，提升视频完播率。" 
                  />
              </div>
         </div>
+
       </main>
 
-      {/* --- Footer --- */}
-      <footer className="relative z-10 border-t border-white/5 py-6 text-center text-slate-600 text-[10px] font-mono uppercase tracking-widest bg-[#050508]/80 backdrop-blur-md">
-         <p>System Version 2.0.5 // Powered by Google Cloud Vertex AI</p>
+      {/* Footer */}
+      <footer className="relative z-10 border-t border-white/5 py-6 text-center text-slate-500 text-xs">
+         <p>© 2025 Long Video Assistant Pro. Powered by Google Gemini.</p>
       </footer>
 
-      {/* --- Login Modal --- */}
+      {/* Login Modal */}
       {showLogin && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
-            <div className="absolute inset-0 bg-black/90 backdrop-blur-md" onClick={() => setShowLogin(false)} />
-            <div className="bg-[#0a0a0f] border border-white/10 rounded-2xl p-8 w-full max-w-sm relative shadow-[0_0_50px_rgba(139,92,246,0.1)] animate-in zoom-in-95 duration-200">
+            <div className="absolute inset-0 bg-black/80 backdrop-blur-sm" onClick={() => setShowLogin(false)} />
+            <div className="bg-slate-900 border border-white/10 rounded-3xl p-10 w-full max-w-md relative shadow-2xl shadow-violet-500/10 animate-in zoom-in-95 duration-200">
                 <button 
                     onClick={() => setShowLogin(false)}
-                    className="absolute top-4 right-4 text-slate-600 hover:text-white transition-colors"
+                    className="absolute top-4 right-4 text-slate-500 hover:text-white transition-colors"
                 >
-                    <X className="w-5 h-5" />
+                    <X className="w-6 h-6" />
                 </button>
 
-                <div className="text-center mb-8">
-                    <div className="w-12 h-12 bg-violet-600/10 rounded-full flex items-center justify-center mx-auto mb-4 border border-violet-500/20">
-                        <ShieldCheck className="w-6 h-6 text-violet-400" />
-                    </div>
-                    <h2 className="text-lg font-bold text-white tracking-wide">SECURITY CHECK</h2>
-                    <p className="text-slate-500 text-xs mt-1">Authorized Personnel Only</p>
+                <div className="w-16 h-16 bg-gradient-to-br from-violet-600 to-indigo-600 rounded-2xl flex items-center justify-center mx-auto mb-6 shadow-lg shadow-violet-500/20">
+                    <ShieldCheck className="w-8 h-8 text-white" />
                 </div>
+                
+                <h2 className="text-2xl font-bold text-center mb-2">欢迎回来</h2>
+                <p className="text-slate-400 text-center mb-8 text-sm">请输入访问密码进入私人工作空间</p>
 
-                <form onSubmit={handleLogin} className="space-y-5">
-                    <div className="space-y-2">
-                         <div className="relative">
-                            <input 
-                                type="password" 
-                                autoFocus
-                                placeholder="ACCESS CODE"
-                                value={password}
-                                onChange={(e) => {
-                                    setPassword(e.target.value);
-                                    setError(false);
-                                }}
-                                className={`w-full bg-black border ${error ? 'border-rose-900 text-rose-500' : 'border-white/10 focus:border-violet-500/50'} rounded-lg px-4 py-3 text-center text-base font-mono tracking-[0.2em] outline-none transition-all placeholder:text-slate-700 text-white`}
-                            />
-                        </div>
+                <form onSubmit={handleLogin} className="space-y-6">
+                    <div>
+                        <input 
+                            type="password" 
+                            autoFocus
+                            placeholder="输入密码"
+                            value={password}
+                            onChange={(e) => {
+                                setPassword(e.target.value);
+                                setError(false);
+                            }}
+                            className={`w-full bg-black/50 border ${error ? 'border-rose-500/50 text-rose-500' : 'border-white/10 focus:border-violet-500'} rounded-xl px-4 py-4 text-center text-lg font-bold tracking-widest outline-none transition-all placeholder:text-slate-600 text-white`}
+                        />
                          {error && (
-                            <p className="text-rose-500 text-[10px] font-mono text-center animate-pulse">
-                                [ERROR] INVALID CREDENTIALS
+                            <p className="text-rose-500 text-xs font-bold text-center mt-2 animate-pulse">
+                                密码错误，请重试
                             </p>
                         )}
                     </div>
                     <button 
                         type="submit"
-                        className="w-full py-3 bg-white text-black font-bold rounded-lg hover:bg-violet-100 transition-all flex items-center justify-center gap-2 text-xs tracking-widest"
+                        className="w-full py-4 bg-white text-slate-950 font-bold rounded-xl hover:bg-slate-200 transition-all flex items-center justify-center gap-2"
                     >
-                        AUTHENTICATE
+                        立即进入 <ArrowRight className="w-5 h-5" />
                     </button>
                 </form>
             </div>
         </div>
       )}
-      
-      <style>{`
-        @keyframes pulse-slow {
-          0%, 100% { opacity: 0.3; transform: scale(1); }
-          50% { opacity: 0.15; transform: scale(1.1); }
-        }
-        .animate-pulse-slow {
-          animation: pulse-slow 8s infinite ease-in-out;
-        }
-      `}</style>
     </div>
   );
 };
