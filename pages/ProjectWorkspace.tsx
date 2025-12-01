@@ -142,6 +142,7 @@ const ProjectWorkspace: React.FC = () => {
 
   // Processing State
   const [saving, setSaving] = useState(false);
+  const [saveSuccess, setSaveSuccess] = useState(false);
   const [generatingNodes, setGeneratingNodes] = useState<Set<string>>(new Set());
   const [error, setError] = useState<string | null>(null);
 
@@ -222,7 +223,11 @@ const ProjectWorkspace: React.FC = () => {
   }, []);
 
   const saveWork = async (updatedProject: ProjectData) => {
-    if (mountedRef.current) setSaving(true);
+    if (mountedRef.current) {
+        setSaving(true);
+        setSaveSuccess(false);
+    }
+    
     // Optimistic Update
     if (mountedRef.current) {
         setProject(updatedProject);
@@ -233,7 +238,14 @@ const ProjectWorkspace: React.FC = () => {
     
     // API Call
     await storage.saveProject(updatedProject);
-    if (mountedRef.current) setSaving(false);
+    
+    if (mountedRef.current) {
+        setSaving(false);
+        setSaveSuccess(true);
+        setTimeout(() => {
+            if (mountedRef.current) setSaveSuccess(false);
+        }, 2000);
+    }
   };
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
@@ -987,10 +999,15 @@ const ProjectWorkspace: React.FC = () => {
             <div className="pt-4 mt-auto">
                 <button 
                     onClick={() => saveWork(project)}
-                    className="w-full flex items-center justify-center gap-2 bg-slate-900 text-white py-3.5 rounded-xl text-sm hover:bg-slate-800 transition-all font-bold shadow-lg shadow-slate-900/10 hover:shadow-slate-900/20"
+                    disabled={saving || saveSuccess}
+                    className={`w-full flex items-center justify-center gap-2 py-3.5 rounded-xl text-sm font-bold shadow-lg transition-all ${
+                        saveSuccess 
+                        ? 'bg-emerald-500 text-white shadow-emerald-500/20' 
+                        : 'bg-slate-900 text-white hover:bg-slate-800 shadow-slate-900/10 hover:shadow-slate-900/20'
+                    }`}
                 >
-                    {saving ? <Loader2 className="w-3.5 h-3.5 animate-spin"/> : <Save className="w-3.5 h-3.5"/>}
-                    保存概览信息
+                    {saving ? <Loader2 className="w-3.5 h-3.5 animate-spin"/> : saveSuccess ? <Check className="w-3.5 h-3.5" /> : <Save className="w-3.5 h-3.5"/>}
+                    {saveSuccess ? '已保存' : '保存概览信息'}
                 </button>
             </div>
         </div>
@@ -1038,10 +1055,15 @@ const ProjectWorkspace: React.FC = () => {
 
             <button 
                 onClick={() => saveWork(project)}
-                className="px-5 py-2.5 bg-gradient-to-r from-slate-900 to-slate-800 text-white rounded-xl hover:shadow-lg hover:shadow-slate-500/20 transition-all hover:-translate-y-0.5 flex items-center gap-2 font-medium text-sm backdrop-blur-md"
+                disabled={saving || saveSuccess}
+                className={`px-5 py-2.5 rounded-xl transition-all flex items-center gap-2 font-medium text-sm backdrop-blur-md ${
+                    saveSuccess 
+                    ? 'bg-emerald-500 text-white shadow-lg shadow-emerald-500/20' 
+                    : 'bg-gradient-to-r from-slate-900 to-slate-800 text-white hover:shadow-lg hover:shadow-slate-500/20 hover:-translate-y-0.5'
+                }`}
             >
-                {saving ? <Loader2 className="w-4 h-4 animate-spin"/> : <Save className="w-4 h-4"/>}
-                保存进度
+                {saving ? <Loader2 className="w-4 h-4 animate-spin"/> : saveSuccess ? <Check className="w-4 h-4" /> : <Save className="w-4 h-4"/>}
+                {saveSuccess ? '已保存' : '保存进度'}
             </button>
         </div>
 
