@@ -4,7 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import { Inspiration, ProjectData, ProjectStatus } from '../types';
 import * as storage from '../services/storageService';
 import * as gemini from '../services/geminiService';
-import { Lightbulb, Plus, Trash2, Loader2, Sparkles, X, Save, FileSpreadsheet, ArrowLeft, CheckCircle2, Star, ArrowUpDown, ArrowUp, ArrowDown, Rocket, CheckSquare, Square, Filter } from 'lucide-react';
+import { Lightbulb, Plus, Trash2, Loader2, Sparkles, X, Save, FileSpreadsheet, ArrowLeft, CheckCircle2, Star, ArrowUpDown, ArrowUp, ArrowDown, Rocket, CheckSquare, Square, Filter, Download } from 'lucide-react';
 
 const InspirationRepo: React.FC = () => {
   const navigate = useNavigate();
@@ -124,6 +124,40 @@ const InspirationRepo: React.FC = () => {
 
     await storage.saveProject(newProject);
     navigate(`/project/${newId}`);
+  };
+
+  const handleDownloadExcel = () => {
+    if (sortedInspirations.length === 0) {
+        alert("暂无数据可导出");
+        return;
+    }
+
+    // Add BOM for Excel UTF-8 compatibility
+    let csvContent = "\uFEFF"; 
+    
+    // Headers
+    csvContent += "序号,分类,标题,评分,原始内容,创建时间\n";
+    
+    sortedInspirations.forEach((item, index) => {
+        const row = [
+            index + 1,
+            `"${(item.category || '').replace(/"/g, '""')}"`,
+            `"${(item.viralTitle || '').replace(/"/g, '""')}"`,
+            `"${(item.rating || '').replace(/"/g, '""')}"`,
+            `"${(item.content || '').replace(/"/g, '""').replace(/\n/g, ' ')}"`,
+            new Date(item.createdAt).toLocaleString('zh-CN')
+        ];
+        csvContent += row.join(",") + "\n";
+    });
+
+    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.setAttribute("href", url);
+    link.setAttribute("download", `灵感仓库_${new Date().toISOString().split('T')[0]}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
   };
 
   const resetModal = () => {
@@ -337,12 +371,20 @@ const InspirationRepo: React.FC = () => {
           </h1>
           <p className="text-slate-500 font-medium">收集灵感，打造爆款选题库。</p>
         </div>
-        <button 
-          onClick={() => setShowModal(true)}
-          className="bg-amber-500 hover:bg-amber-600 text-white px-6 py-3 rounded-xl font-bold shadow-lg shadow-amber-500/30 flex items-center gap-2 transition-all hover:-translate-y-0.5"
-        >
-          <Plus className="w-5 h-5" /> 记录新灵感
-        </button>
+        <div className="flex gap-3">
+            <button 
+                onClick={handleDownloadExcel}
+                className="bg-white border border-slate-200 text-slate-600 hover:text-amber-600 hover:border-amber-200 px-4 py-3 rounded-xl font-bold shadow-sm transition-all flex items-center gap-2"
+            >
+                <Download className="w-5 h-5" /> 导出表格
+            </button>
+            <button 
+                onClick={() => setShowModal(true)}
+                className="bg-amber-500 hover:bg-amber-600 text-white px-6 py-3 rounded-xl font-bold shadow-lg shadow-amber-500/30 flex items-center gap-2 transition-all hover:-translate-y-0.5"
+            >
+                <Plus className="w-5 h-5" /> 记录新灵感
+            </button>
+        </div>
       </div>
 
       {loading ? (
