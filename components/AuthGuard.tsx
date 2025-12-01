@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Lock, ArrowRight, ShieldCheck, Home } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
