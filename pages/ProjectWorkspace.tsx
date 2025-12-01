@@ -307,7 +307,10 @@ const ProjectWorkspace: React.FC = () => {
     
     try {
       // 2. Heavy AI Work
-      const promptText = interpolatePrompt(prompts.SCRIPT.template, { ...currentInputs });
+      const promptText = interpolatePrompt(prompts.SCRIPT.template, { 
+          ...currentInputs,
+          title: projectRef.current?.title || ''
+      });
       const script = await gemini.generateText(promptText);
       
       // 3. Atomic Update to Storage (Background Safe)
@@ -340,7 +343,10 @@ const ProjectWorkspace: React.FC = () => {
     if (mountedRef.current) setError(null);
     try {
       // 2. Heavy AI Work
-      const promptText = interpolatePrompt(prompts.STORYBOARD_TEXT.template, { script: currentScript });
+      const promptText = interpolatePrompt(prompts.STORYBOARD_TEXT.template, { 
+          script: currentScript,
+          title: projectRef.current?.title || ''
+      });
       const framesData = await gemini.generateJSON<{description: string}[]>(promptText, {
         type: "ARRAY",
         items: {
@@ -385,6 +391,7 @@ const ProjectWorkspace: React.FC = () => {
     try {
       const promptText = interpolatePrompt(prompts.TITLES.template, { 
           ...currentInputs,
+          title: projectRef.current?.title || '',
           script: currentScript 
       });
       
@@ -424,7 +431,10 @@ const ProjectWorkspace: React.FC = () => {
     setNodeLoading('summary', true);
     if (mountedRef.current) setError(null);
     try {
-      const promptText = interpolatePrompt(prompts.SUMMARY.template, { script: currentScript });
+      const promptText = interpolatePrompt(prompts.SUMMARY.template, { 
+          script: currentScript,
+          title: projectRef.current?.title || ''
+      });
       const summary = await gemini.generateText(promptText);
       
       // Atomic Update
@@ -455,6 +465,7 @@ const ProjectWorkspace: React.FC = () => {
     try {
       const promptText = interpolatePrompt(prompts.COVER_GEN.template, { 
           ...currentInputs,
+          title: projectRef.current?.title || '',
           script: currentScript
       });
       
