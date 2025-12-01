@@ -1,9 +1,11 @@
-import { ProjectData, PromptTemplate, DEFAULT_PROMPTS, ProjectStatus } from '../types';
+
+import { ProjectData, PromptTemplate, DEFAULT_PROMPTS, ProjectStatus, Inspiration } from '../types';
 
 // API Endpoints
 const API_BASE = '/api';
 const LOCAL_KEY_PROJECTS = 'lva_projects';
 const LOCAL_KEY_PROMPTS = 'lva_prompts';
+const LOCAL_KEY_INSPIRATIONS = 'lva_inspirations';
 
 // --- LocalStorage Helpers ---
 
@@ -23,6 +25,19 @@ const saveLocalProjects = (projects: ProjectData[]) => {
   } catch (e) {
     console.warn("LocalStorage Write Error", e);
   }
+};
+
+const getLocalInspirations = (): Inspiration[] => {
+  try {
+    const data = localStorage.getItem(LOCAL_KEY_INSPIRATIONS);
+    return data ? JSON.parse(data) : [];
+  } catch (e) {
+    return [];
+  }
+};
+
+const saveLocalInspirations = (inspirations: Inspiration[]) => {
+  localStorage.setItem(LOCAL_KEY_INSPIRATIONS, JSON.stringify(inspirations));
 };
 
 // --- Service Methods ---
@@ -179,4 +194,50 @@ export const savePrompts = async (prompts: Record<string, PromptTemplate>): Prom
 
 export const resetPrompts = async (): Promise<void> => {
   await savePrompts(DEFAULT_PROMPTS);
+};
+
+// --- Inspiration Methods ---
+
+export const getInspirations = async (): Promise<Inspiration[]> => {
+  try {
+    const res = await fetch(`${API_BASE}/inspirations`);
+    if (res.ok) {
+      const data = await res.json();
+      saveLocalInspirations(data);
+      return data;
+    }
+  } catch (e) {}
+  return getLocalInspirations();
+};
+
+export const saveInspiration = async (item: Inspiration): Promise<void> => {
+  // Local
+  const list = getLocalInspirations();
+  const index = list.findIndex(i => i.id === item.id);
+  if (index >= 0) list[index] = item;
+  else list.push(item);
+  saveLocalInspirations(list);
+
+  // API
+  try {
+    await fetch(`${API_BASE}/inspirations`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(item)
+    });
+  } catch (e) {
+    console.warn("API Save Inspiration Error", e);
+  }
+};
+
+export const deleteInspiration = async (id: string): Promise<void> => {
+  // Local
+  const list = getLocalInspirations();
+  const filtered = list.filter(i => i.id !== id);
+  saveLocalInspirations(filtered);
+
+  // API
+  try {
+    await fetch(`${API_BASE}/inspirations/${id}`, { method: 'DELETE' });
+  } catch (e) {}
 };
