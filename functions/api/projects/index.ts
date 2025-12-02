@@ -3,9 +3,16 @@ interface Env {
   DB: any;
 }
 
+const ensureTable = async (db: any) => {
+  await db.prepare("CREATE TABLE IF NOT EXISTS projects (id TEXT PRIMARY KEY, title TEXT, status TEXT, created_at INTEGER, updated_at INTEGER, data TEXT)").run();
+};
+
 export const onRequestGet = async (context: any) => {
   try {
-    const { results } = await context.env.DB.prepare(
+    const db = context.env.DB;
+    await ensureTable(db);
+
+    const { results } = await db.prepare(
       "SELECT * FROM projects ORDER BY updated_at DESC"
     ).all();
     
@@ -23,10 +30,13 @@ export const onRequestGet = async (context: any) => {
 
 export const onRequestPost = async (context: any) => {
   try {
+    const db = context.env.DB;
+    await ensureTable(db);
+
     const project = await context.request.json() as any;
     
     // We store metadata in columns for querying, and the full object in 'data' column
-    await context.env.DB.prepare(
+    await db.prepare(
       `INSERT INTO projects (id, title, status, created_at, updated_at, data) 
        VALUES (?, ?, ?, ?, ?, ?)
        ON CONFLICT(id) DO UPDATE SET
