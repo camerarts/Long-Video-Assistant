@@ -1,268 +1,465 @@
+import { ProjectData, PromptTemplate, DEFAULT_PROMPTS, ProjectStatus, Inspiration } from '../types';
 
-import React, { useState, useEffect } from 'react';
-import { PromptTemplate } from '../types';
-import * as storage from '../services/storageService';
-import { Save, RefreshCw, AlertTriangle, ClipboardPaste, Check, Maximize2, X, Loader2, Copy } from 'lucide-react';
+// API Endpoints
+const API_BASE = '/api';
+const DB_NAME = 'LVA_DB';
+const DB_VERSION = 1;
+const STORE_PROJECTS = 'projects';
+const STORE_INSPIRATIONS = 'inspirations';
+const KEY_PROMPTS = 'lva_prompts'; 
+const KEY_LAST_UPLOAD = 'lva_last_upload_time';
+const KEY_LAST_LOCAL_CHANGE = 'lva_last_local_change_time';
 
-const Settings: React.FC = () => {
-  const [prompts, setPrompts] = useState<Record<string, PromptTemplate>>({});
-  const [loading, setLoading] = useState(false);
-  const [message, setMessage] = useState<string | null>(null);
-  const [expandedKey, setExpandedKey] = useState<string | null>(null);
-  const [refreshTime, setRefreshTime] = useState('');
-  
-  // Track modified prompts that haven't been saved
-  const [dirtyKeys, setDirtyKeys] = useState<Set<string>>(new Set());
+// --- IndexedDB Helpers ---
 
-  // Define the strict display order
-  const ORDERED_KEYS = [
-    'SCRIPT',
-    'STORYBOARD_TEXT',
-    'IMAGE_GEN',
-    'TITLES',
-    'SUMMARY',
-    'COVER_GEN'
-  ];
-
-  useEffect(() => {
-    loadPrompts();
-  }, []);
-
-  const loadPrompts = async () => {
-    const data = await storage.getPrompts();
-    setPrompts(data);
-    setRefreshTime(`刷新数据时间：${storage.getLastUploadTime()}`);
-  };
-
-  const handleSaveModule = async (key: string) => {
-    setLoading(true);
-    // Since storage handles the whole object, we save all, but conceptually we are "saving the module"
-    // This cleans up the dirty state for this specific module (and technically others if we wanted, but let's be precise or broad)
-    await storage.savePrompts(prompts);
+const openDB = (): Promise<IDBDatabase> => {
+  return new Promise((resolve, reject) => {
+    const request = indexedDB.open(DB_NAME, DB_VERSION);
     
-    // Clear dirty state for all, as the whole state is now persisted
-    setDirtyKeys(new Set());
-    
-    setTimeout(() => {
-      setLoading(false);
-      setMessage("配置已保存！");
-      setTimeout(() => setMessage(null), 3000);
-    }, 500);
-  };
-
-  const handlePromptChange = (key: string, value: string) => {
-    setPrompts(prev => ({
-      ...prev,
-      [key]: { ...prev[key], template: value }
-    }));
-    setDirtyKeys(prev => new Set(prev).add(key));
-  };
-
-  const handleCopy = (text: string) => {
-    if (navigator.clipboard) {
-        navigator.clipboard.writeText(text);
-        setMessage("已复制到剪贴板");
-        setTimeout(() => setMessage(null), 1500);
-    } else {
-        alert("无法访问剪贴板");
-    }
-  };
-
-  const handlePaste = async (key: string) => {
-    // Check if API is available
-    if (!navigator.clipboard) {
-      alert("您的浏览器不支持自动读取剪贴板，请点击文本框后使用 Ctrl+V (或 Cmd+V) 手动粘贴。");
-      return;
-    }
-
-    try {
-      const text = await navigator.clipboard.readText();
-      if (text) {
-        handlePromptChange(key, text);
-        setMessage("已粘贴剪贴板内容");
-        setTimeout(() => setMessage(null), 1500);
-      } else {
-        setMessage("剪贴板似乎是空的");
-        setTimeout(() => setMessage(null), 1500);
+    request.onupgradeneeded = (event) => {
+      const db = (event.target as IDBOpenDBRequest).result;
+      if (!db.objectStoreNames.contains(STORE_PROJECTS)) {
+        db.createObjectStore(STORE_PROJECTS, { keyPath: 'id' });
       }
-    } catch (err) {
-      console.error('Failed to read clipboard contents: ', err);
-      alert("无法访问剪贴板。请确保您已允许浏览器访问剪贴板权限，或者直接在文本框中使用快捷键粘贴。");
-    }
-  };
+      if (!db.objectStoreNames.contains(STORE_INSPIRATIONS)) {
+        db.createObjectStore(STORE_INSPIRATIONS, { keyPath: 'id' });
+      }
+    };
 
-  return (
-    <div className="max-w-6xl mx-auto pb-20">
-      <div className="flex justify-between items-end mb-10">
-        <div>
-          <h1 className="text-4xl font-extrabold text-slate-900 mb-2 tracking-tight">AI 提示词配置</h1>
-          <p className="text-slate-500 font-medium">精细化控制内容生成的每一个环节。</p>
-        </div>
-        <div className="flex flex-col items-end gap-2">
-            <span className="text-[10px] font-bold text-slate-400 tracking-wider bg-slate-50 px-2 py-1 rounded-md border border-slate-100">
-                {refreshTime}
-            </span>
-        </div>
-      </div>
+    request.onsuccess = (event) => {
+      resolve((event.target as IDBOpenDBRequest).result);
+    };
 
-      {message && (
-        <div className="fixed bottom-8 right-8 bg-emerald-500 text-white px-8 py-4 rounded-xl shadow-xl animate-fade-in-up z-50 font-bold flex items-center gap-2">
-          <Check className="w-5 h-5" />
-          {message}
-        </div>
-      )}
-
-      <div className="space-y-10">
-        <div className="bg-amber-50/50 border border-amber-100 p-5 rounded-xl flex gap-4 items-start shadow-sm">
-            <div className="p-2 bg-amber-100 rounded-lg text-amber-600">
-                <AlertTriangle className="w-5 h-5" />
-            </div>
-            <div className="space-y-1">
-                <p className="font-bold text-amber-800 text-sm">变量使用指南</p>
-                <p className="text-xs text-amber-700/80 leading-relaxed">
-                    在提示词中使用 <code>{'{{variable}}'}</code> 语法来插入动态内容。
-                    可用变量：<code>topic</code> (主题), <code>corePoint</code> (观点), <code>script</code> (生成的脚本)。
-                </p>
-            </div>
-        </div>
-
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-          {ORDERED_KEYS.map((key, index) => {
-            const prompt = prompts[key];
-            if (!prompt) return null;
-            const isDirty = dirtyKeys.has(key);
-
-            return (
-              <div key={key} className="bg-white border border-slate-100 rounded-3xl p-8 shadow-[0_2px_10px_-4px_rgba(0,0,0,0.05)] relative group hover:shadow-[0_20px_40px_-12px_rgba(0,0,0,0.1)] transition-all hover:-translate-y-1 flex flex-col">
-                
-                <div className="flex justify-between items-start mb-6">
-                  <div>
-                    <h3 className="text-xl font-bold text-slate-800 flex items-center gap-3">
-                        <span className="flex-shrink-0 w-7 h-7 rounded-full bg-rose-500 text-white text-sm font-bold flex items-center justify-center shadow-lg shadow-rose-500/30 select-none">
-                            {index + 1}
-                        </span>
-                        {prompt.name}
-                        <button 
-                            onClick={() => handleCopy(prompt.template)}
-                            className="ml-1 p-1.5 text-slate-400 hover:text-violet-600 bg-transparent hover:bg-violet-50 rounded-lg transition-colors"
-                            title="复制内容"
-                        >
-                            <Copy className="w-4 h-4" />
-                        </button>
-                    </h3>
-                    <p className="text-xs font-medium text-slate-400 mt-1 pl-10">{prompt.description}</p>
-                  </div>
-                  <div className="flex flex-col items-end gap-3">
-                    {/* Key Tag */}
-                    <span className="text-[10px] font-mono font-bold bg-slate-50 text-slate-400 px-2 py-1 rounded-md border border-slate-100">
-                        {key}
-                    </span>
-                    {/* Paste Button */}
-                    <button 
-                        onClick={() => handlePaste(key)}
-                        className="flex items-center gap-1.5 text-xs font-bold text-slate-500 hover:text-violet-600 transition-colors bg-white hover:bg-violet-50 px-3 py-1.5 rounded-lg border border-slate-200 hover:border-violet-200 shadow-sm"
-                        title="粘贴剪贴板内容"
-                    >
-                        <ClipboardPaste className="w-3.5 h-3.5" />
-                        <span>粘贴</span>
-                    </button>
-                  </div>
-                </div>
-                
-                <div className="relative group/textarea flex-1 mb-4">
-                    <textarea
-                        value={prompt.template}
-                        onChange={(e) => handlePromptChange(key, e.target.value)}
-                        className={`w-full h-56 rounded-2xl p-5 font-mono text-xs leading-loose outline-none transition-all resize-none selection:bg-violet-100 ${
-                            isDirty 
-                            ? 'bg-rose-50 border-2 border-rose-200 text-slate-800 focus:border-rose-400' 
-                            : 'bg-[#FAFAFA] border border-slate-200 text-slate-700 focus:ring-2 focus:ring-violet-500/20 focus:border-violet-400 focus:bg-white'
-                        }`}
-                    />
-                    <button 
-                        onClick={() => setExpandedKey(key)}
-                        className="absolute top-3 right-3 p-2 bg-white/90 backdrop-blur text-slate-400 hover:text-violet-600 rounded-lg shadow-sm border border-slate-200 opacity-0 group-hover/textarea:opacity-100 transition-all hover:scale-105"
-                        title="全屏编辑"
-                    >
-                        <Maximize2 className="w-4 h-4" />
-                    </button>
-                </div>
-
-                <div className="pt-2">
-                    <button
-                        onClick={() => handleSaveModule(key)}
-                        className={`w-full py-3 rounded-xl font-bold text-sm transition-all flex items-center justify-center gap-2 ${
-                            isDirty
-                            ? 'bg-rose-500 hover:bg-rose-600 text-white shadow-lg shadow-rose-500/30'
-                            : 'bg-slate-100 hover:bg-slate-200 text-slate-500'
-                        }`}
-                    >
-                        {loading && isDirty ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
-                        {isDirty ? '保存配置' : '已是最新'}
-                    </button>
-                </div>
-              </div>
-            );
-          })}
-        </div>
-      </div>
-
-      {/* Full Screen Editor Modal */}
-      {expandedKey && prompts[expandedKey] && (
-        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in duration-200">
-            <div className="bg-white rounded-3xl shadow-2xl w-[90vw] h-[85vh] flex flex-col overflow-hidden animate-in zoom-in-95 duration-200">
-                <div className="px-8 py-5 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
-                    <div>
-                        <h2 className="text-xl font-extrabold text-slate-800 flex items-center gap-2">
-                            {prompts[expandedKey].name}
-                            <span className="text-sm font-medium text-slate-400 bg-white px-2 py-0.5 rounded border border-slate-200">{expandedKey}</span>
-                        </h2>
-                    </div>
-                    <button onClick={() => setExpandedKey(null)} className="p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-full transition-colors">
-                        <X className="w-6 h-6" />
-                    </button>
-                </div>
-                <div className="flex-1 p-6 bg-[#FAFAFA]">
-                    <textarea
-                        autoFocus
-                        value={prompts[expandedKey].template}
-                        onChange={(e) => handlePromptChange(expandedKey, e.target.value)}
-                        className={`w-full h-full border rounded-2xl p-8 text-slate-800 font-mono text-sm leading-loose focus:ring-0 outline-none transition-all resize-none shadow-sm selection:bg-violet-100 ${
-                            dirtyKeys.has(expandedKey)
-                            ? 'bg-rose-50 border-rose-200'
-                            : 'bg-white border-slate-200 focus:border-violet-400'
-                        }`}
-                        placeholder="输入提示词..."
-                    />
-                </div>
-                <div className="px-8 py-4 border-t border-slate-100 bg-white flex justify-end gap-3">
-                    <button 
-                        onClick={() => handlePaste(expandedKey)}
-                        className="px-4 py-2 text-slate-500 hover:text-violet-600 font-bold text-sm bg-slate-50 hover:bg-violet-50 rounded-xl transition-colors border border-slate-200 hover:border-violet-200"
-                    >
-                        <ClipboardPaste className="w-4 h-4 inline mr-1.5" /> 粘贴剪贴板
-                    </button>
-                    <button 
-                        onClick={() => {
-                            if (dirtyKeys.has(expandedKey)) {
-                                handleSaveModule(expandedKey);
-                            }
-                            setExpandedKey(null);
-                        }}
-                        className={`px-6 py-2 font-bold rounded-xl transition-colors shadow-lg ${
-                            dirtyKeys.has(expandedKey)
-                            ? 'bg-rose-500 text-white hover:bg-rose-600 shadow-rose-500/20'
-                            : 'bg-slate-900 text-white hover:bg-slate-800 shadow-slate-900/10'
-                        }`}
-                    >
-                        {dirtyKeys.has(expandedKey) ? '保存并关闭' : '关闭'}
-                    </button>
-                </div>
-            </div>
-        </div>
-      )}
-    </div>
-  );
+    request.onerror = (event) => {
+      reject((event.target as IDBOpenDBRequest).error);
+    };
+  });
 };
 
-export default Settings;
+const dbGetAll = async <T>(storeName: string): Promise<T[]> => {
+  const db = await openDB();
+  return new Promise((resolve, reject) => {
+    const transaction = db.transaction(storeName, 'readonly');
+    const store = transaction.objectStore(storeName);
+    const request = store.getAll();
+    request.onsuccess = () => resolve(request.result as T[]);
+    request.onerror = () => reject(request.error);
+  });
+};
+
+const dbGet = async <T>(storeName: string, key: string): Promise<T | undefined> => {
+  const db = await openDB();
+  return new Promise((resolve, reject) => {
+    const transaction = db.transaction(storeName, 'readonly');
+    const store = transaction.objectStore(storeName);
+    const request = store.get(key);
+    request.onsuccess = () => resolve(request.result as T);
+    request.onerror = () => reject(request.error);
+  });
+};
+
+const dbPut = async <T>(storeName: string, value: T): Promise<void> => {
+  const db = await openDB();
+  return new Promise((resolve, reject) => {
+    const transaction = db.transaction(storeName, 'readwrite');
+    const store = transaction.objectStore(storeName);
+    const request = store.put(value);
+    request.onsuccess = () => resolve();
+    request.onerror = () => reject(request.error);
+  });
+};
+
+const dbDelete = async (storeName: string, key: string): Promise<void> => {
+  const db = await openDB();
+  return new Promise((resolve, reject) => {
+    const transaction = db.transaction(storeName, 'readwrite');
+    const store = transaction.objectStore(storeName);
+    const request = store.delete(key);
+    request.onsuccess = () => resolve();
+    request.onerror = () => reject(request.error);
+  });
+};
+
+// --- Mutex for Atomic Updates ---
+class Mutex {
+  private queue: Promise<void> = Promise.resolve();
+
+  async lock<T>(task: () => Promise<T>): Promise<T> {
+    let release: () => void;
+    const currentLock = new Promise<void>(resolve => { release = resolve; });
+    
+    // Wait for previous task
+    const previous = this.queue;
+    this.queue = this.queue.then(() => currentLock);
+
+    await previous;
+    
+    try {
+      return await task();
+    } finally {
+      release!();
+    }
+  }
+}
+
+const projectMutex = new Mutex();
+
+// --- Manual Sync Methods (D1 Bulk) ---
+
+export const trackChange = () => {
+  localStorage.setItem(KEY_LAST_LOCAL_CHANGE, Date.now().toString());
+};
+
+export const hasUnsavedChanges = (): boolean => {
+  const lastUpload = parseInt(localStorage.getItem(KEY_LAST_UPLOAD) || '0');
+  const lastChange = parseInt(localStorage.getItem(KEY_LAST_LOCAL_CHANGE) || '0');
+  // If we have changes newer than the last upload, return true
+  return lastChange > lastUpload;
+};
+
+export const getLastUploadTime = (): string => {
+  const ts = localStorage.getItem(KEY_LAST_UPLOAD);
+  if (!ts) return '从未上传';
+  const date = new Date(parseInt(ts));
+  const pad = (n: number) => n.toString().padStart(2, '0');
+  return `${date.getFullYear()}年${date.getMonth() + 1}月${date.getDate()}日 / ${pad(date.getHours())}：${pad(date.getMinutes())}：${pad(date.getSeconds())}`;
+};
+
+export const updateLastUploadTime = () => {
+  localStorage.setItem(KEY_LAST_UPLOAD, Date.now().toString());
+};
+
+// Granular Upload Functions for Progress Tracking
+
+export const uploadProjects = async (): Promise<void> => {
+  const projects = await dbGetAll<ProjectData>(STORE_PROJECTS);
+  
+  // SANITIZATION: Remove Base64 images from payload
+  // We only want to sync metadata and cloud URLs to D1.
+  const sanitizedProjects = projects.map(p => {
+    const copy = { ...p };
+    
+    if (copy.storyboard) {
+        copy.storyboard = copy.storyboard.map(frame => ({
+            ...frame,
+            // If it's a base64 string (starts with data:), don't send it to server.
+            // If it's a URL (starts with /api/ or http), keep it.
+            imageUrl: frame.imageUrl?.startsWith('data:') ? undefined : frame.imageUrl
+        }));
+    }
+    
+    if (copy.coverImage?.imageUrl?.startsWith('data:')) {
+        copy.coverImage = { ...copy.coverImage, imageUrl: '' };
+    }
+
+    return copy;
+  });
+
+  const payload = { projects: sanitizedProjects };
+  
+  const res = await fetch(`${API_BASE}/sync`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload)
+  });
+
+  if (!res.ok) {
+    const errData = await res.json().catch(() => ({}));
+    throw new Error(errData.error || `Projects upload failed: ${res.statusText}`);
+  }
+};
+
+export const uploadInspirations = async (): Promise<void> => {
+  const inspirations = await dbGetAll<Inspiration>(STORE_INSPIRATIONS);
+  const payload = { inspirations };
+  
+  const res = await fetch(`${API_BASE}/sync`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload)
+  });
+
+  if (!res.ok) {
+    const errData = await res.json().catch(() => ({}));
+    throw new Error(errData.error || `Inspirations upload failed: ${res.statusText}`);
+  }
+};
+
+export const uploadPrompts = async (): Promise<void> => {
+  const promptsStr = localStorage.getItem(KEY_PROMPTS);
+  const prompts = promptsStr ? JSON.parse(promptsStr) : DEFAULT_PROMPTS;
+  const payload = { prompts };
+  
+  const res = await fetch(`${API_BASE}/sync`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload)
+  });
+
+  if (!res.ok) {
+    const errData = await res.json().catch(() => ({}));
+    throw new Error(errData.error || `Settings upload failed: ${res.statusText}`);
+  }
+};
+
+export const downloadAllData = async (): Promise<void> => {
+  // 1. Fetch from D1 Sync Endpoint
+  const res = await fetch(`${API_BASE}/sync`);
+  if (!res.ok) {
+    const errData = await res.json().catch(() => ({}));
+    throw new Error(errData.error || `Download failed: ${res.statusText}`);
+  }
+
+  const data = await res.json();
+
+  // 2. Update Local Stores (Merge/Overwrite)
+  if (data.projects && Array.isArray(data.projects)) {
+    for (const p of data.projects) await dbPut(STORE_PROJECTS, p);
+  }
+  
+  if (data.inspirations && Array.isArray(data.inspirations)) {
+    for (const i of data.inspirations) await dbPut(STORE_INSPIRATIONS, i);
+  }
+  
+  if (data.prompts) {
+    const merged = { ...DEFAULT_PROMPTS, ...data.prompts };
+    localStorage.setItem(KEY_PROMPTS, JSON.stringify(merged));
+  }
+  
+  // Update last upload time to match download (synced state)
+  updateLastUploadTime();
+  // Also sync the local change time so it doesn't show as dirty immediately
+  localStorage.setItem(KEY_LAST_LOCAL_CHANGE, Date.now().toString());
+};
+
+// --- Image Operations (R2) ---
+
+export const uploadImage = async (base64: string, projectId?: string): Promise<string> => {
+  // Convert base64 to blob
+  const byteString = atob(base64.split(',')[1]);
+  const mimeString = base64.split(',')[0].split(':')[1].split(';')[0];
+  const ab = new ArrayBuffer(byteString.length);
+  const ia = new Uint8Array(ab);
+  for (let i = 0; i < byteString.length; i++) {
+    ia[i] = byteString.charCodeAt(i);
+  }
+  const blob = new Blob([ab], { type: mimeString });
+
+  const ext = mimeString.split('/')[1] || 'png';
+  const filename = `${crypto.randomUUID()}.${ext}`;
+
+  // Upload to R2 Endpoint with optional project folder param
+  const url = new URL(`${window.location.origin}${API_BASE}/images/${filename}`);
+  if (projectId) {
+      url.searchParams.set('project', projectId);
+  }
+
+  const res = await fetch(url.toString(), {
+    method: 'PUT',
+    body: blob
+  });
+
+  if (!res.ok) {
+    throw new Error('Image upload failed');
+  }
+  
+  const data = await res.json();
+  return data.url; // e.g. /api/images/encodedPath
+};
+
+export const deleteImage = async (imageUrl: string): Promise<void> => {
+  // Extract key from URL: /api/images/[encodedKey]
+  const match = imageUrl.match(/\/api\/images\/(.+)$/);
+  if (match && match[1]) {
+    try {
+      await fetch(`${API_BASE}/images/${match[1]}`, { method: 'DELETE' });
+    } catch (e) {
+      console.warn("Failed to delete image from R2", e);
+    }
+  }
+};
+
+// --- Local CRUD Methods (No Network) ---
+
+export const getProjects = async (): Promise<ProjectData[]> => {
+  try {
+    return await dbGetAll<ProjectData>(STORE_PROJECTS);
+  } catch (error) {
+    console.error("DB Error", error);
+    return [];
+  }
+};
+
+export const getProject = async (id: string): Promise<ProjectData | undefined> => {
+  try {
+    return await dbGet<ProjectData>(STORE_PROJECTS, id);
+  } catch (e) { 
+    return undefined;
+  }
+};
+
+export const saveProject = async (project: ProjectData): Promise<void> => {
+  const payload = {
+    ...project,
+    updatedAt: Date.now()
+  };
+  await dbPut(STORE_PROJECTS, payload);
+  trackChange();
+};
+
+export const updateProject = async (id: string, updater: (current: ProjectData) => ProjectData): Promise<ProjectData | null> => {
+  return projectMutex.lock(async () => {
+      const current = await dbGet<ProjectData>(STORE_PROJECTS, id);
+      if (!current) return null;
+
+      const updated = updater(current);
+      updated.updatedAt = Date.now();
+      
+      await dbPut(STORE_PROJECTS, updated);
+      trackChange();
+      return updated;
+  });
+};
+
+export const createProject = async (): Promise<string> => {
+  const newProject: ProjectData = {
+    id: crypto.randomUUID(),
+    title: '未命名项目',
+    status: ProjectStatus.DRAFT,
+    createdAt: Date.now(),
+    updatedAt: Date.now(),
+    inputs: {
+      topic: '',
+      corePoint: '',
+      audience: '大众',
+      duration: '10分钟',
+      tone: '信息丰富且引人入胜',
+      language: '中文'
+    }
+  };
+  
+  await saveProject(newProject);
+  return newProject.id;
+};
+
+export const deleteProject = async (id: string): Promise<void> => {
+  // 1. Get project to find images
+  const project = await dbGet<ProjectData>(STORE_PROJECTS, id);
+  
+  if (project) {
+    // 2. Delete cloud images from R2
+    const imagesToDelete: string[] = [];
+    
+    // Collect storyboard images
+    if (project.storyboard) {
+      project.storyboard.forEach(f => {
+        if (f.imageUrl && f.imageUrl.includes('/api/images/')) {
+          imagesToDelete.push(f.imageUrl);
+        }
+      });
+    }
+    
+    // Collect cover image
+    if (project.coverImage?.imageUrl && project.coverImage.imageUrl.includes('/api/images/')) {
+      imagesToDelete.push(project.coverImage.imageUrl);
+    }
+
+    // Execute deletes in background
+    for (const imgUrl of imagesToDelete) {
+      await deleteImage(imgUrl);
+    }
+  }
+
+  // 3. Delete from Local DB
+  await dbDelete(STORE_PROJECTS, id);
+  
+  // 4. Delete from Remote D1
+  try {
+    await fetch(`${API_BASE}/projects/${id}`, { method: 'DELETE' });
+  } catch (e) {
+    console.warn("Failed to delete project from D1", e);
+  }
+
+  trackChange();
+};
+
+// --- Prompts (Auto-Sync to API) ---
+
+export const getPrompts = async (): Promise<Record<string, PromptTemplate>> => {
+  try {
+    // Strategy: ALWAYS attempt to fetch from server first to ensure synchronization
+    const res = await fetch(`${API_BASE}/prompts`);
+    if (res.ok) {
+        const serverData = await res.json();
+        if (serverData) {
+             const merged = { ...DEFAULT_PROMPTS, ...serverData };
+             localStorage.setItem(KEY_PROMPTS, JSON.stringify(merged));
+             return merged;
+        }
+    }
+  } catch (e) { 
+      // Network error, fall back to local
+      console.warn("Could not fetch prompts from server, using local cache");
+  }
+
+  // Fallback to local
+  try {
+    const local = localStorage.getItem(KEY_PROMPTS);
+    if (local) {
+      return { ...DEFAULT_PROMPTS, ...JSON.parse(local) };
+    }
+  } catch (e) { /* ignore */ }
+  return DEFAULT_PROMPTS;
+};
+
+export const savePrompts = async (prompts: Record<string, PromptTemplate>): Promise<void> => {
+  // 1. Save Local
+  localStorage.setItem(KEY_PROMPTS, JSON.stringify(prompts));
+  trackChange();
+
+  // 2. Sync to Server Immediately
+  try {
+    const res = await fetch(`${API_BASE}/prompts`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(prompts)
+    });
+    
+    if (res.ok) {
+        updateLastUploadTime(); // Update global upload time on success
+    } else {
+        throw new Error("Server sync failed");
+    }
+  } catch (e) {
+      console.error("Failed to sync prompts to server", e);
+      throw e; // Re-throw to let UI know
+  }
+};
+
+export const resetPrompts = async (): Promise<void> => {
+  await savePrompts(DEFAULT_PROMPTS);
+};
+
+// --- Inspiration Methods (Local Only) ---
+
+export const getInspirations = async (): Promise<Inspiration[]> => {
+  try {
+    return await dbGetAll<Inspiration>(STORE_INSPIRATIONS);
+  } catch (e) {
+    return [];
+  }
+};
+
+export const saveInspiration = async (item: Inspiration): Promise<void> => {
+  await dbPut(STORE_INSPIRATIONS, item);
+  trackChange();
+};
+
+export const deleteInspiration = async (id: string): Promise<void> => {
+  await dbDelete(STORE_INSPIRATIONS, id);
+  // Same logic as projects: Explicit delete for D1
+  try {
+    await fetch(`${API_BASE}/inspirations/${id}`, { method: 'DELETE' });
+  } catch (e) {}
+  trackChange();
+};
