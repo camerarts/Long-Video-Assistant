@@ -50,17 +50,6 @@ const Settings: React.FC = () => {
     }, 500);
   };
 
-  const handleReset = async () => {
-    if (window.confirm("确定要重置所有提示词为默认值吗？此操作无法撤销。")) {
-      await storage.resetPrompts();
-      const defaults = await storage.getPrompts();
-      setPrompts(defaults);
-      setDirtyKeys(new Set());
-      setMessage("已恢复默认设置。");
-      setTimeout(() => setMessage(null), 3000);
-    }
-  };
-
   const handlePromptChange = (key: string, value: string) => {
     setPrompts(prev => ({
       ...prev,
@@ -113,14 +102,6 @@ const Settings: React.FC = () => {
             <span className="text-[10px] font-bold text-slate-400 tracking-wider bg-slate-50 px-2 py-1 rounded-md border border-slate-100">
                 {refreshTime}
             </span>
-            <div className="flex gap-4">
-              <button 
-                onClick={handleReset}
-                className="text-slate-500 hover:text-rose-500 px-5 py-2.5 text-sm font-bold transition-colors flex items-center gap-2"
-              >
-                <RefreshCw className="w-4 h-4" /> 恢复默认
-              </button>
-            </div>
         </div>
       </div>
 
