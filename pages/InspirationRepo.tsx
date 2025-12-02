@@ -45,16 +45,11 @@ const InspirationRepo: React.FC = () => {
     localStorage.setItem('lva_inspiration_sort', JSON.stringify(sortConfig));
   }, [sortConfig]);
 
-  const formatDate = (date: Date) => {
-    const pad = (n: number) => n.toString().padStart(2, '0');
-    return `刷新数据时间：${date.getFullYear()}年${date.getMonth() + 1}月${date.getDate()}日/${pad(date.getHours())}：${pad(date.getMinutes())}：${pad(date.getSeconds())}`;
-  };
-
   const loadData = async () => {
     setLoading(true);
     const data = await storage.getInspirations();
     setInspirations(data);
-    setRefreshTime(formatDate(new Date()));
+    setRefreshTime(`刷新数据时间：${storage.getLastUploadTime()}`);
     setLoading(false);
   };
 
