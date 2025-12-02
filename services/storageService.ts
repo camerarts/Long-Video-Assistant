@@ -7,7 +7,8 @@ const DB_NAME = 'LVA_DB';
 const DB_VERSION = 1;
 const STORE_PROJECTS = 'projects';
 const STORE_INSPIRATIONS = 'inspirations';
-const KEY_PROMPTS = 'lva_prompts'; // Keep prompts in LocalStorage as they are small settings
+const KEY_PROMPTS = 'lva_prompts'; 
+const KEY_LAST_UPLOAD = 'lva_last_upload_time';
 
 // --- IndexedDB Helpers ---
 
@@ -80,7 +81,6 @@ const dbDelete = async (storeName: string, key: string): Promise<void> => {
 };
 
 // --- Mutex for Atomic Updates ---
-// Since IDB is async, we need a lock to prevent read-modify-write race conditions.
 class Mutex {
   private queue: Promise<void> = Promise.resolve();
 
@@ -90,7 +90,6 @@ class Mutex {
     
     // Wait for previous task
     const previous = this.queue;
-    // Update queue to wait for this task
     this.queue = this.queue.then(() => currentLock);
 
     await previous;
@@ -105,23 +104,89 @@ class Mutex {
 
 const projectMutex = new Mutex();
 
-// --- Service Methods ---
+// --- Manual Sync Methods ---
+
+export const getLastUploadTime = (): string => {
+  const ts = localStorage.getItem(KEY_LAST_UPLOAD);
+  if (!ts) return '从未上传';
+  const date = new Date(parseInt(ts));
+  const pad = (n: number) => n.toString().padStart(2, '0');
+  return `${date.getFullYear()}年${date.getMonth() + 1}月${date.getDate()}日/${pad(date.getHours())}：${pad(date.getMinutes())}：${pad(date.getSeconds())}`;
+};
+
+export const uploadAllData = async (): Promise<void> => {
+  // 1. Get all Local Data
+  const projects = await dbGetAll<ProjectData>(STORE_PROJECTS);
+  const inspirations = await dbGetAll<Inspiration>(STORE_INSPIRATIONS);
+  const promptsStr = localStorage.getItem(KEY_PROMPTS);
+  const prompts = promptsStr ? JSON.parse(promptsStr) : DEFAULT_PROMPTS;
+
+  // 2. Upload Projects (Iterative)
+  // Optimization: In a real app, use a bulk endpoint. Here we reuse existing single endpoints.
+  for (const p of projects) {
+    await fetch(`${API_BASE}/projects`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(p)
+    });
+  }
+
+  // 3. Upload Inspirations (Iterative)
+  for (const i of inspirations) {
+    await fetch(`${API_BASE}/inspirations`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(i)
+    });
+  }
+
+  // 4. Upload Prompts (Single)
+  await fetch(`${API_BASE}/prompts`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(prompts)
+  });
+
+  // 5. Update Timestamp
+  localStorage.setItem(KEY_LAST_UPLOAD, Date.now().toString());
+};
+
+export const downloadAllData = async (): Promise<void> => {
+  // 1. Fetch Projects
+  try {
+    const res = await fetch(`${API_BASE}/projects`);
+    if (res.ok) {
+        const apiData = await res.json();
+        for (const p of apiData) await dbPut(STORE_PROJECTS, p);
+    }
+  } catch (e) { console.error("Failed to download projects", e); }
+
+  // 2. Fetch Inspirations
+  try {
+    const res = await fetch(`${API_BASE}/inspirations`);
+    if (res.ok) {
+        const apiData = await res.json();
+        for (const item of apiData) await dbPut(STORE_INSPIRATIONS, item);
+    }
+  } catch (e) { console.error("Failed to download inspirations", e); }
+
+  // 3. Fetch Prompts
+  try {
+    const res = await fetch(`${API_BASE}/prompts`);
+    if (res.ok) {
+        const serverPrompts = await res.json();
+        if (serverPrompts) {
+             const merged = { ...DEFAULT_PROMPTS, ...serverPrompts };
+             localStorage.setItem(KEY_PROMPTS, JSON.stringify(merged));
+        }
+    }
+  } catch (e) { console.error("Failed to download prompts", e); }
+};
+
+// --- Local CRUD Methods (No Network) ---
 
 export const getProjects = async (): Promise<ProjectData[]> => {
-  // Strategy: ALWAYS fetch from API to ensure sync across devices.
-  // Merge server data into local IDB, then return local IDB content.
   try {
-    try {
-        const res = await fetch(`${API_BASE}/projects`);
-        if (res.ok) {
-            const apiData = await res.json();
-            // Sync to IDB
-            for (const p of apiData) await dbPut(STORE_PROJECTS, p);
-        }
-    } catch (e) { 
-        console.warn("Project sync failed, falling back to local data", e);
-    }
-    
     return await dbGetAll<ProjectData>(STORE_PROJECTS);
   } catch (error) {
     console.error("DB Error", error);
@@ -130,23 +195,11 @@ export const getProjects = async (): Promise<ProjectData[]> => {
 };
 
 export const getProject = async (id: string): Promise<ProjectData | undefined> => {
-  // Try IDB first for speed
   try {
-    const project = await dbGet<ProjectData>(STORE_PROJECTS, id);
-    if (project) return project;
-  } catch (e) { /* ignore */ }
-
-  // Fallback API
-  try {
-    const res = await fetch(`${API_BASE}/projects/${id}`);
-    if (res.ok) {
-      const project = await res.json();
-      await dbPut(STORE_PROJECTS, project);
-      return project;
-    }
-  } catch (error) { /* ignore */ }
-  
-  return undefined;
+    return await dbGet<ProjectData>(STORE_PROJECTS, id);
+  } catch (e) { 
+    return undefined;
+  }
 };
 
 export const saveProject = async (project: ProjectData): Promise<void> => {
@@ -154,48 +207,18 @@ export const saveProject = async (project: ProjectData): Promise<void> => {
     ...project,
     updatedAt: Date.now()
   };
-  
-  // 1. IDB Update
   await dbPut(STORE_PROJECTS, payload);
-
-  // 2. API Update (Background)
-  try {
-    await fetch(`${API_BASE}/projects`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload)
-    });
-  } catch (error) {
-    console.warn("Background API Sync Failed:", error);
-  }
 };
 
-/**
- * Atomic Update: Ensures that concurrent updates don't overwrite each other.
- * Essential for parallel AI generation tasks.
- * NOW WITH MUTEX for Async Storage.
- */
 export const updateProject = async (id: string, updater: (current: ProjectData) => ProjectData): Promise<ProjectData | null> => {
   return projectMutex.lock(async () => {
-      // 1. Read fresh from IDB
       const current = await dbGet<ProjectData>(STORE_PROJECTS, id);
-      
       if (!current) return null;
 
-      // 2. Apply Update
       const updated = updater(current);
       updated.updatedAt = Date.now();
       
-      // 3. Save back
       await dbPut(STORE_PROJECTS, updated);
-
-      // 4. Fire API sync in background (fire and forget)
-      fetch(`${API_BASE}/projects`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(updated)
-      }).catch(e => console.warn("Background sync failed", e));
-
       return updated;
   });
 };
@@ -223,31 +246,11 @@ export const createProject = async (): Promise<string> => {
 
 export const deleteProject = async (id: string): Promise<void> => {
   await dbDelete(STORE_PROJECTS, id);
-
-  try {
-    await fetch(`${API_BASE}/projects/${id}`, { method: 'DELETE' });
-  } catch (error) {
-    console.warn("API Delete Failed:", error);
-  }
 };
 
-// --- Prompts (Sync to API + LocalStorage) ---
+// --- Prompts (Local Only) ---
 
 export const getPrompts = async (): Promise<Record<string, PromptTemplate>> => {
-  // 1. Try fetch from API
-  try {
-    const res = await fetch(`${API_BASE}/prompts`);
-    if (res.ok) {
-        const serverPrompts = await res.json();
-        if (serverPrompts) {
-             const merged = { ...DEFAULT_PROMPTS, ...serverPrompts };
-             localStorage.setItem(KEY_PROMPTS, JSON.stringify(merged));
-             return merged;
-        }
-    }
-  } catch (e) { /* ignore */ }
-
-  // 2. Fallback to local
   try {
     const local = localStorage.getItem(KEY_PROMPTS);
     if (local) {
@@ -258,37 +261,17 @@ export const getPrompts = async (): Promise<Record<string, PromptTemplate>> => {
 };
 
 export const savePrompts = async (prompts: Record<string, PromptTemplate>): Promise<void> => {
-  // Save local
   localStorage.setItem(KEY_PROMPTS, JSON.stringify(prompts));
-  // Save remote
-  try {
-    await fetch(`${API_BASE}/prompts`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(prompts)
-    });
-  } catch (e) {
-      console.warn("Failed to sync prompts to server", e);
-  }
 };
 
 export const resetPrompts = async (): Promise<void> => {
   await savePrompts(DEFAULT_PROMPTS);
 };
 
-// --- Inspiration Methods (Migrated to IDB + Sync) ---
+// --- Inspiration Methods (Local Only) ---
 
 export const getInspirations = async (): Promise<Inspiration[]> => {
   try {
-    // Always sync from server
-    try {
-        const res = await fetch(`${API_BASE}/inspirations`);
-        if (res.ok) {
-            const apiData = await res.json();
-            for (const item of apiData) await dbPut(STORE_INSPIRATIONS, item);
-        }
-    } catch (e) { /* ignore */ }
-
     return await dbGetAll<Inspiration>(STORE_INSPIRATIONS);
   } catch (e) {
     return [];
@@ -297,18 +280,8 @@ export const getInspirations = async (): Promise<Inspiration[]> => {
 
 export const saveInspiration = async (item: Inspiration): Promise<void> => {
   await dbPut(STORE_INSPIRATIONS, item);
-  try {
-    await fetch(`${API_BASE}/inspirations`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(item)
-    });
-  } catch (e) {}
 };
 
 export const deleteInspiration = async (id: string): Promise<void> => {
   await dbDelete(STORE_INSPIRATIONS, id);
-  try {
-    await fetch(`${API_BASE}/inspirations/${id}`, { method: 'DELETE' });
-  } catch (e) {}
 };
