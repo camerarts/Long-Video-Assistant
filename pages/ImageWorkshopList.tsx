@@ -49,17 +49,17 @@ const ImageWorkshopList: React.FC = () => {
   };
 
   return (
-    <div className="space-y-8">
-      <div className="flex justify-between items-end">
+    <div className="space-y-6 md:space-y-8">
+      <div className="flex flex-col gap-4 md:flex-row md:justify-between md:items-end">
         <div>
-          <h1 className="text-4xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-fuchsia-600 to-pink-600 mb-2 tracking-tight flex items-center gap-3">
-            <ImageIcon className="w-8 h-8 text-fuchsia-600" />
+          <h1 className="text-2xl md:text-4xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-fuchsia-600 to-pink-600 mb-1 md:mb-2 tracking-tight flex items-center gap-2 md:gap-3">
+            <ImageIcon className="w-6 h-6 md:w-8 md:h-8 text-fuchsia-600" />
             生图列表
           </h1>
-          <p className="text-slate-500 font-medium">查看各项目的生图进度，进入工坊批量生产画面。</p>
+          <p className="text-sm md:text-base text-slate-500 font-medium">查看各项目的生图进度，进入工坊批量生产画面。</p>
         </div>
         <div className="flex flex-col items-end justify-end pb-1">
-             <span className="text-[10px] font-bold text-slate-400 tracking-wider bg-slate-50 px-2 py-1 rounded-md border border-slate-100">
+             <span className="hidden md:inline-block text-[10px] font-bold text-slate-400 tracking-wider bg-slate-50 px-2 py-1 rounded-md border border-slate-100">
                 {refreshTime}
             </span>
         </div>
@@ -88,8 +88,8 @@ const ImageWorkshopList: React.FC = () => {
                         <tr>
                             <th className="py-4 px-6 text-xs font-bold uppercase tracking-wider w-20 text-center">序号</th>
                             <th className="py-4 px-6 text-xs font-bold uppercase tracking-wider text-center">主题 / 核心观点</th>
-                            <th className="py-4 px-6 text-xs font-bold uppercase tracking-wider w-48 text-center">生图进度</th>
-                            <th className="py-4 px-6 text-xs font-bold uppercase tracking-wider w-40 text-center">完成日期</th>
+                            <th className="py-4 px-6 text-xs font-bold uppercase tracking-wider w-36 md:w-48 text-center">生图进度</th>
+                            <th className="py-4 px-6 text-xs font-bold uppercase tracking-wider w-40 text-center hidden md:table-cell">完成日期</th>
                             <th className="py-4 px-6 text-xs font-bold uppercase tracking-wider w-24 text-center">操作</th>
                         </tr>
                     </thead>
@@ -113,7 +113,7 @@ const ImageWorkshopList: React.FC = () => {
                                     </td>
                                     <td className="py-5 px-6">
                                         <div className="flex flex-col">
-                                            <span className={`font-bold text-lg transition-colors mb-1 ${hasStoryboard ? 'text-slate-800 group-hover:text-fuchsia-700' : 'text-slate-500'}`}>
+                                            <span className={`font-bold text-base md:text-lg transition-colors mb-1 line-clamp-2 md:line-clamp-1 ${hasStoryboard ? 'text-slate-800 group-hover:text-fuchsia-700' : 'text-slate-500'}`}>
                                                 {project.title || '未命名项目'}
                                             </span>
                                             <span className="text-xs text-slate-400 line-clamp-1 max-w-md">
@@ -148,7 +148,7 @@ const ImageWorkshopList: React.FC = () => {
                                             </div>
                                         )}
                                     </td>
-                                    <td className="py-5 px-6">
+                                    <td className="py-5 px-6 hidden md:table-cell">
                                         <div className="flex items-center justify-center gap-2 text-sm font-medium text-slate-500">
                                             <Calendar className="w-4 h-4 text-slate-300" />
                                             {new Date(project.updatedAt).toLocaleDateString('zh-CN')}
