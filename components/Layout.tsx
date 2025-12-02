@@ -1,7 +1,7 @@
 
-import React from 'react';
+import React, { useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { LayoutDashboard, Settings, Video, Plus, Image as ImageIcon, Lightbulb, LogOut } from 'lucide-react';
+import { LayoutDashboard, Settings, Video, Plus, Image as ImageIcon, Lightbulb, LogOut, CloudUpload, CloudDownload, Loader2 } from 'lucide-react';
 import * as storage from '../services/storageService';
 
 interface LayoutProps {
@@ -11,6 +11,8 @@ interface LayoutProps {
 const Layout: React.FC<LayoutProps> = ({ children }) => {
   const location = useLocation();
   const navigate = useNavigate();
+  const [syncing, setSyncing] = useState<'upload' | 'download' | null>(null);
+
   const isActive = (path: string) => location.pathname === path || (path !== '/' && location.pathname.startsWith(path));
 
   // Check if we are in a project context for rendering main area
@@ -25,6 +27,40 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
     if (window.confirm('确定要退出登录吗？')) {
       localStorage.removeItem('lva_auth_expiry');
       navigate('/');
+    }
+  };
+
+  const handleUpload = async () => {
+    if (window.confirm('确定要将所有本地数据上传覆盖到云端吗？')) {
+        setSyncing('upload');
+        try {
+            await storage.uploadAllData();
+            // Force reload to update timestamp on current page if needed, or dispatch event
+            // Simple approach: Alert and maybe simple page refresh if on dashboard
+            alert('数据上传成功！');
+            window.location.reload(); 
+        } catch (e) {
+            console.error(e);
+            alert('上传失败，请检查网络。');
+        } finally {
+            setSyncing(null);
+        }
+    }
+  };
+
+  const handleDownload = async () => {
+    if (window.confirm('确定要从云端下载数据吗？这将更新本地的记录。')) {
+        setSyncing('download');
+        try {
+            await storage.downloadAllData();
+            alert('数据下载成功！');
+            window.location.reload();
+        } catch (e) {
+            console.error(e);
+            alert('下载失败，请检查网络。');
+        } finally {
+            setSyncing(null);
+        }
     }
   };
 
@@ -100,9 +136,30 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
             <span className="text-[10px] font-bold tracking-wide">系统设置</span>
           </Link>
 
+          <div className="mt-auto w-full flex flex-col gap-2 border-t border-slate-100 pt-3">
+             <button
+                onClick={handleUpload}
+                disabled={!!syncing}
+                className="flex flex-col items-center justify-center py-2 px-2 w-full rounded-xl transition-all gap-1 text-slate-400 hover:bg-blue-50 hover:text-blue-600"
+                title="上传数据到云端"
+            >
+                {syncing === 'upload' ? <Loader2 className="w-5 h-5 animate-spin" /> : <CloudUpload className="w-5 h-5 stroke-2" />}
+                <span className="text-[10px] font-bold tracking-wide">上传</span>
+            </button>
+            <button
+                onClick={handleDownload}
+                disabled={!!syncing}
+                className="flex flex-col items-center justify-center py-2 px-2 w-full rounded-xl transition-all gap-1 text-slate-400 hover:bg-emerald-50 hover:text-emerald-600"
+                title="从云端下载数据"
+            >
+                {syncing === 'download' ? <Loader2 className="w-5 h-5 animate-spin" /> : <CloudDownload className="w-5 h-5 stroke-2" />}
+                <span className="text-[10px] font-bold tracking-wide">下载</span>
+            </button>
+          </div>
+
           <button
             onClick={handleLogout}
-            className="mt-auto flex flex-col items-center justify-center py-2.5 px-2 w-full rounded-2xl transition-all gap-1 duration-300 text-slate-400 hover:bg-rose-50 hover:text-rose-600"
+            className="mb-2 flex flex-col items-center justify-center py-2.5 px-2 w-full rounded-2xl transition-all gap-1 duration-300 text-slate-400 hover:bg-rose-50 hover:text-rose-600"
             title="退出登录"
           >
             <LogOut className="w-5 h-5 stroke-2" />
