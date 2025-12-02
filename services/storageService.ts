@@ -104,7 +104,7 @@ class Mutex {
 
 const projectMutex = new Mutex();
 
-// --- Manual Sync Methods (R2 Bulk) ---
+// --- Manual Sync Methods (D1 Bulk) ---
 
 export const getLastUploadTime = (): string => {
   const ts = localStorage.getItem(KEY_LAST_UPLOAD);
@@ -123,7 +123,7 @@ export const uploadAllData = async (): Promise<void> => {
 
   const payload = { projects, inspirations, prompts };
 
-  // 2. Upload to R2 Sync Endpoint
+  // 2. Upload to D1 Sync Endpoint
   const res = await fetch(`${API_BASE}/sync`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -140,7 +140,7 @@ export const uploadAllData = async (): Promise<void> => {
 };
 
 export const downloadAllData = async (): Promise<void> => {
-  // 1. Fetch from R2 Sync Endpoint
+  // 1. Fetch from D1 Sync Endpoint
   const res = await fetch(`${API_BASE}/sync`);
   if (!res.ok) {
     const errData = await res.json().catch(() => ({}));
@@ -162,6 +162,36 @@ export const downloadAllData = async (): Promise<void> => {
     const merged = { ...DEFAULT_PROMPTS, ...data.prompts };
     localStorage.setItem(KEY_PROMPTS, JSON.stringify(merged));
   }
+};
+
+// --- Image Upload (R2) ---
+
+export const uploadImage = async (base64: string): Promise<string> => {
+  // Convert base64 to blob
+  const byteString = atob(base64.split(',')[1]);
+  const mimeString = base64.split(',')[0].split(':')[1].split(';')[0];
+  const ab = new ArrayBuffer(byteString.length);
+  const ia = new Uint8Array(ab);
+  for (let i = 0; i < byteString.length; i++) {
+    ia[i] = byteString.charCodeAt(i);
+  }
+  const blob = new Blob([ab], { type: mimeString });
+
+  const ext = mimeString.split('/')[1] || 'png';
+  const filename = `${crypto.randomUUID()}.${ext}`;
+
+  // Upload to R2 Endpoint
+  const res = await fetch(`${API_BASE}/images/${filename}`, {
+    method: 'PUT',
+    body: blob
+  });
+
+  if (!res.ok) {
+    throw new Error('Image upload failed');
+  }
+  
+  const data = await res.json();
+  return data.url; // e.g. /api/images/uuid.png
 };
 
 // --- Local CRUD Methods (No Network) ---
