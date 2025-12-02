@@ -10,6 +10,7 @@ const ImageWorkshopList: React.FC = () => {
   const [projects, setProjects] = useState<ProjectData[]>([]);
   const [loading, setLoading] = useState(true);
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
+  const [refreshTime, setRefreshTime] = useState('');
 
   useEffect(() => {
     loadProjects();
@@ -19,6 +20,7 @@ const ImageWorkshopList: React.FC = () => {
     setLoading(true);
     const data = await storage.getProjects();
     setProjects(data.sort((a, b) => b.updatedAt - a.updatedAt));
+    setRefreshTime(`刷新数据时间：${storage.getLastUploadTime()}`);
     setLoading(false);
   };
 
@@ -55,6 +57,11 @@ const ImageWorkshopList: React.FC = () => {
             生图列表
           </h1>
           <p className="text-slate-500 font-medium">查看各项目的生图进度，进入工坊批量生产画面。</p>
+        </div>
+        <div className="flex flex-col items-end justify-end pb-1">
+             <span className="text-[10px] font-bold text-slate-400 tracking-wider bg-slate-50 px-2 py-1 rounded-md border border-slate-100">
+                {refreshTime}
+            </span>
         </div>
       </div>
 
