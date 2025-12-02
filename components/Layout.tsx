@@ -1,17 +1,33 @@
 
 import React, { useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { LayoutDashboard, Settings, Video, Plus, Image as ImageIcon, Lightbulb, LogOut, CloudUpload, CloudDownload, Loader2 } from 'lucide-react';
+import { LayoutDashboard, Settings, Video, Plus, Image as ImageIcon, Lightbulb, LogOut, CloudUpload, CloudDownload, Loader2, CheckCircle2, XCircle, Circle } from 'lucide-react';
 import * as storage from '../services/storageService';
 
 interface LayoutProps {
   children: React.ReactNode;
 }
 
+type SyncStatus = 'idle' | 'loading' | 'success' | 'error';
+
+interface UploadState {
+  projects: SyncStatus;
+  images: SyncStatus;
+  inspirations: SyncStatus;
+  settings: SyncStatus;
+}
+
 const Layout: React.FC<LayoutProps> = ({ children }) => {
   const location = useLocation();
   const navigate = useNavigate();
   const [syncing, setSyncing] = useState<'upload' | 'download' | null>(null);
+  const [showUploadModal, setShowUploadModal] = useState(false);
+  const [uploadState, setUploadState] = useState<UploadState>({
+    projects: 'idle',
+    images: 'idle',
+    inspirations: 'idle',
+    settings: 'idle'
+  });
 
   const isActive = (path: string) => location.pathname === path || (path !== '/' && location.pathname.startsWith(path));
 
@@ -31,18 +47,47 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
   };
 
   const handleUpload = async () => {
-    if (window.confirm('确定要将所有本地数据上传覆盖到云端吗？')) {
-        setSyncing('upload');
-        try {
-            await storage.uploadAllData();
-            alert('数据上传成功！');
+    if (!window.confirm('确定要将所有本地数据上传覆盖到云端吗？')) return;
+
+    setShowUploadModal(true);
+    setSyncing('upload');
+    setUploadState({ projects: 'loading', images: 'loading', inspirations: 'idle', settings: 'idle' });
+
+    try {
+        // 1. Upload Projects (Covers Project List & Image List data)
+        await storage.uploadProjects();
+        setUploadState(prev => ({ ...prev, projects: 'success', images: 'success', inspirations: 'loading' }));
+        
+        // 2. Upload Inspirations
+        await storage.uploadInspirations();
+        setUploadState(prev => ({ ...prev, inspirations: 'success', settings: 'loading' }));
+
+        // 3. Upload Prompts
+        await storage.uploadPrompts();
+        setUploadState(prev => ({ ...prev, settings: 'success' }));
+
+        // Finalize
+        storage.updateLastUploadTime();
+        
+        // Short delay to show completion before closing or reloading
+        setTimeout(() => {
+            alert('所有数据上传成功！');
             window.location.reload(); 
-        } catch (e: any) {
-            console.error(e);
-            alert(`上传失败: ${e.message}\n请检查您的网络连接或确认后台 R2 存储桶已正确配置绑定 (BUCKET)。`);
-        } finally {
-            setSyncing(null);
-        }
+        }, 500);
+
+    } catch (e: any) {
+        console.error(e);
+        // Mark currently loading as error
+        setUploadState(prev => {
+            const next = { ...prev };
+            if (next.projects === 'loading') { next.projects = 'error'; next.images = 'error'; }
+            if (next.inspirations === 'loading') next.inspirations = 'error';
+            if (next.settings === 'loading') next.settings = 'error';
+            return next;
+        });
+        alert(`上传过程中发生错误: ${e.message}`);
+        setShowUploadModal(false);
+        setSyncing(null);
     }
   };
 
@@ -60,6 +105,15 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
             setSyncing(null);
         }
     }
+  };
+
+  const StatusIcon = ({ status }: { status: SyncStatus }) => {
+      switch (status) {
+          case 'loading': return <Loader2 className="w-5 h-5 animate-spin text-blue-500" />;
+          case 'success': return <CheckCircle2 className="w-5 h-5 text-emerald-500" />;
+          case 'error': return <XCircle className="w-5 h-5 text-rose-500" />;
+          default: return <Circle className="w-5 h-5 text-slate-200" />;
+      }
   };
 
   return (
@@ -182,6 +236,40 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
           </div>
         )}
       </main>
+
+      {/* Upload Progress Modal */}
+      {showUploadModal && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
+            <div className="bg-white rounded-3xl shadow-2xl p-8 w-full max-w-sm animate-in zoom-in-95 duration-200">
+                <div className="flex flex-col items-center mb-6">
+                    <div className="w-16 h-16 bg-blue-50 rounded-full flex items-center justify-center mb-4">
+                        <CloudUpload className="w-8 h-8 text-blue-500" />
+                    </div>
+                    <h3 className="text-xl font-extrabold text-slate-900">数据上传中</h3>
+                    <p className="text-sm text-slate-500 font-medium mt-1">请勿关闭页面，正在同步到云端...</p>
+                </div>
+
+                <div className="space-y-4">
+                    <div className="flex items-center justify-between p-3 bg-slate-50 rounded-xl border border-slate-100">
+                        <span className="text-sm font-bold text-slate-700">项目列表</span>
+                        <StatusIcon status={uploadState.projects} />
+                    </div>
+                    <div className="flex items-center justify-between p-3 bg-slate-50 rounded-xl border border-slate-100">
+                        <span className="text-sm font-bold text-slate-700">生图列表</span>
+                        <StatusIcon status={uploadState.images} />
+                    </div>
+                    <div className="flex items-center justify-between p-3 bg-slate-50 rounded-xl border border-slate-100">
+                        <span className="text-sm font-bold text-slate-700">灵感仓库</span>
+                        <StatusIcon status={uploadState.inspirations} />
+                    </div>
+                    <div className="flex items-center justify-between p-3 bg-slate-50 rounded-xl border border-slate-100">
+                        <span className="text-sm font-bold text-slate-700">系统设置</span>
+                        <StatusIcon status={uploadState.settings} />
+                    </div>
+                </div>
+            </div>
+        </div>
+      )}
     </div>
   );
 };
