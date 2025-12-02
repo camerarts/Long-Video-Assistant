@@ -9,6 +9,7 @@ const STORE_PROJECTS = 'projects';
 const STORE_INSPIRATIONS = 'inspirations';
 const KEY_PROMPTS = 'lva_prompts'; 
 const KEY_LAST_UPLOAD = 'lva_last_upload_time';
+const KEY_LAST_LOCAL_CHANGE = 'lva_last_local_change_time';
 
 // --- IndexedDB Helpers ---
 
@@ -106,6 +107,17 @@ const projectMutex = new Mutex();
 
 // --- Manual Sync Methods (D1 Bulk) ---
 
+export const trackChange = () => {
+  localStorage.setItem(KEY_LAST_LOCAL_CHANGE, Date.now().toString());
+};
+
+export const hasUnsavedChanges = (): boolean => {
+  const lastUpload = parseInt(localStorage.getItem(KEY_LAST_UPLOAD) || '0');
+  const lastChange = parseInt(localStorage.getItem(KEY_LAST_LOCAL_CHANGE) || '0');
+  // If we have changes newer than the last upload, return true
+  return lastChange > lastUpload;
+};
+
 export const getLastUploadTime = (): string => {
   const ts = localStorage.getItem(KEY_LAST_UPLOAD);
   if (!ts) return '从未上传';
@@ -125,16 +137,14 @@ export const uploadProjects = async (): Promise<void> => {
   
   // SANITIZATION: Remove Base64 images from payload
   // We only want to sync metadata and cloud URLs to D1.
-  // Base64 images (starting with 'data:') are local-only temporary states or heavy payloads 
-  // that should be uploaded to R2 separately.
   const sanitizedProjects = projects.map(p => {
     const copy = { ...p };
     
     if (copy.storyboard) {
         copy.storyboard = copy.storyboard.map(frame => ({
             ...frame,
-            // If it's a base64 string (starts with data:), don't send it to server DB.
-            // If it's a URL (starts with /api/ or http), keep it as it's a reference.
+            // If it's a base64 string (starts with data:), don't send it to server.
+            // If it's a URL (starts with /api/ or http), keep it.
             imageUrl: frame.imageUrl?.startsWith('data:') ? undefined : frame.imageUrl
         }));
     }
@@ -216,9 +226,14 @@ export const downloadAllData = async (): Promise<void> => {
     const merged = { ...DEFAULT_PROMPTS, ...data.prompts };
     localStorage.setItem(KEY_PROMPTS, JSON.stringify(merged));
   }
+  
+  // Update last upload time to match download (synced state)
+  updateLastUploadTime();
+  // Also sync the local change time so it doesn't show as dirty immediately
+  localStorage.setItem(KEY_LAST_LOCAL_CHANGE, Date.now().toString());
 };
 
-// --- Image Upload (R2) ---
+// --- Image Operations (R2) ---
 
 export const uploadImage = async (base64: string, projectId?: string): Promise<string> => {
   // Convert base64 to blob
@@ -253,6 +268,18 @@ export const uploadImage = async (base64: string, projectId?: string): Promise<s
   return data.url; // e.g. /api/images/encodedPath
 };
 
+export const deleteImage = async (imageUrl: string): Promise<void> => {
+  // Extract key from URL: /api/images/[encodedKey]
+  const match = imageUrl.match(/\/api\/images\/(.+)$/);
+  if (match && match[1]) {
+    try {
+      await fetch(`${API_BASE}/images/${match[1]}`, { method: 'DELETE' });
+    } catch (e) {
+      console.warn("Failed to delete image from R2", e);
+    }
+  }
+};
+
 // --- Local CRUD Methods (No Network) ---
 
 export const getProjects = async (): Promise<ProjectData[]> => {
@@ -278,6 +305,7 @@ export const saveProject = async (project: ProjectData): Promise<void> => {
     updatedAt: Date.now()
   };
   await dbPut(STORE_PROJECTS, payload);
+  trackChange();
 };
 
 export const updateProject = async (id: string, updater: (current: ProjectData) => ProjectData): Promise<ProjectData | null> => {
@@ -289,6 +317,7 @@ export const updateProject = async (id: string, updater: (current: ProjectData) 
       updated.updatedAt = Date.now();
       
       await dbPut(STORE_PROJECTS, updated);
+      trackChange();
       return updated;
   });
 };
@@ -315,7 +344,48 @@ export const createProject = async (): Promise<string> => {
 };
 
 export const deleteProject = async (id: string): Promise<void> => {
+  // 1. Get project to find images
+  const project = await dbGet<ProjectData>(STORE_PROJECTS, id);
+  
+  if (project) {
+    // 2. Delete cloud images from R2
+    const imagesToDelete: string[] = [];
+    
+    // Collect storyboard images
+    if (project.storyboard) {
+      project.storyboard.forEach(f => {
+        if (f.imageUrl && f.imageUrl.includes('/api/images/')) {
+          imagesToDelete.push(f.imageUrl);
+        }
+      });
+    }
+    
+    // Collect cover image
+    if (project.coverImage?.imageUrl && project.coverImage.imageUrl.includes('/api/images/')) {
+      imagesToDelete.push(project.coverImage.imageUrl);
+    }
+
+    // Execute deletes in background
+    for (const imgUrl of imagesToDelete) {
+      await deleteImage(imgUrl);
+    }
+  }
+
+  // 3. Delete from Local DB
   await dbDelete(STORE_PROJECTS, id);
+  
+  // 4. Delete from Remote D1 (Manual Sync approach means we usually wait for Upload, 
+  // but for deletion we might want to be cleaner or just let the next upload handle the removal logic?
+  // Our sync logic is "Upload Local to Remote". 
+  // The backend `sync` implementation performs INSERT/UPDATE. It DOES NOT delete records that are missing from payload.
+  // So we MUST explicity call DELETE on the API for the project record now.
+  try {
+    await fetch(`${API_BASE}/projects/${id}`, { method: 'DELETE' });
+  } catch (e) {
+    console.warn("Failed to delete project from D1", e);
+  }
+
+  trackChange();
 };
 
 // --- Prompts (Local Only) ---
@@ -332,6 +402,7 @@ export const getPrompts = async (): Promise<Record<string, PromptTemplate>> => {
 
 export const savePrompts = async (prompts: Record<string, PromptTemplate>): Promise<void> => {
   localStorage.setItem(KEY_PROMPTS, JSON.stringify(prompts));
+  trackChange();
 };
 
 export const resetPrompts = async (): Promise<void> => {
@@ -350,8 +421,14 @@ export const getInspirations = async (): Promise<Inspiration[]> => {
 
 export const saveInspiration = async (item: Inspiration): Promise<void> => {
   await dbPut(STORE_INSPIRATIONS, item);
+  trackChange();
 };
 
 export const deleteInspiration = async (id: string): Promise<void> => {
   await dbDelete(STORE_INSPIRATIONS, id);
+  // Same logic as projects: Explicit delete for D1
+  try {
+    await fetch(`${API_BASE}/inspirations/${id}`, { method: 'DELETE' });
+  } catch (e) {}
+  trackChange();
 };
