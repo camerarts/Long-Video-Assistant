@@ -35,13 +35,11 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
         setSyncing('upload');
         try {
             await storage.uploadAllData();
-            // Force reload to update timestamp on current page if needed, or dispatch event
-            // Simple approach: Alert and maybe simple page refresh if on dashboard
             alert('数据上传成功！');
             window.location.reload(); 
-        } catch (e) {
+        } catch (e: any) {
             console.error(e);
-            alert('上传失败，请检查网络。');
+            alert(`上传失败: ${e.message}\n请检查您的网络连接或确认后台 R2 存储桶已正确配置绑定 (BUCKET)。`);
         } finally {
             setSyncing(null);
         }
@@ -55,9 +53,9 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
             await storage.downloadAllData();
             alert('数据下载成功！');
             window.location.reload();
-        } catch (e) {
+        } catch (e: any) {
             console.error(e);
-            alert('下载失败，请检查网络。');
+             alert(`下载失败: ${e.message}\n请检查您的网络连接或确认后台 R2 存储桶已正确配置绑定 (BUCKET)。`);
         } finally {
             setSyncing(null);
         }
@@ -140,19 +138,19 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
              <button
                 onClick={handleUpload}
                 disabled={!!syncing}
-                className="flex flex-col items-center justify-center py-2 px-2 w-full rounded-xl transition-all gap-1 text-slate-400 hover:bg-blue-50 hover:text-blue-600"
+                className="flex flex-col items-center justify-center py-2 px-2 w-full rounded-xl transition-all gap-1 text-slate-400 hover:bg-blue-50 hover:text-blue-600 disabled:opacity-50"
                 title="上传数据到云端"
             >
-                {syncing === 'upload' ? <Loader2 className="w-5 h-5 animate-spin" /> : <CloudUpload className="w-5 h-5 stroke-2" />}
+                {syncing === 'upload' ? <Loader2 className="w-5 h-5 animate-spin text-blue-500" /> : <CloudUpload className="w-5 h-5 stroke-2" />}
                 <span className="text-[10px] font-bold tracking-wide">上传</span>
             </button>
             <button
                 onClick={handleDownload}
                 disabled={!!syncing}
-                className="flex flex-col items-center justify-center py-2 px-2 w-full rounded-xl transition-all gap-1 text-slate-400 hover:bg-emerald-50 hover:text-emerald-600"
+                className="flex flex-col items-center justify-center py-2 px-2 w-full rounded-xl transition-all gap-1 text-slate-400 hover:bg-emerald-50 hover:text-emerald-600 disabled:opacity-50"
                 title="从云端下载数据"
             >
-                {syncing === 'download' ? <Loader2 className="w-5 h-5 animate-spin" /> : <CloudDownload className="w-5 h-5 stroke-2" />}
+                {syncing === 'download' ? <Loader2 className="w-5 h-5 animate-spin text-emerald-500" /> : <CloudDownload className="w-5 h-5 stroke-2" />}
                 <span className="text-[10px] font-bold tracking-wide">下载</span>
             </button>
           </div>
