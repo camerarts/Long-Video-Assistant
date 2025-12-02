@@ -364,31 +364,31 @@ const InspirationRepo: React.FC = () => {
   };
 
   return (
-    <div className="space-y-8 h-full flex flex-col">
-      <div className="flex justify-between items-end flex-shrink-0">
+    <div className="space-y-6 md:space-y-8 h-full flex flex-col">
+      <div className="flex flex-col gap-4 md:flex-row md:justify-between md:items-end flex-shrink-0">
         <div>
-          <h1 className="text-4xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-amber-500 to-orange-600 mb-2 tracking-tight flex items-center gap-3">
-            <Lightbulb className="w-8 h-8 text-amber-500" />
+          <h1 className="text-2xl md:text-4xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-amber-500 to-orange-600 mb-1 md:mb-2 tracking-tight flex items-center gap-2 md:gap-3">
+            <Lightbulb className="w-6 h-6 md:w-8 md:h-8 text-amber-500" />
             视频灵感仓库
           </h1>
-          <p className="text-slate-500 font-medium">收集灵感，打造爆款选题库。</p>
+          <p className="text-sm md:text-base text-slate-500 font-medium">收集灵感，打造爆款选题库。</p>
         </div>
-        <div className="flex flex-col items-end gap-2">
-            <span className="text-[10px] font-bold text-slate-400 tracking-wider bg-slate-50 px-2 py-1 rounded-md border border-slate-100">
+        <div className="flex flex-col items-stretch md:items-end gap-2 w-full md:w-auto">
+            <span className="hidden md:inline-block text-[10px] font-bold text-slate-400 tracking-wider bg-slate-50 px-2 py-1 rounded-md border border-slate-100 text-right">
                 {refreshTime}
             </span>
-            <div className="flex gap-3">
+            <div className="flex gap-2 md:gap-3">
                 <button 
                     onClick={handleDownloadExcel}
-                    className="bg-white border border-slate-200 text-slate-600 hover:text-amber-600 hover:border-amber-200 px-4 py-3 rounded-xl font-bold shadow-sm transition-all flex items-center gap-2"
+                    className="flex-1 md:flex-none justify-center bg-white border border-slate-200 text-slate-600 hover:text-amber-600 hover:border-amber-200 px-4 py-3 rounded-xl font-bold shadow-sm transition-all flex items-center gap-2"
                 >
-                    <Download className="w-5 h-5" /> 导出表格
+                    <Download className="w-5 h-5" /> <span className="md:inline">导出表格</span>
                 </button>
                 <button 
                     onClick={() => setShowModal(true)}
-                    className="bg-amber-500 hover:bg-amber-600 text-white px-6 py-3 rounded-xl font-bold shadow-lg shadow-amber-500/30 flex items-center gap-2 transition-all hover:-translate-y-0.5"
+                    className="flex-1 md:flex-none justify-center bg-amber-500 hover:bg-amber-600 text-white px-6 py-3 rounded-xl font-bold shadow-lg shadow-amber-500/30 flex items-center gap-2 transition-all hover:-translate-y-0.5"
                 >
-                    <Plus className="w-5 h-5" /> 记录新灵感
+                    <Plus className="w-5 h-5" /> <span className="md:inline">记录新灵感</span>
                 </button>
             </div>
         </div>
@@ -471,13 +471,13 @@ const InspirationRepo: React.FC = () => {
                         className={`group transition-colors ${item.marked ? 'bg-emerald-50 hover:bg-emerald-100/60' : 'hover:bg-amber-50/30'}`}
                     >
                         <td className="py-3 px-4 text-center text-xs font-bold text-slate-400">{index + 1}</td>
-                        <td className="py-3 px-4">
-                            <span className="bg-white text-slate-600 px-2 py-0.5 rounded text-[10px] font-bold border border-slate-200 shadow-sm inline-block whitespace-normal break-words" title={item.category}>
+                        <td className="py-3 px-4 text-center">
+                            <span className="bg-white text-slate-600 px-2 py-0.5 rounded text-[10px] font-bold border border-slate-200 shadow-sm inline-block whitespace-normal break-words max-w-[80px]" title={item.category}>
                                 {item.category}
                             </span>
                         </td>
                         <td className="py-3 px-4">
-                            <div className={`font-bold text-sm leading-snug transition-colors ${item.marked ? 'text-emerald-800' : 'text-slate-800'}`}>
+                            <div className={`font-bold text-sm leading-snug transition-colors line-clamp-2 md:line-clamp-none ${item.marked ? 'text-emerald-800' : 'text-slate-800'}`}>
                                 {item.viralTitle}
                             </div>
                         </td>
@@ -492,10 +492,10 @@ const InspirationRepo: React.FC = () => {
                             <div className="flex items-center justify-center gap-3">
                                 <button 
                                     onClick={() => handleApprove(item)}
-                                    className="px-3 py-1.5 bg-gradient-to-r from-violet-600 to-indigo-600 text-white text-xs font-bold rounded-lg shadow-md shadow-indigo-500/20 hover:shadow-indigo-500/30 hover:-translate-y-0.5 transition-all flex items-center gap-1.5"
+                                    className="px-3 py-1.5 bg-gradient-to-r from-violet-600 to-indigo-600 text-white text-xs font-bold rounded-lg shadow-md shadow-indigo-500/20 hover:shadow-indigo-500/30 hover:-translate-y-0.5 transition-all flex items-center gap-1.5 whitespace-nowrap"
                                     title="采纳此灵感并创建新项目"
                                 >
-                                    <Rocket className="w-3 h-3" /> 采纳批准
+                                    <Rocket className="w-3 h-3" /> <span className="hidden lg:inline">采纳批准</span>
                                 </button>
                                 
                                 <div className="w-px h-4 bg-slate-200"></div>
@@ -516,10 +516,10 @@ const InspirationRepo: React.FC = () => {
                                 {deleteConfirmId === item.id ? (
                                     <button 
                                         onClick={() => handleDelete(item.id)}
-                                        className="text-xs bg-rose-50 text-rose-600 border border-rose-200 px-2 py-1.5 rounded-lg font-bold hover:bg-rose-100 transition-colors animate-in fade-in duration-200"
+                                        className="text-xs bg-rose-50 text-rose-600 border border-rose-200 px-2 py-1.5 rounded-lg font-bold hover:bg-rose-100 transition-colors animate-in fade-in duration-200 whitespace-nowrap"
                                         onMouseLeave={() => setDeleteConfirmId(null)}
                                     >
-                                        确认删除?
+                                        删除?
                                     </button>
                                 ) : (
                                     <button 
