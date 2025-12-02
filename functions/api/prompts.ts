@@ -5,9 +5,16 @@ interface Env {
 
 const KEY = 'global_prompts';
 
+const ensureTable = async (db: any) => {
+  await db.prepare("CREATE TABLE IF NOT EXISTS prompts (id TEXT PRIMARY KEY, data TEXT)").run();
+};
+
 export const onRequestGet = async (context: any) => {
   try {
-    const result = await context.env.DB.prepare(
+    const db = context.env.DB;
+    await ensureTable(db);
+
+    const result = await db.prepare(
       "SELECT data FROM prompts WHERE id = ?"
     ).bind(KEY).first();
 
@@ -23,9 +30,12 @@ export const onRequestGet = async (context: any) => {
 
 export const onRequestPost = async (context: any) => {
   try {
+    const db = context.env.DB;
+    await ensureTable(db);
+
     const prompts = await context.request.json();
     
-    await context.env.DB.prepare(
+    await db.prepare(
       `INSERT INTO prompts (id, data) VALUES (?, ?)
        ON CONFLICT(id) DO UPDATE SET data = excluded.data`
     ).bind(KEY, JSON.stringify(prompts)).run();
