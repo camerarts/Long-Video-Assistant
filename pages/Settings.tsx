@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { PromptTemplate } from '../types';
 import * as storage from '../services/storageService';
@@ -9,7 +10,6 @@ const Settings: React.FC = () => {
   const [message, setMessage] = useState<string | null>(null);
   const [expandedKey, setExpandedKey] = useState<string | null>(null);
   const [refreshTime, setRefreshTime] = useState('');
-  const [isInitializing, setIsInitializing] = useState(true);
   
   // Track modified prompts that haven't been saved
   const [dirtyKeys, setDirtyKeys] = useState<Set<string>>(new Set());
@@ -29,30 +29,25 @@ const Settings: React.FC = () => {
   }, []);
 
   const loadPrompts = async () => {
-    setIsInitializing(true);
     const data = await storage.getPrompts();
     setPrompts(data);
     setRefreshTime(`刷新数据时间：${storage.getLastUploadTime()}`);
-    setIsInitializing(false);
   };
 
   const handleSaveModule = async (key: string) => {
     setLoading(true);
-    try {
-        // Save and Sync to backend
-        await storage.savePrompts(prompts);
-        
-        // Clear dirty state for all, as the whole state is now persisted
-        setDirtyKeys(new Set());
-        setRefreshTime(`刷新数据时间：${storage.getLastUploadTime()}`);
-        
-        setMessage("配置已保存并同步到后台！");
-        setTimeout(() => setMessage(null), 3000);
-    } catch (e) {
-        alert("保存到本地成功，但同步到后台失败。请检查网络连接。");
-    } finally {
-        setLoading(false);
-    }
+    // Since storage handles the whole object, we save all, but conceptually we are "saving the module"
+    // This cleans up the dirty state for this specific module (and technically others if we wanted, but let's be precise or broad)
+    await storage.savePrompts(prompts);
+    
+    // Clear dirty state for all, as the whole state is now persisted
+    setDirtyKeys(new Set());
+    
+    setTimeout(() => {
+      setLoading(false);
+      setMessage("配置已保存！");
+      setTimeout(() => setMessage(null), 3000);
+    }, 500);
   };
 
   const handlePromptChange = (key: string, value: string) => {
@@ -74,6 +69,7 @@ const Settings: React.FC = () => {
   };
 
   const handlePaste = async (key: string) => {
+    // Check if API is available
     if (!navigator.clipboard) {
       alert("您的浏览器不支持自动读取剪贴板，请点击文本框后使用 Ctrl+V (或 Cmd+V) 手动粘贴。");
       return;
@@ -95,19 +91,15 @@ const Settings: React.FC = () => {
     }
   };
 
-  if (isInitializing) {
-      return <div className="flex h-full items-center justify-center"><Loader2 className="animate-spin text-violet-500 w-8 h-8" /></div>;
-  }
-
   return (
     <div className="max-w-6xl mx-auto pb-20">
-      <div className="flex justify-between items-end mb-10">
+      <div className="flex flex-col gap-4 md:flex-row md:justify-between md:items-end mb-6 md:mb-10">
         <div>
-          <h1 className="text-4xl font-extrabold text-slate-900 mb-2 tracking-tight">AI 提示词配置</h1>
-          <p className="text-slate-500 font-medium">精细化控制内容生成的每一个环节。</p>
+          <h1 className="text-2xl md:text-4xl font-extrabold text-slate-900 mb-1 md:mb-2 tracking-tight">AI 提示词配置</h1>
+          <p className="text-sm md:text-base text-slate-500 font-medium">精细化控制内容生成的每一个环节。</p>
         </div>
         <div className="flex flex-col items-end gap-2">
-            <span className="text-[10px] font-bold text-slate-400 tracking-wider bg-slate-50 px-2 py-1 rounded-md border border-slate-100">
+            <span className="hidden md:inline-block text-[10px] font-bold text-slate-400 tracking-wider bg-slate-50 px-2 py-1 rounded-md border border-slate-100">
                 {refreshTime}
             </span>
         </div>
@@ -120,7 +112,7 @@ const Settings: React.FC = () => {
         </div>
       )}
 
-      <div className="space-y-10">
+      <div className="space-y-6 md:space-y-10">
         <div className="bg-amber-50/50 border border-amber-100 p-5 rounded-xl flex gap-4 items-start shadow-sm">
             <div className="p-2 bg-amber-100 rounded-lg text-amber-600">
                 <AlertTriangle className="w-5 h-5" />
@@ -141,11 +133,11 @@ const Settings: React.FC = () => {
             const isDirty = dirtyKeys.has(key);
 
             return (
-              <div key={key} className="bg-white border border-slate-100 rounded-3xl p-8 shadow-[0_2px_10px_-4px_rgba(0,0,0,0.05)] relative group hover:shadow-[0_20px_40px_-12px_rgba(0,0,0,0.1)] transition-all hover:-translate-y-1 flex flex-col">
+              <div key={key} className="bg-white border border-slate-100 rounded-3xl p-6 md:p-8 shadow-[0_2px_10px_-4px_rgba(0,0,0,0.05)] relative group hover:shadow-[0_20px_40px_-12px_rgba(0,0,0,0.1)] transition-all hover:-translate-y-1 flex flex-col">
                 
                 <div className="flex justify-between items-start mb-6">
                   <div>
-                    <h3 className="text-xl font-bold text-slate-800 flex items-center gap-3">
+                    <h3 className="text-lg md:text-xl font-bold text-slate-800 flex items-center gap-3">
                         <span className="flex-shrink-0 w-7 h-7 rounded-full bg-rose-500 text-white text-sm font-bold flex items-center justify-center shadow-lg shadow-rose-500/30 select-none">
                             {index + 1}
                         </span>
@@ -162,7 +154,7 @@ const Settings: React.FC = () => {
                   </div>
                   <div className="flex flex-col items-end gap-3">
                     {/* Key Tag */}
-                    <span className="text-[10px] font-mono font-bold bg-slate-50 text-slate-400 px-2 py-1 rounded-md border border-slate-100">
+                    <span className="text-[10px] font-mono font-bold bg-slate-50 text-slate-400 px-2 py-1 rounded-md border border-slate-100 hidden sm:inline-block">
                         {key}
                     </span>
                     {/* Paste Button */}
@@ -204,7 +196,6 @@ const Settings: React.FC = () => {
                             ? 'bg-rose-500 hover:bg-rose-600 text-white shadow-lg shadow-rose-500/30'
                             : 'bg-slate-100 hover:bg-slate-200 text-slate-500'
                         }`}
-                        disabled={loading && isDirty}
                     >
                         {loading && isDirty ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
                         {isDirty ? '保存配置' : '已是最新'}
@@ -224,7 +215,7 @@ const Settings: React.FC = () => {
                     <div>
                         <h2 className="text-xl font-extrabold text-slate-800 flex items-center gap-2">
                             {prompts[expandedKey].name}
-                            <span className="text-sm font-medium text-slate-400 bg-white px-2 py-0.5 rounded border border-slate-200">{expandedKey}</span>
+                            <span className="text-sm font-medium text-slate-400 bg-white px-2 py-0.5 rounded border border-slate-200 hidden md:inline-block">{expandedKey}</span>
                         </h2>
                     </div>
                     <button onClick={() => setExpandedKey(null)} className="p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-full transition-colors">
@@ -263,9 +254,8 @@ const Settings: React.FC = () => {
                             ? 'bg-rose-500 text-white hover:bg-rose-600 shadow-rose-500/20'
                             : 'bg-slate-900 text-white hover:bg-slate-800 shadow-slate-900/10'
                         }`}
-                        disabled={loading}
                     >
-                        {loading && dirtyKeys.has(expandedKey) ? '保存中...' : (dirtyKeys.has(expandedKey) ? '保存并关闭' : '关闭')}
+                        {dirtyKeys.has(expandedKey) ? '保存并关闭' : '关闭'}
                     </button>
                 </div>
             </div>
