@@ -4,7 +4,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { ProjectData, StoryboardFrame, PromptTemplate } from '../types';
 import * as storage from '../services/storageService';
 import * as gemini from '../services/geminiService';
-import { ArrowLeft, Download, Loader2, Sparkles, Image as ImageIcon, RefreshCw, X, Maximize2 } from 'lucide-react';
+import { ArrowLeft, Download, Loader2, Sparkles, Image as ImageIcon, RefreshCw, X, Maximize2, CloudUpload } from 'lucide-react';
 import JSZip from 'jszip';
 
 const StoryboardImages: React.FC = () => {
@@ -20,6 +20,10 @@ const StoryboardImages: React.FC = () => {
   // State for Batch Progress (Internal)
   const [batchProgress, setBatchProgress] = useState({ planned: 0, completed: 0, failed: 0 });
   
+  // State for Cloud Upload
+  const [uploading, setUploading] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState({ total: 0, current: 0 });
+
   // State for Downloads and UI
   const [downloading, setDownloading] = useState(false);
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
@@ -108,13 +112,10 @@ const StoryboardImages: React.FC = () => {
             const base64 = await generateSingleImage(frame);
 
             if (base64) {
-                 // Upload to R2 and get URL
-                 const imageUrl = await storage.uploadImage(base64);
-
-                 // Atomic Update to Storage (Thread-safe via Mutex in service)
+                 // Save locally to IndexedDB
                  const updated = await storage.updateProject(id!, (latest) => {
                      const newSb = latest.storyboard?.map(f => 
-                        f.id === frame.id ? { ...f, imageUrl: imageUrl } : f
+                        f.id === frame.id ? { ...f, imageUrl: base64 } : f
                      );
                      return { ...latest, storyboard: newSb };
                  });
@@ -130,7 +131,7 @@ const StoryboardImages: React.FC = () => {
                  }
             }
         } catch(e) {
-            console.error("Failed to generate/upload image", e);
+            console.error("Failed to generate image", e);
             if (mountedRef.current) {
                 setBatchProgress(prev => ({ ...prev, failed: prev.failed + 1 }));
             }
@@ -167,38 +168,70 @@ const StoryboardImages: React.FC = () => {
 
   const handleGenerateAll = () => {
       if (!project || !project.storyboard) return;
-      
       // Filter: Only generate frames that DO NOT have an image yet
       const missingFrames = project.storyboard.filter(f => !f.imageUrl);
-      
       if (missingFrames.length === 0) {
-          alert("所有分镜都已生成图片。如需重新生成特定图片，请点击图片右上角的刷新按钮。");
+          alert("所有分镜都已生成图片。");
           return;
       }
-
       handleBatchGenerate(missingFrames);
   };
 
   const handleRetryFailed = () => {
       if (!project || !project.storyboard) return;
-      // Filter frames that don't have an imageURL
       const failedFrames = project.storyboard.filter(f => !f.imageUrl);
       handleBatchGenerate(failedFrames);
+  };
+
+  const handleUploadImages = async () => {
+      if (!project || !project.storyboard) return;
+      
+      const localFrames = project.storyboard.filter(f => f.imageUrl && f.imageUrl.startsWith('data:'));
+      if (localFrames.length === 0) {
+          alert("没有检测到需要上传的本地图片。");
+          return;
+      }
+
+      setUploading(true);
+      setUploadProgress({ total: localFrames.length, current: 0 });
+
+      for (const frame of localFrames) {
+          try {
+              if (frame.imageUrl) {
+                  // Upload using project ID for folder structure
+                  const cloudUrl = await storage.uploadImage(frame.imageUrl, project.id);
+                  
+                  // Update project atomically
+                  const updated = await storage.updateProject(project.id, (latest) => {
+                      const newSb = latest.storyboard?.map(f => 
+                          f.id === frame.id ? { ...f, imageUrl: cloudUrl } : f
+                      );
+                      return { ...latest, storyboard: newSb };
+                  });
+
+                  if (mountedRef.current && updated) {
+                      setProject(updated);
+                      setUploadProgress(prev => ({ ...prev, current: prev.current + 1 }));
+                  }
+              }
+          } catch(e) {
+              console.error("Failed to upload image", e);
+          }
+      }
+
+      setUploading(false);
   };
 
   const handleDownloadAll = async () => {
     if (!project || !project.storyboard) return;
     setDownloading(true);
-
     try {
         const zip = new JSZip();
         const folder = zip.folder(`storyboard-${project.title.substring(0, 10)}`) || zip;
-
         let count = 0;
         for (const frame of project.storyboard) {
             if (frame.imageUrl) {
                 try {
-                    // Fetch blob from URL (since it might be R2 URL now)
                     const resp = await fetch(frame.imageUrl);
                     const blob = await resp.blob();
                     folder.file(`scene_${frame.sceneNumber}.png`, blob);
@@ -208,13 +241,11 @@ const StoryboardImages: React.FC = () => {
                 }
             }
         }
-
         if (count === 0) {
-            alert("没有可下载的图片。请先生成图片。");
+            alert("没有可下载的图片。");
             setDownloading(false);
             return;
         }
-
         const content = await zip.generateAsync({ type: "blob" });
         const url = window.URL.createObjectURL(content);
         const a = document.createElement("a");
@@ -224,9 +255,7 @@ const StoryboardImages: React.FC = () => {
         a.click();
         window.URL.revokeObjectURL(url);
         document.body.removeChild(a);
-
     } catch (e) {
-        console.error("Download failed", e);
         alert("打包下载失败");
     } finally {
         setDownloading(false);
@@ -235,68 +264,57 @@ const StoryboardImages: React.FC = () => {
 
   // Calculate Project Stats
   const totalScenes = project?.storyboard?.length || 0;
+  // "Generated" means has any image URL (local or cloud)
   const generatedCount = project?.storyboard?.filter(f => !!f.imageUrl).length || 0;
   const unGeneratedCount = totalScenes - generatedCount;
-  // In this system, generated images are auto-saved to state/storage immediately, so Saved ~= Generated
-  const savedCount = generatedCount;
+  // "Saved" (Uploaded) means imageUrl starts with /api/ or http, but NOT data:
+  const uploadedCount = project?.storyboard?.filter(f => f.imageUrl && !f.imageUrl.startsWith('data:')).length || 0;
+  
+  // Local images that need uploading
+  const localCount = generatedCount - uploadedCount;
 
   if (!project) return <div className="flex h-full items-center justify-center"><Loader2 className="animate-spin text-fuchsia-500 w-8 h-8" /></div>;
 
   return (
     <div className="flex flex-col h-full bg-[#F8F9FC] relative">
-        {/* Top Status Bar (Centered, Large Bold Metrics) */}
+        {/* Top Status Bar */}
         <div className="bg-slate-900 text-white shadow-md z-20 border-b border-slate-800">
             <div className="max-w-7xl mx-auto px-4 py-4 flex flex-wrap items-center justify-center gap-x-8 gap-y-2">
-                
                 <div className="flex items-baseline gap-2">
                     <span className="text-slate-400 text-sm font-medium">共</span>
                     <strong className="text-2xl text-white font-extrabold tracking-tight">{totalScenes}</strong>
                     <span className="text-slate-400 text-sm font-medium">个分镜</span>
                 </div>
-
                 <div className="hidden md:block w-px h-8 bg-slate-700 mx-2"></div>
-
                 <div className="flex items-baseline gap-2">
                     <span className="text-slate-400 text-sm font-medium">已生图</span>
                     <strong className="text-2xl text-emerald-400 font-extrabold tracking-tight">{generatedCount}</strong>
                     <span className="text-slate-400 text-sm font-medium">个</span>
                 </div>
-
                 <div className="hidden md:block w-px h-8 bg-slate-700 mx-2"></div>
-
                 <div className="flex items-baseline gap-2">
                     <span className="text-slate-400 text-sm font-medium">未生图</span>
                     <strong className="text-2xl text-amber-400 font-extrabold tracking-tight">{unGeneratedCount}</strong>
                     <span className="text-slate-400 text-sm font-medium">个</span>
                 </div>
-
                 <div className="hidden md:block w-px h-8 bg-slate-700 mx-2"></div>
-
                 <div className="flex items-baseline gap-2">
-                    <span className="text-slate-400 text-sm font-medium">已保存图片</span>
-                    <strong className="text-2xl text-blue-400 font-extrabold tracking-tight">{savedCount}</strong>
+                    <span className="text-slate-400 text-sm font-medium">已保存图片(云端)</span>
+                    <strong className="text-2xl text-blue-400 font-extrabold tracking-tight">{uploadedCount}</strong>
                     <span className="text-slate-400 text-sm font-medium">个</span>
                 </div>
 
-                {/* Batch Failure Retry */}
                 {batchProgress.failed > 0 && !generating && (
-                    <button 
-                        onClick={handleRetryFailed}
-                        className="ml-4 bg-rose-600 hover:bg-rose-500 text-white px-4 py-1.5 rounded-full text-xs font-bold transition-all flex items-center gap-1.5 animate-pulse shadow-lg shadow-rose-900/50 border border-rose-400"
-                    >
-                        <RefreshCw className="w-3.5 h-3.5" /> 失败 {batchProgress.failed} 个 - 点击重试
+                    <button onClick={handleRetryFailed} className="ml-4 bg-rose-600 hover:bg-rose-500 text-white px-4 py-1.5 rounded-full text-xs font-bold transition-all flex items-center gap-1.5 animate-pulse shadow-lg border border-rose-400">
+                        <RefreshCw className="w-3.5 h-3.5" /> 失败 {batchProgress.failed} 个 - 重试
                     </button>
                 )}
             </div>
             
-            {/* Generating Progress Bar Overlay */}
             {generating && (
                 <div className="h-1 w-full bg-slate-800 relative overflow-hidden">
                     <div className="absolute inset-0 bg-slate-800"></div>
-                     <div 
-                        className="h-full bg-gradient-to-r from-fuchsia-500 to-pink-500 transition-all duration-300 relative z-10" 
-                        style={{ width: `${batchProgress.planned > 0 ? ((batchProgress.completed + batchProgress.failed) / batchProgress.planned) * 100 : 0}%` }}
-                    ></div>
+                     <div className="h-full bg-gradient-to-r from-fuchsia-500 to-pink-500 transition-all duration-300 relative z-10" style={{ width: `${batchProgress.planned > 0 ? ((batchProgress.completed + batchProgress.failed) / batchProgress.planned) * 100 : 0}%` }}></div>
                 </div>
             )}
         </div>
@@ -316,19 +334,30 @@ const StoryboardImages: React.FC = () => {
                  </div>
             </div>
 
-            <div className="flex items-center gap-4">
+            <div className="flex items-center gap-3">
                 <button
                     onClick={handleGenerateAll}
                     disabled={generating || unGeneratedCount === 0}
-                    className="flex items-center gap-2 px-6 py-2.5 bg-gradient-to-r from-fuchsia-600 to-pink-600 text-white rounded-xl font-bold shadow-lg shadow-fuchsia-500/30 hover:shadow-fuchsia-500/40 hover:-translate-y-0.5 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-fuchsia-600 to-pink-600 text-white rounded-xl font-bold shadow-lg shadow-fuchsia-500/30 hover:shadow-fuchsia-500/40 hover:-translate-y-0.5 transition-all disabled:opacity-50 disabled:cursor-not-allowed text-sm"
                 >
                     {generating ? <Loader2 className="w-4 h-4 animate-spin"/> : <Sparkles className="w-4 h-4" />}
                     {unGeneratedCount === 0 ? '已全部生成' : '立刻生图'}
                 </button>
+
+                <button
+                    onClick={handleUploadImages}
+                    disabled={uploading || localCount === 0}
+                    className="flex items-center gap-2 px-5 py-2.5 bg-blue-600 text-white rounded-xl font-bold shadow-lg shadow-blue-500/30 hover:bg-blue-500 hover:-translate-y-0.5 transition-all disabled:opacity-50 disabled:cursor-not-allowed text-sm"
+                    title={localCount > 0 ? `有 ${localCount} 张图片待上传` : '所有图片已同步'}
+                >
+                    {uploading ? <Loader2 className="w-4 h-4 animate-spin"/> : <CloudUpload className="w-4 h-4" />}
+                    上传图片到服务器 {localCount > 0 && `(${localCount})`}
+                </button>
+
                 <button
                     onClick={handleDownloadAll}
                     disabled={downloading}
-                    className="flex items-center gap-2 px-6 py-2.5 bg-white border border-slate-200 text-slate-700 rounded-xl font-bold hover:bg-slate-50 hover:text-fuchsia-600 hover:border-fuchsia-200 transition-all shadow-sm"
+                    className="flex items-center gap-2 px-5 py-2.5 bg-white border border-slate-200 text-slate-700 rounded-xl font-bold hover:bg-slate-50 hover:text-fuchsia-600 hover:border-fuchsia-200 transition-all shadow-sm text-sm"
                 >
                     {downloading ? <Loader2 className="w-4 h-4 animate-spin"/> : <Download className="w-4 h-4" />}
                     批量下载
@@ -384,6 +413,13 @@ const StoryboardImages: React.FC = () => {
                                                         <Maximize2 className="w-3 h-3" />
                                                     </div>
                                                 </div>
+                                                {frame.imageUrl.startsWith('data:') && (
+                                                    <div className="absolute bottom-2 left-2 pointer-events-none">
+                                                        <span className="bg-amber-100 text-amber-700 text-[10px] font-bold px-2 py-0.5 rounded border border-amber-200 shadow-sm">
+                                                            未同步
+                                                        </span>
+                                                    </div>
+                                                )}
                                             </>
                                         ) : (
                                             <div className="absolute inset-0 flex flex-col items-center justify-center text-slate-300 gap-2">
@@ -401,7 +437,6 @@ const StoryboardImages: React.FC = () => {
                                             </div>
                                         )}
                                         
-                                        {/* Row Action: Regenerate */}
                                         <div className="absolute top-2 right-2 opacity-0 group-hover/image:opacity-100 transition-opacity z-10">
                                              <button 
                                                 onClick={() => {
@@ -410,12 +445,11 @@ const StoryboardImages: React.FC = () => {
                                                         try {
                                                             const base64 = await generateSingleImage(frame);
                                                             if (base64) {
-                                                                 const imageUrl = await storage.uploadImage(base64);
+                                                                // Local Save
                                                                  await storage.updateProject(id!, (latest) => {
-                                                                    const newSb = latest.storyboard?.map(f => f.id === frame.id ? { ...f, imageUrl: imageUrl } : f);
+                                                                    const newSb = latest.storyboard?.map(f => f.id === frame.id ? { ...f, imageUrl: base64 } : f);
                                                                     return { ...latest, storyboard: newSb };
                                                                  });
-                                                                 // Trigger reload to update UI
                                                                  const updated = await storage.getProject(id!);
                                                                  if(updated) setProject(updated);
                                                             }
@@ -454,7 +488,6 @@ const StoryboardImages: React.FC = () => {
             </div>
         </div>
 
-        {/* Lightbox Modal */}
         {selectedImage && (
             <div 
                 className="fixed inset-0 z-50 bg-black/90 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in duration-200"
