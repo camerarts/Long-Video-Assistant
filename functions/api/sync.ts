@@ -3,11 +3,22 @@ interface Env {
   DB: any;
 }
 
+const ensureTables = async (db: any) => {
+  await db.batch([
+    db.prepare("CREATE TABLE IF NOT EXISTS projects (id TEXT PRIMARY KEY, title TEXT, status TEXT, created_at INTEGER, updated_at INTEGER, data TEXT)"),
+    db.prepare("CREATE TABLE IF NOT EXISTS inspirations (id TEXT PRIMARY KEY, category TEXT, created_at INTEGER, data TEXT)"),
+    db.prepare("CREATE TABLE IF NOT EXISTS prompts (id TEXT PRIMARY KEY, data TEXT)")
+  ]);
+};
+
 export const onRequestPost = async (context: any) => {
   try {
-    const data = await context.request.json();
     const db = context.env.DB;
+    
+    // Auto-migration: Ensure tables exist
+    await ensureTables(db);
 
+    const data = await context.request.json();
     const statements = [];
 
     // Projects
@@ -47,7 +58,7 @@ export const onRequestPost = async (context: any) => {
     }
 
     // Execute batch (chunked to avoid limits)
-    const chunkSize = 50; 
+    const chunkSize = 10; // Reduced chunk size for safety
     for (let i = 0; i < statements.length; i += chunkSize) {
         const chunk = statements.slice(i, i + chunkSize);
         if (chunk.length > 0) {
@@ -64,6 +75,9 @@ export const onRequestPost = async (context: any) => {
 export const onRequestGet = async (context: any) => {
   try {
     const db = context.env.DB;
+    
+    // Auto-migration: Ensure tables exist before reading
+    await ensureTables(db);
 
     // Fetch all
     const pRes = await db.prepare("SELECT * FROM projects").all();
