@@ -122,7 +122,31 @@ export const updateLastUploadTime = () => {
 
 export const uploadProjects = async (): Promise<void> => {
   const projects = await dbGetAll<ProjectData>(STORE_PROJECTS);
-  const payload = { projects };
+  
+  // SANITIZATION: Remove Base64 images from payload
+  // We only want to sync metadata and cloud URLs to D1.
+  // Base64 images (starting with 'data:') are local-only temporary states or heavy payloads 
+  // that should be uploaded to R2 separately.
+  const sanitizedProjects = projects.map(p => {
+    const copy = { ...p };
+    
+    if (copy.storyboard) {
+        copy.storyboard = copy.storyboard.map(frame => ({
+            ...frame,
+            // If it's a base64 string (starts with data:), don't send it to server DB.
+            // If it's a URL (starts with /api/ or http), keep it as it's a reference.
+            imageUrl: frame.imageUrl?.startsWith('data:') ? undefined : frame.imageUrl
+        }));
+    }
+    
+    if (copy.coverImage?.imageUrl?.startsWith('data:')) {
+        copy.coverImage = { ...copy.coverImage, imageUrl: '' };
+    }
+
+    return copy;
+  });
+
+  const payload = { projects: sanitizedProjects };
   
   const res = await fetch(`${API_BASE}/sync`, {
     method: 'POST',
@@ -196,7 +220,7 @@ export const downloadAllData = async (): Promise<void> => {
 
 // --- Image Upload (R2) ---
 
-export const uploadImage = async (base64: string): Promise<string> => {
+export const uploadImage = async (base64: string, projectId?: string): Promise<string> => {
   // Convert base64 to blob
   const byteString = atob(base64.split(',')[1]);
   const mimeString = base64.split(',')[0].split(':')[1].split(';')[0];
@@ -210,8 +234,13 @@ export const uploadImage = async (base64: string): Promise<string> => {
   const ext = mimeString.split('/')[1] || 'png';
   const filename = `${crypto.randomUUID()}.${ext}`;
 
-  // Upload to R2 Endpoint
-  const res = await fetch(`${API_BASE}/images/${filename}`, {
+  // Upload to R2 Endpoint with optional project folder param
+  const url = new URL(`${window.location.origin}${API_BASE}/images/${filename}`);
+  if (projectId) {
+      url.searchParams.set('project', projectId);
+  }
+
+  const res = await fetch(url.toString(), {
     method: 'PUT',
     body: blob
   });
@@ -221,7 +250,7 @@ export const uploadImage = async (base64: string): Promise<string> => {
   }
   
   const data = await res.json();
-  return data.url; // e.g. /api/images/uuid.png
+  return data.url; // e.g. /api/images/encodedPath
 };
 
 // --- Local CRUD Methods (No Network) ---
