@@ -3,9 +3,16 @@ interface Env {
   DB: any;
 }
 
+const ensureTable = async (db: any) => {
+  await db.prepare("CREATE TABLE IF NOT EXISTS inspirations (id TEXT PRIMARY KEY, category TEXT, created_at INTEGER, data TEXT)").run();
+};
+
 export const onRequestGet = async (context: any) => {
   try {
-    const { results } = await context.env.DB.prepare(
+    const db = context.env.DB;
+    await ensureTable(db);
+
+    const { results } = await db.prepare(
       "SELECT * FROM inspirations ORDER BY created_at DESC"
     ).all();
     
@@ -18,9 +25,12 @@ export const onRequestGet = async (context: any) => {
 
 export const onRequestPost = async (context: any) => {
   try {
+    const db = context.env.DB;
+    await ensureTable(db);
+
     const item = await context.request.json() as any;
     
-    await context.env.DB.prepare(
+    await db.prepare(
       `INSERT INTO inspirations (id, category, created_at, data) 
        VALUES (?, ?, ?, ?)
        ON CONFLICT(id) DO UPDATE SET
