@@ -46,3 +46,16 @@ export const onRequestGet = async (context: any) => {
     return Response.json({ error: err.message }, { status: 500 });
   }
 };
+
+export const onRequestDelete = async (context: any) => {
+  const key = decodeURIComponent(context.params.key);
+
+  try {
+    if (!context.env.BUCKET) return new Response("R2 Bucket not configured", {status: 500});
+    
+    await context.env.BUCKET.delete(key);
+    return Response.json({ success: true });
+  } catch (err: any) {
+    return Response.json({ error: err.message }, { status: 500 });
+  }
+};
