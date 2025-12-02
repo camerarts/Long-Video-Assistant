@@ -1,23 +1,59 @@
 
 interface Env {
-  BUCKET: any; // R2Bucket binding
+  DB: any;
 }
 
 export const onRequestPost = async (context: any) => {
   try {
     const data = await context.request.json();
-    
-    // Verify R2 Binding exists
-    if (!context.env.BUCKET) {
-      return Response.json({ error: "R2 Bucket binding 'BUCKET' not found. Please configure it in Cloudflare Pages settings." }, { status: 500 });
+    const db = context.env.DB;
+
+    const statements = [];
+
+    // Projects
+    if (data.projects && Array.isArray(data.projects)) {
+      for (const p of data.projects) {
+        statements.push(db.prepare(
+          `INSERT INTO projects (id, title, status, created_at, updated_at, data) 
+           VALUES (?, ?, ?, ?, ?, ?)
+           ON CONFLICT(id) DO UPDATE SET
+           title = excluded.title,
+           status = excluded.status,
+           updated_at = excluded.updated_at,
+           data = excluded.data`
+        ).bind(p.id, p.title, p.status, p.createdAt, p.updatedAt, JSON.stringify(p)));
+      }
     }
 
-    // Parallel uploads to R2
-    await Promise.all([
-      context.env.BUCKET.put('projects.json', JSON.stringify(data.projects || [])),
-      context.env.BUCKET.put('inspirations.json', JSON.stringify(data.inspirations || [])),
-      context.env.BUCKET.put('prompts.json', JSON.stringify(data.prompts || {}))
-    ]);
+    // Inspirations
+    if (data.inspirations && Array.isArray(data.inspirations)) {
+      for (const i of data.inspirations) {
+        statements.push(db.prepare(
+          `INSERT INTO inspirations (id, category, created_at, data) 
+           VALUES (?, ?, ?, ?)
+           ON CONFLICT(id) DO UPDATE SET
+           category = excluded.category,
+           data = excluded.data`
+        ).bind(i.id, i.category || '未分类', i.createdAt, JSON.stringify(i)));
+      }
+    }
+
+    // Prompts
+    if (data.prompts) {
+      statements.push(db.prepare(
+        `INSERT INTO prompts (id, data) VALUES (?, ?)
+         ON CONFLICT(id) DO UPDATE SET data = excluded.data`
+      ).bind('global_prompts', JSON.stringify(data.prompts)));
+    }
+
+    // Execute batch (chunked to avoid limits)
+    const chunkSize = 50; 
+    for (let i = 0; i < statements.length; i += chunkSize) {
+        const chunk = statements.slice(i, i + chunkSize);
+        if (chunk.length > 0) {
+            await db.batch(chunk);
+        }
+    }
 
     return Response.json({ success: true, timestamp: Date.now() });
   } catch (err: any) {
@@ -27,20 +63,16 @@ export const onRequestPost = async (context: any) => {
 
 export const onRequestGet = async (context: any) => {
   try {
-    if (!context.env.BUCKET) {
-      return Response.json({ error: "R2 Bucket binding 'BUCKET' not found." }, { status: 500 });
-    }
+    const db = context.env.DB;
 
-    // Parallel reads from R2
-    const [pObj, iObj, prObj] = await Promise.all([
-      context.env.BUCKET.get('projects.json'),
-      context.env.BUCKET.get('inspirations.json'),
-      context.env.BUCKET.get('prompts.json')
-    ]);
+    // Fetch all
+    const pRes = await db.prepare("SELECT * FROM projects").all();
+    const iRes = await db.prepare("SELECT * FROM inspirations").all();
+    const prRes = await db.prepare("SELECT * FROM prompts WHERE id = ?").bind('global_prompts').first();
 
-    const projects = pObj ? await pObj.json() : [];
-    const inspirations = iObj ? await iObj.json() : [];
-    const prompts = prObj ? await prObj.json() : null;
+    const projects = pRes.results.map((r: any) => JSON.parse(r.data));
+    const inspirations = iRes.results.map((r: any) => JSON.parse(r.data));
+    const prompts = prRes ? JSON.parse(prRes.data as string) : null;
 
     return Response.json({ projects, inspirations, prompts });
   } catch (err: any) {
