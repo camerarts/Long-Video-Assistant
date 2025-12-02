@@ -114,16 +114,16 @@ export const getLastUploadTime = (): string => {
   return `${date.getFullYear()}年${date.getMonth() + 1}月${date.getDate()}日 / ${pad(date.getHours())}：${pad(date.getMinutes())}：${pad(date.getSeconds())}`;
 };
 
-export const uploadAllData = async (): Promise<void> => {
-  // 1. Gather Data
+export const updateLastUploadTime = () => {
+  localStorage.setItem(KEY_LAST_UPLOAD, Date.now().toString());
+};
+
+// Granular Upload Functions for Progress Tracking
+
+export const uploadProjects = async (): Promise<void> => {
   const projects = await dbGetAll<ProjectData>(STORE_PROJECTS);
-  const inspirations = await dbGetAll<Inspiration>(STORE_INSPIRATIONS);
-  const promptsStr = localStorage.getItem(KEY_PROMPTS);
-  const prompts = promptsStr ? JSON.parse(promptsStr) : DEFAULT_PROMPTS;
-
-  const payload = { projects, inspirations, prompts };
-
-  // 2. Upload to D1 Sync Endpoint
+  const payload = { projects };
+  
   const res = await fetch(`${API_BASE}/sync`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -132,11 +132,41 @@ export const uploadAllData = async (): Promise<void> => {
 
   if (!res.ok) {
     const errData = await res.json().catch(() => ({}));
-    throw new Error(errData.error || `Upload failed: ${res.statusText}`);
+    throw new Error(errData.error || `Projects upload failed: ${res.statusText}`);
   }
+};
 
-  // 3. Update Timestamp
-  localStorage.setItem(KEY_LAST_UPLOAD, Date.now().toString());
+export const uploadInspirations = async (): Promise<void> => {
+  const inspirations = await dbGetAll<Inspiration>(STORE_INSPIRATIONS);
+  const payload = { inspirations };
+  
+  const res = await fetch(`${API_BASE}/sync`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload)
+  });
+
+  if (!res.ok) {
+    const errData = await res.json().catch(() => ({}));
+    throw new Error(errData.error || `Inspirations upload failed: ${res.statusText}`);
+  }
+};
+
+export const uploadPrompts = async (): Promise<void> => {
+  const promptsStr = localStorage.getItem(KEY_PROMPTS);
+  const prompts = promptsStr ? JSON.parse(promptsStr) : DEFAULT_PROMPTS;
+  const payload = { prompts };
+  
+  const res = await fetch(`${API_BASE}/sync`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload)
+  });
+
+  if (!res.ok) {
+    const errData = await res.json().catch(() => ({}));
+    throw new Error(errData.error || `Settings upload failed: ${res.statusText}`);
+  }
 };
 
 export const downloadAllData = async (): Promise<void> => {
