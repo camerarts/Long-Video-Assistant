@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { LayoutDashboard, Settings, Video, Plus, Image as ImageIcon, Lightbulb, LogOut, CloudUpload, CloudDownload, Loader2, CheckCircle2, XCircle, Circle } from 'lucide-react';
 import * as storage from '../services/storageService';
@@ -28,11 +28,22 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
     inspirations: 'idle',
     settings: 'idle'
   });
+  const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
 
   const isActive = (path: string) => location.pathname === path || (path !== '/' && location.pathname.startsWith(path));
 
   // Check if we are in a project context for rendering main area
   const isWorkspace = location.pathname.startsWith('/project/') && !location.pathname.endsWith('/images');
+
+  // Poll for unsaved changes status
+  useEffect(() => {
+    const checkStatus = () => {
+        setHasUnsavedChanges(storage.hasUnsavedChanges());
+    };
+    checkStatus();
+    const interval = setInterval(checkStatus, 1000); // Check every second
+    return () => clearInterval(interval);
+  }, []);
 
   const handleCreateProject = async () => {
     const newId = await storage.createProject();
@@ -192,10 +203,14 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
              <button
                 onClick={handleUpload}
                 disabled={!!syncing}
-                className="flex flex-col items-center justify-center py-2 px-2 w-full rounded-xl transition-all gap-1 text-slate-400 hover:bg-blue-50 hover:text-blue-600 disabled:opacity-50"
-                title="上传数据到云端"
+                className={`flex flex-col items-center justify-center py-2 px-2 w-full rounded-xl transition-all gap-1 text-slate-100 disabled:opacity-50 ${
+                    hasUnsavedChanges
+                    ? 'bg-rose-500 hover:bg-rose-600 shadow-lg shadow-rose-500/30 animate-pulse'
+                    : 'bg-emerald-500 hover:bg-emerald-600 shadow-lg shadow-emerald-500/30'
+                }`}
+                title={hasUnsavedChanges ? "有未保存的本地数据，请点击上传" : "数据已同步到云端"}
             >
-                {syncing === 'upload' ? <Loader2 className="w-5 h-5 animate-spin text-blue-500" /> : <CloudUpload className="w-5 h-5 stroke-2" />}
+                {syncing === 'upload' ? <Loader2 className="w-5 h-5 animate-spin text-white" /> : <CloudUpload className="w-5 h-5 stroke-2" />}
                 <span className="text-[10px] font-bold tracking-wide">上传</span>
             </button>
             <button
