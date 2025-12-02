@@ -104,83 +104,64 @@ class Mutex {
 
 const projectMutex = new Mutex();
 
-// --- Manual Sync Methods ---
+// --- Manual Sync Methods (R2 Bulk) ---
 
 export const getLastUploadTime = (): string => {
   const ts = localStorage.getItem(KEY_LAST_UPLOAD);
   if (!ts) return '从未上传';
   const date = new Date(parseInt(ts));
   const pad = (n: number) => n.toString().padStart(2, '0');
-  return `${date.getFullYear()}年${date.getMonth() + 1}月${date.getDate()}日/${pad(date.getHours())}：${pad(date.getMinutes())}：${pad(date.getSeconds())}`;
+  return `${date.getFullYear()}年${date.getMonth() + 1}月${date.getDate()}日 / ${pad(date.getHours())}：${pad(date.getMinutes())}：${pad(date.getSeconds())}`;
 };
 
 export const uploadAllData = async (): Promise<void> => {
-  // 1. Get all Local Data
+  // 1. Gather Data
   const projects = await dbGetAll<ProjectData>(STORE_PROJECTS);
   const inspirations = await dbGetAll<Inspiration>(STORE_INSPIRATIONS);
   const promptsStr = localStorage.getItem(KEY_PROMPTS);
   const prompts = promptsStr ? JSON.parse(promptsStr) : DEFAULT_PROMPTS;
 
-  // 2. Upload Projects (Iterative)
-  // Optimization: In a real app, use a bulk endpoint. Here we reuse existing single endpoints.
-  for (const p of projects) {
-    await fetch(`${API_BASE}/projects`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(p)
-    });
-  }
+  const payload = { projects, inspirations, prompts };
 
-  // 3. Upload Inspirations (Iterative)
-  for (const i of inspirations) {
-    await fetch(`${API_BASE}/inspirations`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(i)
-    });
-  }
-
-  // 4. Upload Prompts (Single)
-  await fetch(`${API_BASE}/prompts`, {
+  // 2. Upload to R2 Sync Endpoint
+  const res = await fetch(`${API_BASE}/sync`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(prompts)
+    body: JSON.stringify(payload)
   });
 
-  // 5. Update Timestamp
+  if (!res.ok) {
+    const errData = await res.json().catch(() => ({}));
+    throw new Error(errData.error || `Upload failed: ${res.statusText}`);
+  }
+
+  // 3. Update Timestamp
   localStorage.setItem(KEY_LAST_UPLOAD, Date.now().toString());
 };
 
 export const downloadAllData = async (): Promise<void> => {
-  // 1. Fetch Projects
-  try {
-    const res = await fetch(`${API_BASE}/projects`);
-    if (res.ok) {
-        const apiData = await res.json();
-        for (const p of apiData) await dbPut(STORE_PROJECTS, p);
-    }
-  } catch (e) { console.error("Failed to download projects", e); }
+  // 1. Fetch from R2 Sync Endpoint
+  const res = await fetch(`${API_BASE}/sync`);
+  if (!res.ok) {
+    const errData = await res.json().catch(() => ({}));
+    throw new Error(errData.error || `Download failed: ${res.statusText}`);
+  }
 
-  // 2. Fetch Inspirations
-  try {
-    const res = await fetch(`${API_BASE}/inspirations`);
-    if (res.ok) {
-        const apiData = await res.json();
-        for (const item of apiData) await dbPut(STORE_INSPIRATIONS, item);
-    }
-  } catch (e) { console.error("Failed to download inspirations", e); }
+  const data = await res.json();
 
-  // 3. Fetch Prompts
-  try {
-    const res = await fetch(`${API_BASE}/prompts`);
-    if (res.ok) {
-        const serverPrompts = await res.json();
-        if (serverPrompts) {
-             const merged = { ...DEFAULT_PROMPTS, ...serverPrompts };
-             localStorage.setItem(KEY_PROMPTS, JSON.stringify(merged));
-        }
-    }
-  } catch (e) { console.error("Failed to download prompts", e); }
+  // 2. Update Local Stores (Merge/Overwrite)
+  if (data.projects && Array.isArray(data.projects)) {
+    for (const p of data.projects) await dbPut(STORE_PROJECTS, p);
+  }
+  
+  if (data.inspirations && Array.isArray(data.inspirations)) {
+    for (const i of data.inspirations) await dbPut(STORE_INSPIRATIONS, i);
+  }
+  
+  if (data.prompts) {
+    const merged = { ...DEFAULT_PROMPTS, ...data.prompts };
+    localStorage.setItem(KEY_PROMPTS, JSON.stringify(merged));
+  }
 };
 
 // --- Local CRUD Methods (No Network) ---
