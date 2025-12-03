@@ -1,4 +1,6 @@
 
+
+
 import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { ProjectData, TitleItem, StoryboardFrame, CoverOption, PromptTemplate, ProjectStatus } from '../types';
@@ -74,7 +76,7 @@ const NODE_HEIGHT = 180;
 
 // Workflow Layout Definition
 const NODES_CONFIG = [
-  { id: 'input', label: '项目输入', icon: Layout, color: 'blue', description: '选题与核心观点', x: 50, y: 300 },
+  { id: 'input', label: '项目输入', icon: Layout, color: 'blue', description: '选题与基本信息', x: 50, y: 300 },
   { id: 'script', label: '视频脚本', icon: FileText, color: 'violet', promptKey: 'SCRIPT', description: '生成分章节的详细脚本', x: 450, y: 300 },
   { id: 'sb_text', label: '分镜文案', icon: Film, color: 'fuchsia', promptKey: 'STORYBOARD_TEXT', description: '拆解为可视化画面描述', x: 850, y: 100 },
   { id: 'titles', label: '爆款标题', icon: Type, color: 'amber', promptKey: 'TITLES', description: '生成高点击率标题', x: 850, y: 300 },
@@ -202,9 +204,6 @@ const ProjectWorkspace: React.FC = () => {
         // Prepare context data for interpolation
         const contextData: Record<string, string> = {
             topic: project.inputs.topic,
-            corePoint: project.inputs.corePoint,
-            audience: project.inputs.audience,
-            duration: project.inputs.duration,
             tone: project.inputs.tone,
             language: project.inputs.language,
             title: project.title, // For steps that need the title
@@ -504,20 +503,6 @@ const ProjectWorkspace: React.FC = () => {
                          <div className="bg-white p-5 rounded-xl border border-slate-200 shadow-sm">
                              <label className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2 block">项目主题</label>
                              <p className="text-base font-bold text-slate-800">{project.inputs.topic}</p>
-                         </div>
-                          <div className="bg-white p-5 rounded-xl border border-slate-200 shadow-sm">
-                             <label className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2 block">核心观点</label>
-                             <p className="text-sm text-slate-600 leading-relaxed whitespace-pre-wrap">{project.inputs.corePoint}</p>
-                         </div>
-                         <div className="grid grid-cols-2 gap-4">
-                            <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
-                                <label className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1 block">目标受众</label>
-                                <p className="text-sm font-medium text-slate-700">{project.inputs.audience}</p>
-                            </div>
-                            <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
-                                <label className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1 block">预估时长</label>
-                                <p className="text-sm font-medium text-slate-700">{project.inputs.duration}</p>
-                            </div>
                          </div>
                      </div>
                  )}
