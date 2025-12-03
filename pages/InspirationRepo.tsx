@@ -1,4 +1,5 @@
 
+
 import React, { useEffect, useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Inspiration, ProjectData, ProjectStatus } from '../types';
@@ -116,9 +117,6 @@ const InspirationRepo: React.FC = () => {
       updatedAt: Date.now(),
       inputs: {
         topic: item.viralTitle, // Auto-fill
-        corePoint: item.viralTitle, // Auto-fill as core point initially
-        audience: '大众',
-        duration: '10分钟',
         tone: '信息丰富且引人入胜',
         language: '中文'
       }
