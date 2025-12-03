@@ -117,7 +117,7 @@ const Dashboard: React.FC = () => {
                                 </td>
                                 <td className="py-5 px-6">
                                     <div className="flex flex-col">
-                                        <span className="font-bold text-slate-800 text-base md:text-lg group-hover:text-violet-700 transition-colors mb-1 line-clamp-2 md:line-clamp-1">
+                                        <span className="font-bold text-slate-800 text-base md:text-lg group-hover:text-violet-700 transition-colors mb-1">
                                             {project.title || '未命名项目'}
                                         </span>
                                     </div>
