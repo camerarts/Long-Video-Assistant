@@ -454,7 +454,7 @@ const ProjectWorkspace: React.FC = () => {
                 <button onClick={() => setSelectedNodeId(null)} className="p-2 hover:bg-slate-100 rounded-lg text-slate-400 transition-colors">
                     <PanelRightClose className="w-5 h-5 rotate-180" />
                 </button>
-                <div className="flex items-center gap-3 flex-1">
+                <div className="flex items-center gap-3 flex-1 justify-end">
                      {selectedNodeId && (() => {
                          const node = NODES_CONFIG.find(n => n.id === selectedNodeId);
                          return (
@@ -462,10 +462,17 @@ const ProjectWorkspace: React.FC = () => {
                                 <div className={`w-8 h-8 rounded-lg bg-${node?.color}-100 text-${node?.color}-600 flex items-center justify-center`}>
                                     {node?.icon && <node.icon className="w-4 h-4" />}
                                 </div>
-                                <div>
+                                <div className="mr-2">
                                     <h3 className="font-bold text-slate-800 text-sm">{node?.label}</h3>
-                                    <p className="text-[10px] text-slate-400">输出结果预览</p>
                                 </div>
+                                {node?.id !== 'input' && node?.id !== 'image_gen' && (
+                                    <button 
+                                        onClick={() => handleGenerate(selectedNodeId!)}
+                                        className={`px-3 py-1.5 rounded-lg text-[10px] font-bold flex items-center gap-1.5 transition-all bg-${node?.color}-50 text-${node?.color}-600 hover:bg-${node?.color}-100`}
+                                    >
+                                        <Sparkles className="w-3 h-3" /> 重新生成
+                                    </button>
+                                )}
                             </>
                          );
                      })()}
@@ -511,19 +518,25 @@ const ProjectWorkspace: React.FC = () => {
                         data={project.titles || []}
                         renderRow={(item: TitleItem, i: number) => (
                             <tr key={i} className="hover:bg-slate-50 group">
-                                <td className="py-3 px-2 text-center text-xs font-bold text-slate-400 w-[10%]">{i + 1}</td>
-                                <td className="py-3 px-2 text-sm text-slate-800 font-bold leading-snug w-[60%]">
+                                <td className="py-3 px-2 text-center text-xs font-bold text-slate-400 w-[10%] align-top pt-3">{i + 1}</td>
+                                <td className="py-3 px-2 text-sm text-slate-800 font-bold leading-snug w-[60%] align-top pt-3">
                                     {item.title}
                                 </td>
-                                <td className="py-3 px-2 text-xs text-slate-500 font-medium w-[12%] truncate" title={item.keywords || item.type}>
-                                    {item.keywords || item.type}
+                                <td className="py-3 px-2 w-[12%] align-top">
+                                    <div className="flex flex-col gap-1.5 pt-0.5">
+                                        {(item.keywords || item.type || '').split(/[,，、 ]+/).filter(Boolean).slice(0, 5).map((k, kIdx) => (
+                                            <span key={kIdx} className="inline-block text-[10px] leading-none text-slate-500 bg-slate-100 px-1.5 py-1 rounded text-center">
+                                                {k.trim()}
+                                            </span>
+                                        ))}
+                                    </div>
                                 </td>
-                                <td className="py-3 px-2 text-center w-[12%]">
+                                <td className="py-3 px-2 text-center w-[12%] align-top pt-3">
                                     <span className={`inline-flex items-center gap-1 text-xs font-bold px-1.5 py-0.5 rounded ${item.score && item.score > 9 ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-100 text-slate-600'}`}>
                                         {item.score ? (Number(item.score) / 10).toFixed(2) : '-'}
                                     </span>
                                 </td>
-                                <td className="py-3 px-2 text-right w-[6%]">
+                                <td className="py-3 px-2 text-right w-[6%] align-top pt-3">
                                     <RowCopyButton text={item.title} />
                                 </td>
                             </tr>
