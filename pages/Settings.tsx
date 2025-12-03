@@ -17,9 +17,9 @@ const Settings: React.FC = () => {
   // Define the strict display order
   const ORDERED_KEYS = [
     'SCRIPT',
+    'TITLES',
     'STORYBOARD_TEXT',
     'IMAGE_GEN',
-    'TITLES',
     'SUMMARY',
     'COVER_GEN'
   ];
@@ -92,11 +92,11 @@ const Settings: React.FC = () => {
   };
 
   return (
-    <div className="max-w-6xl mx-auto pb-20">
-      <div className="flex flex-col gap-4 md:flex-row md:justify-between md:items-end mb-6 md:mb-10">
+    <div className="max-w-6xl mx-auto pb-24 md:pb-20">
+      <div className="flex flex-col gap-3 md:flex-row md:justify-between md:items-end mb-6 md:mb-10">
         <div>
-          <h1 className="text-2xl md:text-4xl font-extrabold text-slate-900 mb-1 md:mb-2 tracking-tight">AI 提示词配置</h1>
-          <p className="text-sm md:text-base text-slate-500 font-medium">精细化控制内容生成的每一个环节。</p>
+          <h1 className="text-2xl md:text-4xl font-extrabold text-slate-900 mb-0.5 md:mb-2 tracking-tight">AI 提示词配置</h1>
+          <p className="text-xs md:text-base text-slate-500 font-medium">精细化控制内容生成的每一个环节。</p>
         </div>
         <div className="flex flex-col items-end gap-2">
             <span className="hidden md:inline-block text-[10px] font-bold text-slate-400 tracking-wider bg-slate-50 px-2 py-1 rounded-md border border-slate-100">
@@ -114,7 +114,7 @@ const Settings: React.FC = () => {
 
       <div className="space-y-6 md:space-y-10">
         <div className="bg-amber-50/50 border border-amber-100 p-5 rounded-xl flex gap-4 items-start shadow-sm">
-            <div className="p-2 bg-amber-100 rounded-lg text-amber-600">
+            <div className="p-2 bg-amber-100 rounded-lg text-amber-600 flex-shrink-0">
                 <AlertTriangle className="w-5 h-5" />
             </div>
             <div className="space-y-1">
