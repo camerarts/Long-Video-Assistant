@@ -1,4 +1,5 @@
 
+
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ProjectData } from '../types';
@@ -49,14 +50,14 @@ const ImageWorkshopList: React.FC = () => {
   };
 
   return (
-    <div className="space-y-6 md:space-y-8">
-      <div className="flex flex-col gap-4 md:flex-row md:justify-between md:items-end">
+    <div className="space-y-6 md:space-y-8 pb-24 md:pb-0">
+      <div className="flex flex-col gap-3 md:flex-row md:justify-between md:items-end">
         <div>
-          <h1 className="text-2xl md:text-4xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-fuchsia-600 to-pink-600 mb-1 md:mb-2 tracking-tight flex items-center gap-2 md:gap-3">
+          <h1 className="text-2xl md:text-4xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-fuchsia-600 to-pink-600 mb-0.5 md:mb-2 tracking-tight flex items-center gap-2 md:gap-3">
             <ImageIcon className="w-6 h-6 md:w-8 md:h-8 text-fuchsia-600" />
             生图列表
           </h1>
-          <p className="text-sm md:text-base text-slate-500 font-medium">查看各项目的生图进度，进入工坊批量生产画面。</p>
+          <p className="text-xs md:text-base text-slate-500 font-medium">查看各项目的生图进度，进入工坊批量生产画面。</p>
         </div>
         <div className="flex flex-col items-end justify-end pb-1">
              <span className="hidden md:inline-block text-[10px] font-bold text-slate-400 tracking-wider bg-slate-50 px-2 py-1 rounded-md border border-slate-100">
@@ -87,7 +88,7 @@ const ImageWorkshopList: React.FC = () => {
                     <thead className="bg-slate-100 border-b border-slate-200 text-slate-600">
                         <tr>
                             <th className="py-4 px-6 text-xs font-bold uppercase tracking-wider w-20 text-center">序号</th>
-                            <th className="py-4 px-6 text-xs font-bold uppercase tracking-wider text-center">主题 / 核心观点</th>
+                            <th className="py-4 px-6 text-xs font-bold uppercase tracking-wider text-center">主题</th>
                             <th className="py-4 px-6 text-xs font-bold uppercase tracking-wider w-36 md:w-48 text-center">生图进度</th>
                             <th className="py-4 px-6 text-xs font-bold uppercase tracking-wider w-40 text-center hidden md:table-cell">完成日期</th>
                             <th className="py-4 px-6 text-xs font-bold uppercase tracking-wider w-24 text-center">操作</th>
@@ -115,9 +116,6 @@ const ImageWorkshopList: React.FC = () => {
                                         <div className="flex flex-col">
                                             <span className={`font-bold text-base md:text-lg transition-colors mb-1 line-clamp-2 md:line-clamp-1 ${hasStoryboard ? 'text-slate-800 group-hover:text-fuchsia-700' : 'text-slate-500'}`}>
                                                 {project.title || '未命名项目'}
-                                            </span>
-                                            <span className="text-xs text-slate-400 line-clamp-1 max-w-md">
-                                                {project.inputs.corePoint || '暂无核心观点描述...'}
                                             </span>
                                         </div>
                                     </td>
