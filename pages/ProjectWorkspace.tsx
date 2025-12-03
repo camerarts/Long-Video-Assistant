@@ -146,6 +146,11 @@ const ProjectWorkspace: React.FC = () => {
   };
 
   const handleCanvasMouseDown = (e: React.MouseEvent) => {
+      // Close sidebar if open when clicking on background
+      if (selectedNodeId) {
+          setSelectedNodeId(null);
+      }
+
       // Allow drag on Space+Click OR Middle Click OR Left Click on empty space
       if (e.button === 1 || e.button === 0) { 
           setIsDragging(true);
