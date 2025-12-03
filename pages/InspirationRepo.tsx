@@ -137,7 +137,7 @@ const InspirationRepo: React.FC = () => {
     // Add BOM for Excel UTF-8 compatibility
     let csvContent = "\uFEFF"; 
     
-    // Headers
+    // Headers as requested: Index, Category, Title, Score
     csvContent += "序号,分类,标题,得分\n";
     
     sortedInspirations.forEach((item, index) => {
@@ -465,8 +465,8 @@ const InspirationRepo: React.FC = () => {
                         className={`group transition-colors ${item.marked ? 'bg-emerald-50 hover:bg-emerald-100/60' : 'hover:bg-amber-50/30'}`}
                     >
                         <td className="py-3 px-4 text-center text-xs font-bold text-slate-400">{index + 1}</td>
-                        <td className="py-3 px-4 text-center">
-                            <div className={`font-bold text-xs ${item.marked ? 'text-emerald-800' : 'text-slate-800'}`}>
+                        <td className="py-3 px-4">
+                            <div className={`font-bold text-[10px] ${item.marked ? 'text-emerald-800' : 'text-slate-800'}`}>
                                 {item.category}
                             </div>
                         </td>
