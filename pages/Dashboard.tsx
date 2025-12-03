@@ -1,4 +1,5 @@
 
+
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ProjectData, ProjectStatus } from '../types';
@@ -57,11 +58,11 @@ const Dashboard: React.FC = () => {
   };
 
   return (
-    <div className="space-y-6 md:space-y-8">
-      <div className="flex flex-col gap-4 md:flex-row md:justify-between md:items-end">
+    <div className="space-y-6 md:space-y-8 pb-24 md:pb-0">
+      <div className="flex flex-col gap-3 md:flex-row md:justify-between md:items-end">
         <div>
-          <h1 className="text-2xl md:text-4xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-slate-900 to-slate-600 mb-1 md:mb-2 tracking-tight">项目列表</h1>
-          <p className="text-sm md:text-base text-slate-500 font-medium">管理您的长视频创作流水线。</p>
+          <h1 className="text-2xl md:text-4xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-slate-900 to-slate-600 mb-0.5 md:mb-2 tracking-tight">项目列表</h1>
+          <p className="text-xs md:text-base text-slate-500 font-medium">管理您的长视频创作流水线。</p>
         </div>
         <div className="flex flex-col items-stretch md:items-end gap-2 w-full md:w-auto">
             <span className="hidden md:inline-block text-[10px] font-bold text-slate-400 tracking-wider bg-slate-50 px-2 py-1 rounded-md border border-slate-100">
@@ -69,9 +70,9 @@ const Dashboard: React.FC = () => {
             </span>
             <button 
               onClick={handleCreate}
-              className="bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-500 hover:to-indigo-500 text-white px-6 py-3 rounded-xl font-semibold transition-all shadow-lg shadow-indigo-500/30 hover:shadow-indigo-500/40 hover:-translate-y-0.5 flex items-center justify-center gap-2 w-full md:w-auto"
+              className="bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-500 hover:to-indigo-500 text-white px-6 py-2.5 md:py-3 rounded-xl font-semibold transition-all shadow-lg shadow-indigo-500/30 hover:shadow-indigo-500/40 hover:-translate-y-0.5 flex items-center justify-center gap-2 w-full md:w-auto text-sm md:text-base"
             >
-              <Plus className="w-5 h-5" /> 新建项目
+              <Plus className="w-5 h-5" /> <span className="md:hidden">新建</span><span className="hidden md:inline">新建项目</span>
             </button>
         </div>
       </div>
@@ -98,7 +99,7 @@ const Dashboard: React.FC = () => {
                     <thead className="bg-slate-100 text-slate-600 border-b border-slate-200">
                         <tr>
                             <th className="py-4 px-6 text-xs font-bold uppercase tracking-wider w-20 text-center">序号</th>
-                            <th className="py-4 px-6 text-xs font-bold uppercase tracking-wider text-center">主题 / 核心观点</th>
+                            <th className="py-4 px-6 text-xs font-bold uppercase tracking-wider text-center">主题</th>
                             <th className="py-4 px-6 text-xs font-bold uppercase tracking-wider w-32 text-center">进度</th>
                             <th className="py-4 px-6 text-xs font-bold uppercase tracking-wider w-40 text-center hidden md:table-cell">创建日期</th>
                             <th className="py-4 px-6 text-xs font-bold uppercase tracking-wider w-24 text-center">操作</th>
@@ -118,9 +119,6 @@ const Dashboard: React.FC = () => {
                                     <div className="flex flex-col">
                                         <span className="font-bold text-slate-800 text-base md:text-lg group-hover:text-violet-700 transition-colors mb-1 line-clamp-2 md:line-clamp-1">
                                             {project.title || '未命名项目'}
-                                        </span>
-                                        <span className="text-xs text-slate-400 line-clamp-1 max-w-md">
-                                            {project.inputs.corePoint || '暂无核心观点描述...'}
                                         </span>
                                     </div>
                                 </td>
