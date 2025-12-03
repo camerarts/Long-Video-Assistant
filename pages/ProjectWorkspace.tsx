@@ -414,7 +414,7 @@ const ProjectWorkspace: React.FC = () => {
                              <h3 className="text-base font-bold text-slate-800 mb-1">{node.label}</h3>
                              <p className="text-[10px] text-slate-400 font-medium mb-4 min-h-[1.5em] leading-snug">{node.description}</p>
                              
-                             <div className="flex items-center justify-between mt-auto pt-2 border-t border-slate-50">
+                             <div className="flex items-center justify-end mt-auto pt-2 border-t border-slate-50">
                                  {node.id !== 'input' && node.id !== 'image_gen' ? (
                                      <button 
                                         onClick={(e) => { e.stopPropagation(); handleGenerate(node.id); }}
@@ -450,8 +450,11 @@ const ProjectWorkspace: React.FC = () => {
             className={`absolute top-0 right-0 bottom-0 bg-white/95 backdrop-blur-xl border-l border-slate-200 shadow-[-4px_0_24px_rgba(0,0,0,0.05)] transform transition-all duration-300 z-30 flex flex-col w-[480px] ${selectedNodeId ? 'translate-x-0' : 'translate-x-full'}`}
             onMouseDown={(e) => e.stopPropagation()}
         >
-            <div className="p-5 border-b border-slate-100 flex justify-between items-center bg-white/50">
-                <div className="flex items-center gap-3">
+            <div className="p-5 border-b border-slate-100 flex items-center bg-white/50 gap-4">
+                <button onClick={() => setSelectedNodeId(null)} className="p-2 hover:bg-slate-100 rounded-lg text-slate-400 transition-colors">
+                    <PanelRightClose className="w-5 h-5 rotate-180" />
+                </button>
+                <div className="flex items-center gap-3 flex-1">
                      {selectedNodeId && (() => {
                          const node = NODES_CONFIG.find(n => n.id === selectedNodeId);
                          return (
@@ -467,9 +470,6 @@ const ProjectWorkspace: React.FC = () => {
                          );
                      })()}
                 </div>
-                <button onClick={() => setSelectedNodeId(null)} className="p-2 hover:bg-slate-100 rounded-lg text-slate-400 transition-colors">
-                    <PanelRightClose className="w-5 h-5" />
-                </button>
             </div>
 
             <div className="flex-1 overflow-y-auto p-6 bg-[#F8F9FC]">
@@ -511,15 +511,15 @@ const ProjectWorkspace: React.FC = () => {
                         data={project.titles || []}
                         renderRow={(item: TitleItem, i: number) => (
                             <tr key={i} className="hover:bg-slate-50 group">
-                                <td className="py-3 px-5 text-center text-xs font-bold text-slate-400">{i + 1}</td>
+                                <td className="py-3 px-5 text-center text-xs font-bold text-slate-400 w-12">{i + 1}</td>
                                 <td className="py-3 px-5 text-sm text-slate-800 font-bold leading-snug">{item.title}</td>
-                                <td className="py-3 px-5 text-xs text-slate-500 font-medium whitespace-nowrap">{item.keywords || item.type}</td>
-                                <td className="py-3 px-5 text-center">
+                                <td className="py-3 px-5 text-xs text-slate-500 font-medium w-24 max-w-[120px] truncate" title={item.keywords || item.type}>{item.keywords || item.type}</td>
+                                <td className="py-3 px-5 text-center w-20">
                                     <span className={`inline-flex items-center gap-1 text-xs font-bold px-2 py-0.5 rounded ${item.score && item.score > 9 ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-100 text-slate-600'}`}>
                                         {item.score ? (Number(item.score) / 10).toFixed(2) : '-'}
                                     </span>
                                 </td>
-                                <td className="py-3 px-5 text-right">
+                                <td className="py-3 px-5 text-right w-12">
                                     <RowCopyButton text={item.title} />
                                 </td>
                             </tr>
