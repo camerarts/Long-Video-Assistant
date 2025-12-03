@@ -114,7 +114,7 @@ const ImageWorkshopList: React.FC = () => {
                                     </td>
                                     <td className="py-5 px-6">
                                         <div className="flex flex-col">
-                                            <span className={`font-bold text-base md:text-lg transition-colors mb-1 line-clamp-2 md:line-clamp-1 ${hasStoryboard ? 'text-slate-800 group-hover:text-fuchsia-700' : 'text-slate-500'}`}>
+                                            <span className={`font-bold text-base md:text-lg transition-colors mb-1 whitespace-normal break-words ${hasStoryboard ? 'text-slate-800 group-hover:text-fuchsia-700' : 'text-slate-500'}`}>
                                                 {project.title || '未命名项目'}
                                             </span>
                                         </div>
@@ -130,19 +130,15 @@ const ImageWorkshopList: React.FC = () => {
                                                 </div>
                                                 <div className="w-full h-1.5 bg-slate-100 rounded-full overflow-hidden">
                                                     <div 
-                                                        className={`h-full rounded-full transition-all duration-500 ${
-                                                            progress.generated === progress.total 
-                                                            ? 'bg-emerald-500' 
-                                                            : 'bg-gradient-to-r from-fuchsia-500 to-pink-500'
-                                                        }`}
+                                                        className={`h-full rounded-full transition-all duration-500 ${progress.generated === progress.total ? 'bg-emerald-500' : 'bg-fuchsia-500'}`}
                                                         style={{ width: `${(progress.generated / progress.total) * 100}%` }}
                                                     />
                                                 </div>
                                             </div>
                                         ) : (
-                                            <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-slate-100 text-slate-400 text-xs font-bold border border-slate-200">
-                                                <AlertCircle className="w-3.5 h-3.5" />
-                                                暂无分镜
+                                            <div className="flex items-center justify-center text-slate-400 gap-1">
+                                                <AlertCircle className="w-4 h-4" />
+                                                <span className="text-xs font-medium">无分镜</span>
                                             </div>
                                         )}
                                     </td>
@@ -156,21 +152,16 @@ const ImageWorkshopList: React.FC = () => {
                                         {deleteConfirmId === project.id ? (
                                             <button 
                                                 onClick={(e) => handleDelete(e, project.id)}
-                                                className="text-xs bg-rose-50 text-rose-600 border border-rose-200 px-2 py-1.5 rounded-lg font-bold hover:bg-rose-100 transition-colors animate-in fade-in duration-200 whitespace-nowrap"
+                                                className="text-xs bg-rose-50 text-rose-600 border border-rose-200 px-3 py-1.5 rounded-lg font-bold hover:bg-rose-100 transition-colors whitespace-nowrap"
                                                 onMouseLeave={() => setDeleteConfirmId(null)}
-                                                onMouseDown={(e) => e.stopPropagation()}
                                             >
-                                                确认删除
+                                                确认删除?
                                             </button>
                                         ) : (
                                             <button 
-                                                onClick={(e) => {
-                                                    e.stopPropagation();
-                                                    setDeleteConfirmId(project.id);
-                                                }}
+                                                onClick={(e) => { e.stopPropagation(); setDeleteConfirmId(project.id); }}
                                                 className="p-2 text-slate-300 hover:text-rose-500 hover:bg-rose-50 rounded-lg transition-all"
                                                 title="删除项目"
-                                                onMouseDown={(e) => e.stopPropagation()}
                                             >
                                                 <Trash2 className="w-4.5 h-4.5" />
                                             </button>
