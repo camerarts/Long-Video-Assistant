@@ -1,7 +1,6 @@
-
 import React, { useState, useEffect } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { LayoutDashboard, Settings, Video, Plus, Image as ImageIcon, Lightbulb, LogOut, CloudUpload, CloudDownload, Loader2, CheckCircle2, XCircle, Circle, Menu, X } from 'lucide-react';
+import { LayoutDashboard, Settings, Video, Plus, Image as ImageIcon, Lightbulb, LogOut, CloudUpload, CloudDownload, Loader2, CheckCircle2, XCircle, Circle, Menu, X, Sparkles } from 'lucide-react';
 import * as storage from '../services/storageService';
 
 interface LayoutProps {
@@ -31,6 +30,11 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
+  // New Project Modal State
+  const [showCreateModal, setShowCreateModal] = useState(false);
+  const [newProjectTopic, setNewProjectTopic] = useState('');
+  const [creating, setCreating] = useState(false);
+
   const isActive = (path: string) => location.pathname === path || (path !== '/' && location.pathname.startsWith(path));
 
   // Check if we are in a project context for rendering main area
@@ -51,10 +55,26 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
     setMobileMenuOpen(false);
   }, [location.pathname]);
 
-  const handleCreateProject = async () => {
-    const newId = await storage.createProject();
-    navigate(`/project/${newId}`);
-    setMobileMenuOpen(false);
+  const handleCreateClick = () => {
+    setNewProjectTopic('');
+    setShowCreateModal(true);
+  };
+
+  const handleConfirmCreate = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newProjectTopic.trim()) return;
+
+    setCreating(true);
+    try {
+        const newId = await storage.createProject(newProjectTopic);
+        setShowCreateModal(false);
+        setMobileMenuOpen(false);
+        navigate(`/project/${newId}`);
+    } catch (err) {
+        console.error(err);
+    } finally {
+        setCreating(false);
+    }
   };
 
   const handleLogout = () => {
@@ -178,7 +198,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
           
           {/* Big Add Button - High End Gradient */}
           <button
-            onClick={handleCreateProject}
+            onClick={handleCreateClick}
             className="w-12 h-12 bg-gradient-to-r from-violet-600 to-fuchsia-600 text-white rounded-2xl flex items-center justify-center shadow-lg shadow-violet-500/30 hover:shadow-violet-500/50 hover:scale-105 transition-all duration-300 group mb-2"
             title="新建项目"
           >
@@ -318,6 +338,61 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
                         <StatusIcon status={uploadState.settings} />
                     </div>
                 </div>
+            </div>
+        </div>
+      )}
+
+      {/* New Project Modal */}
+      {showCreateModal && (
+        <div className="fixed inset-0 z-[110] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
+            <div className="bg-white rounded-3xl shadow-2xl p-8 w-full max-w-md animate-in zoom-in-95 duration-200">
+                <div className="flex justify-between items-start mb-6">
+                    <div className="flex items-center gap-3">
+                         <div className="w-12 h-12 bg-gradient-to-br from-violet-600 to-indigo-600 rounded-2xl flex items-center justify-center shadow-lg shadow-violet-500/30">
+                            <Sparkles className="w-6 h-6 text-white" />
+                         </div>
+                         <div>
+                             <h3 className="text-xl font-extrabold text-slate-900">开启新创作</h3>
+                             <p className="text-xs text-slate-500 font-medium">输入主题，立即开始策划</p>
+                         </div>
+                    </div>
+                    <button onClick={() => setShowCreateModal(false)} className="text-slate-400 hover:text-slate-600 bg-slate-50 p-2 rounded-full transition-colors">
+                        <X className="w-5 h-5" />
+                    </button>
+                </div>
+
+                <form onSubmit={handleConfirmCreate}>
+                    <div className="mb-6">
+                        <label className="block text-sm font-bold text-slate-600 mb-2">视频主题</label>
+                        <input
+                            autoFocus
+                            required
+                            type="text"
+                            value={newProjectTopic}
+                            onChange={(e) => setNewProjectTopic(e.target.value)}
+                            placeholder="例如：2024年人工智能行业发展趋势"
+                            className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-slate-900 focus:ring-2 focus:ring-violet-500/20 focus:border-violet-500 outline-none transition-all placeholder:text-slate-400"
+                        />
+                    </div>
+
+                    <div className="flex gap-3">
+                        <button
+                            type="button"
+                            onClick={() => setShowCreateModal(false)}
+                            className="flex-1 py-3 bg-slate-100 text-slate-600 rounded-xl font-bold hover:bg-slate-200 transition-colors"
+                        >
+                            取消
+                        </button>
+                        <button
+                            type="submit"
+                            disabled={!newProjectTopic.trim() || creating}
+                            className="flex-1 py-3 bg-gradient-to-r from-violet-600 to-indigo-600 text-white rounded-xl font-bold shadow-lg shadow-indigo-500/30 hover:shadow-indigo-500/40 hover:-translate-y-0.5 transition-all flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                            {creating ? <Loader2 className="w-5 h-5 animate-spin" /> : <Plus className="w-5 h-5 stroke-2" />}
+                            立即创建
+                        </button>
+                    </div>
+                </form>
             </div>
         </div>
       )}
