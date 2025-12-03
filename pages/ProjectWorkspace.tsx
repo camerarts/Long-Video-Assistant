@@ -903,7 +903,7 @@ const ProjectWorkspace: React.FC = () => {
                     <thead>
                         <tr className="bg-slate-50/80 border-b border-slate-100">
                             {headers.map((h, i) => (
-                                <th key={i} className={`py-4 px-5 text-sm font-extrabold text-slate-700 uppercase tracking-wide whitespace-nowrap ${h === '操作' ? 'text-right' : ''}`}>{h}</th>
+                                <th key={i} className={`py-4 px-5 text-sm font-extrabold text-slate-700 uppercase tracking-wide whitespace-nowrap ${h === '操作' ? 'text-right' : ''} ${h === '序号' || h === '得分' ? 'text-center' : ''}`}>{h}</th>
                             ))}
                         </tr>
                     </thead>
@@ -1293,15 +1293,16 @@ const ProjectWorkspace: React.FC = () => {
 
                  {selectedNodeId === 'titles' && (
                      <TableResultBox 
-                        headers={['类型', '标题', '推荐指数', '操作']}
+                        headers={['序号', '标题', '关键词', '得分', '操作']}
                         data={project.titles || []}
                         renderRow={(item: TitleItem, i) => (
                             <tr key={i} className="hover:bg-slate-50 group">
-                                <td className="py-3 px-5 text-xs text-slate-500 font-medium">{item.type}</td>
+                                <td className="py-3 px-5 text-center text-xs font-bold text-slate-400">{i + 1}</td>
                                 <td className="py-3 px-5 text-sm text-slate-800 font-bold leading-snug">{item.title}</td>
-                                <td className="py-3 px-5">
+                                <td className="py-3 px-5 text-xs text-slate-500 font-medium whitespace-nowrap">{item.type}</td>
+                                <td className="py-3 px-5 text-center">
                                     <span className={`inline-flex items-center gap-1 text-xs font-bold px-2 py-0.5 rounded ${item.score && item.score > 90 ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-100 text-slate-600'}`}>
-                                        {item.score}
+                                        {item.score ? Number(item.score).toFixed(1) : '-'}
                                     </span>
                                 </td>
                                 <td className="py-3 px-5 text-right">
