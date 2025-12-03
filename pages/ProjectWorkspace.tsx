@@ -537,7 +537,7 @@ const ProjectWorkspace: React.FC = () => {
                                     </span>
                                 </td>
                                 <td className="py-3 px-2 text-right w-[6%] align-top pt-3">
-                                    <RowCopyButton text={item.title} />
+                                    <RowCopyButton text={`${item.title} ${item.keywords || item.type || ''}`} />
                                 </td>
                             </tr>
                         )}
