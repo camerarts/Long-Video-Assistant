@@ -1,4 +1,6 @@
 
+
+
 import React, { useEffect, useState, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { ProjectData, StoryboardFrame, ProjectStatus, PromptTemplate, TitleItem, CoverOption } from '../types';
@@ -485,10 +487,10 @@ const ProjectWorkspace: React.FC = () => {
             type: "OBJECT",
             properties: {
                 title: { type: "STRING" },
-                type: { type: "STRING" },
+                keywords: { type: "STRING" },
                 score: { type: "NUMBER" }
             },
-            required: ["title", "score"]
+            required: ["title", "keywords", "score"]
         }
       });
       
@@ -1299,7 +1301,7 @@ const ProjectWorkspace: React.FC = () => {
                             <tr key={i} className="hover:bg-slate-50 group">
                                 <td className="py-3 px-5 text-center text-xs font-bold text-slate-400">{i + 1}</td>
                                 <td className="py-3 px-5 text-sm text-slate-800 font-bold leading-snug">{item.title}</td>
-                                <td className="py-3 px-5 text-xs text-slate-500 font-medium whitespace-nowrap">{item.type}</td>
+                                <td className="py-3 px-5 text-xs text-slate-500 font-medium whitespace-nowrap">{item.keywords || item.type}</td>
                                 <td className="py-3 px-5 text-center">
                                     <span className={`inline-flex items-center gap-1 text-xs font-bold px-2 py-0.5 rounded ${item.score && item.score > 90 ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-100 text-slate-600'}`}>
                                         {item.score ? (Number(item.score) / 10).toFixed(2) : '-'}
