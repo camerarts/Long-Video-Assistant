@@ -395,7 +395,7 @@ const ProjectWorkspace: React.FC = () => {
                                 width: NODE_WIDTH,
                                 height: NODE_HEIGHT
                             }}
-                            className={`absolute bg-white rounded-2xl p-6 border-2 transition-all cursor-pointer group hover:-translate-y-1 hover:shadow-xl flex flex-col justify-start relative ${
+                            className={`absolute bg-white rounded-2xl p-0 border-2 transition-all cursor-pointer group hover:-translate-y-1 hover:shadow-xl flex flex-col ${
                                 isActive 
                                 ? `border-${node.color}-500 shadow-xl shadow-${node.color}-500/10 scale-105 z-10` 
                                 : 'border-slate-100 shadow-lg shadow-slate-200/50 hover:border-slate-300'
@@ -405,55 +405,52 @@ const ProjectWorkspace: React.FC = () => {
                                 setSelectedNodeId(node.id);
                             }}
                          >
-                             {/* Icon Header */}
-                             <div className="flex items-start justify-between mb-2">
-                                 <div className={`w-10 h-10 rounded-xl bg-${node.color}-100 text-${node.color}-600 flex items-center justify-center`}>
-                                     <node.icon className="w-5 h-5" />
-                                 </div>
-                                 {hasData && (
-                                     <div className="bg-emerald-100 text-emerald-600 p-1 rounded-full">
-                                         <Check className="w-3.5 h-3.5" />
-                                     </div>
-                                 )}
-                             </div>
-                             
                              {/* Content */}
-                             <div className="mt-2 pr-12">
+                             <div className="p-5 flex-1">
+                                <div className="flex items-start justify-between mb-3">
+                                    <div className={`w-10 h-10 rounded-xl bg-${node.color}-100 text-${node.color}-600 flex items-center justify-center`}>
+                                        <node.icon className="w-5 h-5" />
+                                    </div>
+                                    {hasData && (
+                                        <div className="bg-emerald-100 text-emerald-600 p-1 rounded-full">
+                                            <Check className="w-3.5 h-3.5" />
+                                        </div>
+                                    )}
+                                </div>
                                 <h3 className="text-base font-bold text-slate-800 mb-1">{node.label}</h3>
                                 <p className="text-[10px] text-slate-400 font-medium leading-snug">{node.description}</p>
                              </div>
                              
-                             {/* Floating Action Button (Right Center) */}
-                             {node.id !== 'input' && node.id !== 'image_gen' && (
-                                 <button 
-                                    onClick={(e) => { e.stopPropagation(); handleGenerate(node.id); }}
-                                    disabled={isGenerating}
-                                    className={`absolute right-5 top-1/2 -translate-y-1/2 w-11 h-11 rounded-full flex items-center justify-center transition-all duration-300 shadow-md group-hover:scale-110 group-hover:shadow-lg z-20 ${
-                                        hasData 
-                                        ? 'bg-white border border-slate-200 text-slate-400 hover:text-violet-600 hover:border-violet-200' 
-                                        : `bg-gradient-to-br from-${node.color}-500 to-${node.color}-600 text-white shadow-${node.color}-500/30`
-                                    }`}
-                                    title={hasData ? "重新生成" : "开始生成"}
-                                 >
-                                     {isGenerating ? (
-                                         <Loader2 className="w-5 h-5 animate-spin" />
-                                     ) : hasData ? (
-                                         <RefreshCw className="w-5 h-5" />
-                                     ) : (
-                                         <Play className="w-5 h-5 ml-0.5 fill-current" />
-                                     )}
-                                 </button>
-                             )}
-
-                             {/* Image Gen specific button */}
-                             {node.id === 'image_gen' && (
-                                <button 
-                                    onClick={(e) => { e.stopPropagation(); navigate(`/project/${project.id}/images`); }}
-                                    className="absolute right-5 top-1/2 -translate-y-1/2 w-11 h-11 bg-slate-900 text-white rounded-full flex items-center justify-center shadow-lg hover:scale-110 transition-transform z-20"
-                                >
-                                    <ArrowRight className="w-5 h-5" />
-                                </button>
-                             )}
+                             {/* Action Bar */}
+                             <div className={`mt-auto p-4 border-t border-slate-50 bg-slate-50/50 flex items-center justify-end rounded-b-2xl transition-colors ${isActive ? 'bg-white' : ''}`}>
+                                 {node.id !== 'input' && node.id !== 'image_gen' && (
+                                     <button 
+                                        onClick={(e) => { e.stopPropagation(); handleGenerate(node.id); }}
+                                        disabled={isGenerating}
+                                        className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
+                                            hasData 
+                                            ? 'bg-white border border-slate-200 text-slate-500 hover:text-violet-600 hover:border-violet-200' 
+                                            : `bg-${node.color}-50 text-${node.color}-600 hover:bg-${node.color}-100`
+                                        }`}
+                                     >
+                                         {isGenerating ? <Loader2 className="w-3 h-3 animate-spin" /> : (hasData ? <RefreshCw className="w-3 h-3" /> : <Sparkles className="w-3 h-3" />)}
+                                         {isGenerating ? '生成中...' : (hasData ? '重新生成' : '开始生成')}
+                                     </button>
+                                 )}
+                                 {node.id === 'image_gen' && (
+                                    <button 
+                                        onClick={(e) => { e.stopPropagation(); navigate(`/project/${project.id}/images`); }}
+                                        className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-900 text-white rounded-lg text-xs font-bold hover:bg-slate-800 transition-colors"
+                                    >
+                                        前往工坊 <ArrowRight className="w-3 h-3" />
+                                    </button>
+                                 )}
+                                 {node.id === 'input' && (
+                                     <span className="text-[10px] font-bold text-slate-400 px-2">
+                                         已就绪
+                                     </span>
+                                 )}
+                             </div>
                          </div>
                      );
                  })}
@@ -467,7 +464,7 @@ const ProjectWorkspace: React.FC = () => {
         >
             <div className="p-5 border-b border-slate-100 flex items-center bg-white/50 gap-4">
                 <button onClick={() => setSelectedNodeId(null)} className="p-2 hover:bg-slate-100 rounded-lg text-slate-400 transition-colors">
-                    <PanelRightClose className="w-5 h-5 text-slate-600" /> {/* removed rotate, icon points left naturally for close usually, or adjust based on icon set. Lucide PanelRightClose points right usually implies closing panel on right? let's stick to icon */}
+                    <PanelRightClose className="w-5 h-5 rotate-180 text-slate-600" />
                 </button>
                 <div className="flex items-center gap-3 flex-1 justify-end">
                      {selectedNodeId && (() => {
