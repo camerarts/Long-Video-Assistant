@@ -8,7 +8,7 @@ import {
   ArrowLeft, Layout, FileText, Type, 
   List, PanelRightClose, Sparkles, Loader2, Copy, 
   Check, Images, ArrowRight, Palette, Film, Maximize2, Play,
-  ZoomIn, ZoomOut, Move
+  ZoomIn, ZoomOut, Move, RefreshCw
 } from 'lucide-react';
 
 // --- Sub-Components ---
@@ -395,7 +395,7 @@ const ProjectWorkspace: React.FC = () => {
                                 width: NODE_WIDTH,
                                 height: NODE_HEIGHT
                             }}
-                            className={`absolute bg-white rounded-2xl p-6 border-2 transition-all cursor-pointer group hover:-translate-y-1 hover:shadow-xl ${
+                            className={`absolute bg-white rounded-2xl p-6 border-2 transition-all cursor-pointer group hover:-translate-y-1 hover:shadow-xl flex flex-col justify-start relative ${
                                 isActive 
                                 ? `border-${node.color}-500 shadow-xl shadow-${node.color}-500/10 scale-105 z-10` 
                                 : 'border-slate-100 shadow-lg shadow-slate-200/50 hover:border-slate-300'
@@ -405,7 +405,8 @@ const ProjectWorkspace: React.FC = () => {
                                 setSelectedNodeId(node.id);
                             }}
                          >
-                             <div className="flex items-start justify-between mb-4">
+                             {/* Icon Header */}
+                             <div className="flex items-start justify-between mb-2">
                                  <div className={`w-10 h-10 rounded-xl bg-${node.color}-100 text-${node.color}-600 flex items-center justify-center`}>
                                      <node.icon className="w-5 h-5" />
                                  </div>
@@ -416,34 +417,43 @@ const ProjectWorkspace: React.FC = () => {
                                  )}
                              </div>
                              
-                             <h3 className="text-base font-bold text-slate-800 mb-1">{node.label}</h3>
-                             <p className="text-[10px] text-slate-400 font-medium mb-4 min-h-[1.5em] leading-snug">{node.description}</p>
-                             
-                             <div className="flex items-center justify-end mt-auto pt-2 border-t border-slate-50">
-                                 {node.id !== 'input' && node.id !== 'image_gen' ? (
-                                     <button 
-                                        onClick={(e) => { e.stopPropagation(); handleGenerate(node.id); }}
-                                        disabled={isGenerating}
-                                        className={`px-3 py-1.5 rounded-lg text-[10px] font-bold flex items-center gap-1.5 transition-all ${
-                                            hasData 
-                                            ? 'bg-slate-50 text-slate-500 hover:bg-slate-100'
-                                            : `bg-${node.color}-50 text-${node.color}-600 hover:bg-${node.color}-100`
-                                        }`}
-                                     >
-                                         {isGenerating ? <Loader2 className="w-3 h-3 animate-spin" /> : <Sparkles className="w-3 h-3" />}
-                                         {hasData ? '重新生成' : '开始生成'}
-                                     </button>
-                                 ) : node.id === 'image_gen' ? (
-                                     <button 
-                                        onClick={(e) => { e.stopPropagation(); navigate(`/project/${project.id}/images`); }}
-                                        className="px-3 py-1.5 bg-slate-900 text-white hover:bg-slate-800 rounded-lg text-[10px] font-bold flex items-center gap-1.5 transition-all"
-                                     >
-                                         进入工坊 <ArrowRight className="w-3 h-3" />
-                                     </button>
-                                 ) : (
-                                    <span className="text-[10px] text-slate-300">起始节点</span>
-                                 )}
+                             {/* Content */}
+                             <div className="mt-2 pr-12">
+                                <h3 className="text-base font-bold text-slate-800 mb-1">{node.label}</h3>
+                                <p className="text-[10px] text-slate-400 font-medium leading-snug">{node.description}</p>
                              </div>
+                             
+                             {/* Floating Action Button (Right Center) */}
+                             {node.id !== 'input' && node.id !== 'image_gen' && (
+                                 <button 
+                                    onClick={(e) => { e.stopPropagation(); handleGenerate(node.id); }}
+                                    disabled={isGenerating}
+                                    className={`absolute right-5 top-1/2 -translate-y-1/2 w-11 h-11 rounded-full flex items-center justify-center transition-all duration-300 shadow-md group-hover:scale-110 group-hover:shadow-lg z-20 ${
+                                        hasData 
+                                        ? 'bg-white border border-slate-200 text-slate-400 hover:text-violet-600 hover:border-violet-200' 
+                                        : `bg-gradient-to-br from-${node.color}-500 to-${node.color}-600 text-white shadow-${node.color}-500/30`
+                                    }`}
+                                    title={hasData ? "重新生成" : "开始生成"}
+                                 >
+                                     {isGenerating ? (
+                                         <Loader2 className="w-5 h-5 animate-spin" />
+                                     ) : hasData ? (
+                                         <RefreshCw className="w-5 h-5" />
+                                     ) : (
+                                         <Play className="w-5 h-5 ml-0.5 fill-current" />
+                                     )}
+                                 </button>
+                             )}
+
+                             {/* Image Gen specific button */}
+                             {node.id === 'image_gen' && (
+                                <button 
+                                    onClick={(e) => { e.stopPropagation(); navigate(`/project/${project.id}/images`); }}
+                                    className="absolute right-5 top-1/2 -translate-y-1/2 w-11 h-11 bg-slate-900 text-white rounded-full flex items-center justify-center shadow-lg hover:scale-110 transition-transform z-20"
+                                >
+                                    <ArrowRight className="w-5 h-5" />
+                                </button>
+                             )}
                          </div>
                      );
                  })}
@@ -457,7 +467,7 @@ const ProjectWorkspace: React.FC = () => {
         >
             <div className="p-5 border-b border-slate-100 flex items-center bg-white/50 gap-4">
                 <button onClick={() => setSelectedNodeId(null)} className="p-2 hover:bg-slate-100 rounded-lg text-slate-400 transition-colors">
-                    <PanelRightClose className="w-5 h-5 rotate-180" />
+                    <PanelRightClose className="w-5 h-5 text-slate-600" /> {/* removed rotate, icon points left naturally for close usually, or adjust based on icon set. Lucide PanelRightClose points right usually implies closing panel on right? let's stick to icon */}
                 </button>
                 <div className="flex items-center gap-3 flex-1 justify-end">
                      {selectedNodeId && (() => {
@@ -519,7 +529,7 @@ const ProjectWorkspace: React.FC = () => {
 
                  {selectedNodeId === 'titles' && (
                      <TableResultBox 
-                        headers={['序号', '爆款標題', '关键词', '得分', '']}
+                        headers={['序号', '爆款標題', '关键词', '得分', '操作']}
                         data={project.titles || []}
                         renderRow={(item: TitleItem, i: number) => (
                             <tr key={i} className="hover:bg-slate-50 group">
