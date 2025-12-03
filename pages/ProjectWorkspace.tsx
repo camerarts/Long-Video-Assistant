@@ -511,19 +511,19 @@ const ProjectWorkspace: React.FC = () => {
                         data={project.titles || []}
                         renderRow={(item: TitleItem, i: number) => (
                             <tr key={i} className="hover:bg-slate-50 group">
-                                <td className="py-3 px-2 text-center text-xs font-bold text-slate-400 w-[15%]">{i + 1}</td>
-                                <td className="py-3 px-2 text-sm text-slate-800 font-bold leading-snug w-[40%]">
+                                <td className="py-3 px-2 text-center text-xs font-bold text-slate-400 w-[10%]">{i + 1}</td>
+                                <td className="py-3 px-2 text-sm text-slate-800 font-bold leading-snug w-[60%]">
                                     {item.title}
                                 </td>
-                                <td className="py-3 px-2 text-xs text-slate-500 font-medium w-[20%] truncate" title={item.keywords || item.type}>
+                                <td className="py-3 px-2 text-xs text-slate-500 font-medium w-[12%] truncate" title={item.keywords || item.type}>
                                     {item.keywords || item.type}
                                 </td>
-                                <td className="py-3 px-2 text-center w-[15%]">
+                                <td className="py-3 px-2 text-center w-[12%]">
                                     <span className={`inline-flex items-center gap-1 text-xs font-bold px-1.5 py-0.5 rounded ${item.score && item.score > 9 ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-100 text-slate-600'}`}>
                                         {item.score ? (Number(item.score) / 10).toFixed(2) : '-'}
                                     </span>
                                 </td>
-                                <td className="py-3 px-2 text-right w-[10%]">
+                                <td className="py-3 px-2 text-right w-[6%]">
                                     <RowCopyButton text={item.title} />
                                 </td>
                             </tr>
