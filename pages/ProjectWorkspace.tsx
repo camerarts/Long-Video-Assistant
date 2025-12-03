@@ -1293,7 +1293,7 @@ const ProjectWorkspace: React.FC = () => {
 
                  {selectedNodeId === 'titles' && (
                      <TableResultBox 
-                        headers={['序号', '爆款标题', '关键词', '得分', '操作']}
+                        headers={['序号', '爆款標題', '关键词', '得分', '操作']}
                         data={project.titles || []}
                         renderRow={(item: TitleItem, i) => (
                             <tr key={i} className="hover:bg-slate-50 group">
@@ -1302,7 +1302,7 @@ const ProjectWorkspace: React.FC = () => {
                                 <td className="py-3 px-5 text-xs text-slate-500 font-medium whitespace-nowrap">{item.type}</td>
                                 <td className="py-3 px-5 text-center">
                                     <span className={`inline-flex items-center gap-1 text-xs font-bold px-2 py-0.5 rounded ${item.score && item.score > 90 ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-100 text-slate-600'}`}>
-                                        {item.score ? (Number(item.score) / 10).toFixed(1) : '-'}
+                                        {item.score ? (Number(item.score) / 10).toFixed(2) : '-'}
                                     </span>
                                 </td>
                                 <td className="py-3 px-5 text-right">
