@@ -7,7 +7,8 @@ import * as gemini from '../services/geminiService';
 import { 
   ArrowLeft, Layout, FileText, Type, 
   List, PanelRightClose, Sparkles, Loader2, Copy, 
-  Check, Images, ArrowRight, Palette, Film, Maximize2, Play
+  Check, Images, ArrowRight, Palette, Film, Maximize2, Play,
+  ZoomIn, ZoomOut, Move
 } from 'lucide-react';
 
 // --- Sub-Components ---
@@ -68,14 +69,27 @@ const TableResultBox = <T extends any>({ headers, data, renderRow }: TableResult
 
 // --- Configuration ---
 
+const NODE_WIDTH = 280;
+const NODE_HEIGHT = 180;
+
+// Workflow Layout Definition
 const NODES_CONFIG = [
-  { id: 'input', label: '项目输入', icon: Layout, color: 'blue', description: '选题与核心观点' },
-  { id: 'script', label: '视频脚本', icon: FileText, color: 'violet', promptKey: 'SCRIPT', description: '生成分章节的详细脚本' },
-  { id: 'sb_text', label: '分镜文案', icon: Film, color: 'fuchsia', promptKey: 'STORYBOARD_TEXT', description: '拆解为可视化画面描述' },
-  { id: 'titles', label: '爆款标题', icon: Type, color: 'amber', promptKey: 'TITLES', description: '生成高点击率标题' },
-  { id: 'summary', label: '简介与标签', icon: List, color: 'emerald', promptKey: 'SUMMARY', description: '生成简介和Hashtags' },
-  { id: 'cover', label: '封面策划', icon: Palette, color: 'rose', promptKey: 'COVER_GEN', description: '策划封面视觉与文案' },
-  { id: 'image_gen', label: '图片工坊', icon: Images, color: 'pink', description: '前往生图页面' },
+  { id: 'input', label: '项目输入', icon: Layout, color: 'blue', description: '选题与核心观点', x: 50, y: 300 },
+  { id: 'script', label: '视频脚本', icon: FileText, color: 'violet', promptKey: 'SCRIPT', description: '生成分章节的详细脚本', x: 450, y: 300 },
+  { id: 'sb_text', label: '分镜文案', icon: Film, color: 'fuchsia', promptKey: 'STORYBOARD_TEXT', description: '拆解为可视化画面描述', x: 850, y: 100 },
+  { id: 'titles', label: '爆款标题', icon: Type, color: 'amber', promptKey: 'TITLES', description: '生成高点击率标题', x: 850, y: 300 },
+  { id: 'summary', label: '简介与标签', icon: List, color: 'emerald', promptKey: 'SUMMARY', description: '生成简介和Hashtags', x: 850, y: 500 },
+  { id: 'image_gen', label: '图片工坊', icon: Images, color: 'pink', description: '前往生图页面', x: 1250, y: 100 },
+  { id: 'cover', label: '封面策划', icon: Palette, color: 'rose', promptKey: 'COVER_GEN', description: '策划封面视觉与文案', x: 1250, y: 300 },
+];
+
+const CONNECTIONS = [
+  { from: 'input', to: 'script' },
+  { from: 'script', to: 'sb_text' },
+  { from: 'script', to: 'titles' },
+  { from: 'script', to: 'summary' },
+  { from: 'sb_text', to: 'image_gen' },
+  { from: 'titles', to: 'cover' },
 ];
 
 // --- Main Component ---
@@ -90,6 +104,12 @@ const ProjectWorkspace: React.FC = () => {
   const [generatingNodeId, setGeneratingNodeId] = useState<string | null>(null);
   const [prompts, setPrompts] = useState<Record<string, PromptTemplate>>({});
   
+  // Canvas State
+  const [transform, setTransform] = useState({ x: 0, y: 0, scale: 1 });
+  const [isDragging, setIsDragging] = useState(false);
+  const canvasRef = useRef<HTMLDivElement>(null);
+  const dragStartRef = useRef({ x: 0, y: 0 });
+
   // To prevent async update on unmounted component
   const mountedRef = useRef(true);
 
@@ -111,6 +131,40 @@ const ProjectWorkspace: React.FC = () => {
     init();
     return () => { mountedRef.current = false; };
   }, [id, navigate]);
+
+  // Canvas Interactions
+  const handleWheel = (e: React.WheelEvent) => {
+    if (e.ctrlKey || e.metaKey) {
+        e.preventDefault();
+        const zoomSensitivity = 0.001;
+        const delta = -e.deltaY * zoomSensitivity;
+        const newScale = Math.min(Math.max(0.5, transform.scale + delta), 2);
+        setTransform(prev => ({ ...prev, scale: newScale }));
+    } else {
+        setTransform(prev => ({ ...prev, x: prev.x - e.deltaX, y: prev.y - e.deltaY }));
+    }
+  };
+
+  const handleCanvasMouseDown = (e: React.MouseEvent) => {
+      // Allow drag on Space+Click OR Middle Click OR Left Click on empty space
+      if (e.button === 1 || e.button === 0) { 
+          setIsDragging(true);
+          dragStartRef.current = { x: e.clientX, y: e.clientY };
+      }
+  };
+
+  const handleCanvasMouseMove = (e: React.MouseEvent) => {
+      if (isDragging) {
+          const dx = e.clientX - dragStartRef.current.x;
+          const dy = e.clientY - dragStartRef.current.y;
+          setTransform(prev => ({ ...prev, x: prev.x + dx, y: prev.y + dy }));
+          dragStartRef.current = { x: e.clientX, y: e.clientY };
+      }
+  };
+
+  const handleCanvasMouseUp = () => {
+      setIsDragging(false);
+  };
 
   // Helper for prompt interpolation
   const interpolate = (template: string, data: Record<string, string>) => {
@@ -167,6 +221,7 @@ const ProjectWorkspace: React.FC = () => {
             await saveProjectUpdate(p => ({ ...p, summary: text }));
         }
         else if (nodeId === 'titles') {
+            // Requesting explicit keyword field now
             const data = await gemini.generateJSON<TitleItem[]>(prompt, {
                 type: "ARRAY", items: {
                     type: "OBJECT", properties: {
@@ -215,113 +270,184 @@ const ProjectWorkspace: React.FC = () => {
     }
   };
 
+  // SVG Curve Calculator
+  const getCurvePath = (start: {x:number, y:number}, end: {x:number, y:number}) => {
+      const sx = start.x + NODE_WIDTH;
+      const sy = start.y + NODE_HEIGHT / 2;
+      const ex = end.x;
+      const ey = end.y + NODE_HEIGHT / 2;
+      const c1x = sx + (ex - sx) / 2;
+      const c1y = sy;
+      const c2x = ex - (ex - sx) / 2;
+      const c2y = ey;
+      return `M ${sx} ${sy} C ${c1x} ${c1y} ${c2x} ${c2y} ${ex} ${ey}`;
+  };
+
   if (loading || !project) {
     return <div className="flex items-center justify-center h-full"><Loader2 className="w-8 h-8 animate-spin text-violet-500" /></div>;
   }
 
   return (
     <div className="flex h-full bg-[#F8F9FC] relative overflow-hidden">
-        {/* Left Panel: Flow Canvas (Visualized as a list for now) */}
-        <div className="flex-1 flex flex-col h-full relative z-10">
-             {/* Header */}
-             <div className="px-8 py-6 bg-white/80 backdrop-blur-sm border-b border-slate-200 flex justify-between items-center">
-                 <div className="flex items-center gap-4">
-                    <button onClick={() => navigate('/dashboard')} className="p-2 hover:bg-slate-100 rounded-full transition-colors text-slate-500">
-                        <ArrowLeft className="w-5 h-5" />
-                    </button>
-                    <div>
-                        <h1 className="text-xl font-extrabold text-slate-900">{project.title}</h1>
-                        <div className="flex items-center gap-2 mt-1">
-                            <span className="text-xs font-bold px-2 py-0.5 rounded bg-slate-100 text-slate-500">{project.status}</span>
-                            <span className="text-xs text-slate-400">更新于 {new Date(project.updatedAt).toLocaleString()}</span>
-                        </div>
+        {/* Top Header Overlay */}
+        <div className="absolute top-0 left-0 right-0 z-20 px-8 py-4 pointer-events-none flex justify-between items-start">
+             <div className="pointer-events-auto bg-white/90 backdrop-blur shadow-sm border border-slate-200 rounded-2xl px-6 py-3 flex items-center gap-4">
+                <button onClick={() => navigate('/dashboard')} className="p-2 hover:bg-slate-100 rounded-full transition-colors text-slate-500">
+                    <ArrowLeft className="w-5 h-5" />
+                </button>
+                <div>
+                    <h1 className="text-lg font-extrabold text-slate-900">{project.title}</h1>
+                    <div className="flex items-center gap-2 mt-0.5">
+                        <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-slate-100 text-slate-500">{project.status}</span>
+                        <span className="text-[10px] text-slate-400">更新于 {new Date(project.updatedAt).toLocaleTimeString()}</span>
                     </div>
-                 </div>
+                </div>
              </div>
 
-             {/* Node Flow */}
-             <div className="flex-1 overflow-y-auto p-10">
-                 <div className="max-w-4xl mx-auto grid grid-cols-1 md:grid-cols-2 gap-6">
-                     {NODES_CONFIG.map((node, index) => {
-                         const isActive = selectedNodeId === node.id;
-                         const isGenerating = generatingNodeId === node.id;
-                         
-                         // Determine status of data
-                         let hasData = false;
-                         if (node.id === 'input') hasData = !!project.inputs.topic;
-                         if (node.id === 'script') hasData = !!project.script;
-                         if (node.id === 'sb_text') hasData = !!project.storyboard && project.storyboard.length > 0;
-                         if (node.id === 'titles') hasData = !!project.titles && project.titles.length > 0;
-                         if (node.id === 'summary') hasData = !!project.summary;
-                         if (node.id === 'cover') hasData = !!project.coverOptions && project.coverOptions.length > 0;
-                         if (node.id === 'image_gen') {
-                             const generatedCount = project.storyboard?.filter(f => !!f.imageUrl).length || 0;
-                             hasData = generatedCount > 0;
-                         }
+             <div className="pointer-events-auto flex gap-2">
+                 <button onClick={() => setTransform(prev => ({...prev, scale: prev.scale + 0.1}))} className="p-3 bg-white border border-slate-200 rounded-xl hover:bg-slate-50 shadow-sm text-slate-600">
+                     <ZoomIn className="w-5 h-5" />
+                 </button>
+                 <button onClick={() => setTransform(prev => ({...prev, scale: Math.max(0.5, prev.scale - 0.1)}))} className="p-3 bg-white border border-slate-200 rounded-xl hover:bg-slate-50 shadow-sm text-slate-600">
+                     <ZoomOut className="w-5 h-5" />
+                 </button>
+             </div>
+        </div>
 
-                         return (
-                             <div 
-                                key={node.id}
-                                onClick={() => setSelectedNodeId(node.id)}
-                                className={`relative bg-white rounded-2xl p-6 border-2 transition-all cursor-pointer group hover:-translate-y-1 hover:shadow-lg ${
-                                    isActive 
-                                    ? `border-${node.color}-500 shadow-${node.color}-500/20` 
-                                    : 'border-transparent shadow-sm hover:border-slate-200'
-                                }`}
-                             >
-                                 <div className="flex items-start justify-between mb-4">
-                                     <div className={`w-12 h-12 rounded-xl bg-${node.color}-100 text-${node.color}-600 flex items-center justify-center`}>
-                                         <node.icon className="w-6 h-6" />
+        {/* Canvas Area */}
+        <div 
+            ref={canvasRef}
+            className={`flex-1 overflow-hidden relative ${isDragging ? 'cursor-grabbing' : 'cursor-grab'}`}
+            onMouseDown={handleCanvasMouseDown}
+            onMouseMove={handleCanvasMouseMove}
+            onMouseUp={handleCanvasMouseUp}
+            onMouseLeave={handleCanvasMouseUp}
+            onWheel={handleWheel}
+        >
+             {/* Background Grid */}
+            <div 
+                className="absolute inset-0 opacity-5 pointer-events-none"
+                style={{
+                    backgroundImage: 'radial-gradient(#475569 1px, transparent 1px)',
+                    backgroundSize: `${20 * transform.scale}px ${20 * transform.scale}px`,
+                    backgroundPosition: `${transform.x}px ${transform.y}px`
+                }}
+            />
+
+            {/* Transform Container */}
+            <div 
+                className="absolute origin-top-left transition-transform duration-75 ease-out will-change-transform"
+                style={{ transform: `translate(${transform.x}px, ${transform.y}px) scale(${transform.scale})` }}
+            >
+                {/* Connections Layer */}
+                <svg className="overflow-visible absolute top-0 left-0 pointer-events-none" style={{ width: 1, height: 1 }}>
+                    <defs>
+                        <marker id="arrowhead" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+                            <polygon points="0 0, 10 3.5, 0 7" fill="#cbd5e1" />
+                        </marker>
+                    </defs>
+                    {CONNECTIONS.map((conn, idx) => {
+                        const fromNode = NODES_CONFIG.find(n => n.id === conn.from);
+                        const toNode = NODES_CONFIG.find(n => n.id === conn.to);
+                        if (!fromNode || !toNode) return null;
+                        return (
+                            <path 
+                                key={idx}
+                                d={getCurvePath(fromNode, toNode)}
+                                stroke="#cbd5e1"
+                                strokeWidth="2"
+                                fill="none"
+                                markerEnd="url(#arrowhead)"
+                            />
+                        );
+                    })}
+                </svg>
+
+                {/* Nodes Layer */}
+                {NODES_CONFIG.map((node) => {
+                     const isActive = selectedNodeId === node.id;
+                     const isGenerating = generatingNodeId === node.id;
+                     
+                     // Determine status of data
+                     let hasData = false;
+                     if (node.id === 'input') hasData = !!project.inputs.topic;
+                     if (node.id === 'script') hasData = !!project.script;
+                     if (node.id === 'sb_text') hasData = !!project.storyboard && project.storyboard.length > 0;
+                     if (node.id === 'titles') hasData = !!project.titles && project.titles.length > 0;
+                     if (node.id === 'summary') hasData = !!project.summary;
+                     if (node.id === 'cover') hasData = !!project.coverOptions && project.coverOptions.length > 0;
+                     if (node.id === 'image_gen') {
+                         const generatedCount = project.storyboard?.filter(f => !!f.imageUrl).length || 0;
+                         hasData = generatedCount > 0;
+                     }
+
+                     return (
+                         <div 
+                            key={node.id}
+                            style={{ 
+                                left: node.x, 
+                                top: node.y,
+                                width: NODE_WIDTH,
+                                height: NODE_HEIGHT
+                            }}
+                            className={`absolute bg-white rounded-2xl p-6 border-2 transition-all cursor-pointer group hover:-translate-y-1 hover:shadow-xl ${
+                                isActive 
+                                ? `border-${node.color}-500 shadow-xl shadow-${node.color}-500/10 scale-105 z-10` 
+                                : 'border-slate-100 shadow-lg shadow-slate-200/50 hover:border-slate-300'
+                            }`}
+                            onMouseDown={(e) => {
+                                e.stopPropagation(); // Prevent canvas drag
+                                setSelectedNodeId(node.id);
+                            }}
+                         >
+                             <div className="flex items-start justify-between mb-4">
+                                 <div className={`w-10 h-10 rounded-xl bg-${node.color}-100 text-${node.color}-600 flex items-center justify-center`}>
+                                     <node.icon className="w-5 h-5" />
+                                 </div>
+                                 {hasData && (
+                                     <div className="bg-emerald-100 text-emerald-600 p-1 rounded-full">
+                                         <Check className="w-3.5 h-3.5" />
                                      </div>
-                                     {hasData && (
-                                         <div className="bg-emerald-100 text-emerald-600 p-1 rounded-full">
-                                             <Check className="w-4 h-4" />
-                                         </div>
-                                     )}
-                                 </div>
-                                 
-                                 <h3 className="text-lg font-bold text-slate-800 mb-1">{node.label}</h3>
-                                 <p className="text-xs text-slate-400 font-medium mb-4 min-h-[1.5em]">{node.description}</p>
-                                 
-                                 <div className="flex items-center justify-between mt-auto">
-                                     {node.id !== 'input' && node.id !== 'image_gen' ? (
-                                         <button 
-                                            onClick={(e) => { e.stopPropagation(); handleGenerate(node.id); }}
-                                            disabled={isGenerating}
-                                            className={`px-4 py-2 rounded-lg text-xs font-bold flex items-center gap-1.5 transition-all ${
-                                                hasData 
-                                                ? 'bg-slate-50 text-slate-600 hover:bg-slate-100'
-                                                : `bg-${node.color}-50 text-${node.color}-600 hover:bg-${node.color}-100`
-                                            }`}
-                                         >
-                                             {isGenerating ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Sparkles className="w-3.5 h-3.5" />}
-                                             {hasData ? '重新生成' : '开始生成'}
-                                         </button>
-                                     ) : node.id === 'image_gen' ? (
-                                         <button 
-                                            onClick={(e) => { e.stopPropagation(); navigate(`/project/${project.id}/images`); }}
-                                            className="px-4 py-2 bg-slate-900 text-white hover:bg-slate-800 rounded-lg text-xs font-bold flex items-center gap-1.5 transition-all"
-                                         >
-                                             进入工坊 <ArrowRight className="w-3.5 h-3.5" />
-                                         </button>
-                                     ) : (
-                                        <div className="h-8"></div>
-                                     )}
-
-                                     <span className={`text-[10px] font-bold uppercase tracking-wider ${isActive ? `text-${node.color}-500` : 'text-slate-300'}`}>
-                                         {isActive ? 'Current' : `Step ${index + 1}`}
-                                     </span>
-                                 </div>
+                                 )}
                              </div>
-                         );
-                     })}
-                 </div>
-             </div>
+                             
+                             <h3 className="text-base font-bold text-slate-800 mb-1">{node.label}</h3>
+                             <p className="text-[10px] text-slate-400 font-medium mb-4 min-h-[1.5em] leading-snug">{node.description}</p>
+                             
+                             <div className="flex items-center justify-between mt-auto pt-2 border-t border-slate-50">
+                                 {node.id !== 'input' && node.id !== 'image_gen' ? (
+                                     <button 
+                                        onClick={(e) => { e.stopPropagation(); handleGenerate(node.id); }}
+                                        disabled={isGenerating}
+                                        className={`px-3 py-1.5 rounded-lg text-[10px] font-bold flex items-center gap-1.5 transition-all ${
+                                            hasData 
+                                            ? 'bg-slate-50 text-slate-500 hover:bg-slate-100'
+                                            : `bg-${node.color}-50 text-${node.color}-600 hover:bg-${node.color}-100`
+                                        }`}
+                                     >
+                                         {isGenerating ? <Loader2 className="w-3 h-3 animate-spin" /> : <Sparkles className="w-3 h-3" />}
+                                         {hasData ? '重新生成' : '开始生成'}
+                                     </button>
+                                 ) : node.id === 'image_gen' ? (
+                                     <button 
+                                        onClick={(e) => { e.stopPropagation(); navigate(`/project/${project.id}/images`); }}
+                                        className="px-3 py-1.5 bg-slate-900 text-white hover:bg-slate-800 rounded-lg text-[10px] font-bold flex items-center gap-1.5 transition-all"
+                                     >
+                                         进入工坊 <ArrowRight className="w-3 h-3" />
+                                     </button>
+                                 ) : (
+                                    <span className="text-[10px] text-slate-300">起始节点</span>
+                                 )}
+                             </div>
+                         </div>
+                     );
+                 })}
+            </div>
         </div>
 
         {/* Right Panel: Result Details */}
         <div 
-            className={`absolute top-0 right-0 bottom-0 bg-white/95 backdrop-blur-xl border-l border-slate-200 shadow-[-4px_0_24px_rgba(0,0,0,0.05)] transform transition-all duration-300 z-20 flex flex-col ${selectedNodeId ? 'translate-x-0' : 'translate-x-full'} w-[480px]`}
+            className={`absolute top-0 right-0 bottom-0 bg-white/95 backdrop-blur-xl border-l border-slate-200 shadow-[-4px_0_24px_rgba(0,0,0,0.05)] transform transition-all duration-300 z-30 flex flex-col w-[480px] ${selectedNodeId ? 'translate-x-0' : 'translate-x-full'}`}
             onMouseDown={(e) => e.stopPropagation()}
         >
             <div className="p-5 border-b border-slate-100 flex justify-between items-center bg-white/50">
@@ -381,7 +507,7 @@ const ProjectWorkspace: React.FC = () => {
 
                  {selectedNodeId === 'titles' && (
                      <TableResultBox 
-                        headers={['#', '爆款标题', '关键词', '得分', '']}
+                        headers={['序号', '爆款標題', '关键词', '得分', '']}
                         data={project.titles || []}
                         renderRow={(item: TitleItem, i: number) => (
                             <tr key={i} className="hover:bg-slate-50 group">
@@ -389,8 +515,8 @@ const ProjectWorkspace: React.FC = () => {
                                 <td className="py-3 px-5 text-sm text-slate-800 font-bold leading-snug">{item.title}</td>
                                 <td className="py-3 px-5 text-xs text-slate-500 font-medium whitespace-nowrap">{item.keywords || item.type}</td>
                                 <td className="py-3 px-5 text-center">
-                                    <span className={`inline-flex items-center gap-1 text-xs font-bold px-2 py-0.5 rounded ${item.score && item.score > 90 ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-100 text-slate-600'}`}>
-                                        {item.score ? (Number(item.score)).toFixed(0) : '-'}
+                                    <span className={`inline-flex items-center gap-1 text-xs font-bold px-2 py-0.5 rounded ${item.score && item.score > 9 ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-100 text-slate-600'}`}>
+                                        {item.score ? (Number(item.score) / 10).toFixed(2) : '-'}
                                     </span>
                                 </td>
                                 <td className="py-3 px-5 text-right">
