@@ -323,15 +323,15 @@ export const updateProject = async (id: string, updater: (current: ProjectData) 
   });
 };
 
-export const createProject = async (): Promise<string> => {
+export const createProject = async (initialTitle?: string): Promise<string> => {
   const newProject: ProjectData = {
     id: crypto.randomUUID(),
-    title: '未命名项目',
+    title: initialTitle || '未命名项目',
     status: ProjectStatus.DRAFT,
     createdAt: Date.now(),
     updatedAt: Date.now(),
     inputs: {
-      topic: '',
+      topic: initialTitle || '',
       tone: '信息丰富且引人入胜',
       language: '中文'
     }
