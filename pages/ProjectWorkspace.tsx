@@ -1,3 +1,4 @@
+
 import React, { useEffect, useState, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { ProjectData, StoryboardFrame, ProjectStatus, PromptTemplate, TitleItem, CoverOption } from '../types';
@@ -987,56 +988,57 @@ const ProjectWorkspace: React.FC = () => {
       )}
 
       {/* Left Panel: Settings */}
-      <div className={`${showSettings ? 'w-80 translate-x-0 opacity-100' : 'w-0 -translate-x-full opacity-0'} transition-all duration-300 ease-out border-r border-slate-200 bg-white/90 backdrop-blur-xl flex flex-col h-full flex-shrink-0 z-20 shadow-[4px_0_24px_rgba(0,0,0,0.02)]`}>
-        <div className="p-5 border-b border-slate-100 flex items-center justify-between">
-            <h2 className="font-bold text-slate-800 flex items-center gap-2 text-sm tracking-wide">
-                <Settings2 className="w-4 h-4 text-violet-600" /> 项目概览
+      {/* Width reduced from w-80 to w-40 as requested */}
+      <div className={`${showSettings ? 'w-40 translate-x-0 opacity-100' : 'w-0 -translate-x-full opacity-0'} transition-all duration-300 ease-out border-r border-slate-200 bg-white/90 backdrop-blur-xl flex flex-col h-full flex-shrink-0 z-20 shadow-[4px_0_24px_rgba(0,0,0,0.02)]`}>
+        <div className="p-4 border-b border-slate-100 flex items-center justify-between">
+            <h2 className="font-bold text-slate-800 flex items-center gap-2 text-xs tracking-wide">
+                <Settings2 className="w-3.5 h-3.5 text-violet-600" /> 项目概览
             </h2>
         </div>
         
-        <div className="flex-1 overflow-y-auto p-5 space-y-8">
-            <div className="space-y-3">
+        <div className="flex-1 overflow-y-auto p-4 space-y-6">
+            <div className="space-y-2">
                 <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">项目名称</label>
                 <input 
                     name="title"
                     value={project.title}
                     onChange={(e) => setProject({...project, title: e.target.value})}
-                    className="w-full text-base font-bold border-b border-slate-200 py-2 focus:border-violet-500 outline-none bg-transparent text-slate-800 transition-colors placeholder:text-slate-300"
-                    placeholder="输入项目名称"
+                    className="w-full text-sm font-bold border-b border-slate-200 py-1 focus:border-violet-500 outline-none bg-transparent text-slate-800 transition-colors placeholder:text-slate-300"
+                    placeholder="名称"
                 />
             </div>
 
-             <div className="space-y-3">
-                <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">核心观点 / 核心意图</label>
+             <div className="space-y-2">
+                <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">核心观点</label>
                 <textarea
                     name="corePoint"
                     value={project.inputs.corePoint}
                     onChange={handleInputChange}
-                    rows={6}
-                    className="w-full bg-slate-50 border border-slate-200 rounded-xl p-4 text-sm text-slate-700 leading-relaxed focus:ring-2 focus:ring-violet-500/10 focus:border-violet-500 outline-none transition-all resize-none placeholder:text-slate-400"
-                    placeholder="主要的论点、受众痛点或独特的叙事角度..."
+                    rows={8}
+                    className="w-full bg-slate-50 border border-slate-200 rounded-lg p-3 text-xs text-slate-700 leading-relaxed focus:ring-2 focus:ring-violet-500/10 focus:border-violet-500 outline-none transition-all resize-none placeholder:text-slate-400"
+                    placeholder="输入核心观点..."
                 />
             </div>
 
-             <div className="bg-gradient-to-br from-violet-50 to-indigo-50 p-4 rounded-xl border border-violet-100 text-xs text-violet-700 leading-relaxed shadow-sm">
+             <div className="bg-gradient-to-br from-violet-50 to-indigo-50 p-3 rounded-lg border border-violet-100 text-[10px] text-violet-700 leading-relaxed shadow-sm">
                 <strong className="block mb-1 font-semibold text-violet-800">操作提示</strong>
                 按住 <code>空格键</code>:<br/>
-                • 左键拖动平移画布<br/>
-                • 滚轮缩放画布
+                • 拖动平移<br/>
+                • 滚轮缩放
             </div>
 
-            <div className="pt-4 mt-auto">
+            <div className="pt-2 mt-auto">
                 <button 
                     onClick={handleSaveOverview}
                     disabled={savingOverview || overviewSuccess}
-                    className={`w-full flex items-center justify-center gap-2 py-3.5 rounded-xl text-sm font-bold shadow-lg transition-all ${
+                    className={`w-full flex items-center justify-center gap-2 py-3 rounded-lg text-xs font-bold shadow-lg transition-all ${
                         overviewSuccess 
                         ? 'bg-emerald-500 text-white shadow-emerald-500/20' 
                         : 'bg-slate-900 text-white hover:bg-slate-800 shadow-slate-900/10 hover:shadow-slate-900/20'
                     }`}
                 >
-                    {savingOverview ? <Loader2 className="w-3.5 h-3.5 animate-spin"/> : overviewSuccess ? <Check className="w-3.5 h-3.5" /> : <Save className="w-3.5 h-3.5"/>}
-                    {overviewSuccess ? '已保存' : '保存概览信息'}
+                    {savingOverview ? <Loader2 className="w-3 h-3 animate-spin"/> : overviewSuccess ? <Check className="w-3 h-3" /> : <Save className="w-3 h-3"/>}
+                    {overviewSuccess ? '已保存' : '保存'}
                 </button>
             </div>
         </div>
@@ -1104,285 +1106,267 @@ const ProjectWorkspace: React.FC = () => {
         )}
 
         {/* Zoom Level Indicator */}
-        <div className="absolute bottom-6 left-6 z-30 bg-white/80 backdrop-blur border border-slate-200 px-3 py-1.5 rounded-lg text-xs font-bold text-slate-500 shadow-sm pointer-events-none">
+        <div className="absolute bottom-6 left-6 z-30 bg-white/80 backdrop-blur border border-slate-200 px-3 py-1.5 rounded-lg text-xs font-bold text-slate-500 shadow-sm tabular-nums">
             {Math.round(zoomLevel * 100)}%
         </div>
 
-        {/* Transformable Canvas Layer */}
+        {/* Canvas Content */}
         <div 
-            className="absolute inset-0 w-full h-full origin-top-left will-change-transform"
-            style={{ transform: `translate(${canvasOffset.x}px, ${canvasOffset.y}px) scale(${zoomLevel})` }}
+            className="w-full h-full transform-gpu"
+            style={{
+                transform: `translate(${canvasOffset.x}px, ${canvasOffset.y}px) scale(${zoomLevel})`,
+                transformOrigin: '0 0'
+            }}
         >
-             {/* Infinite Grid Background (Moves with canvas) */}
-            <div 
-                className="absolute -inset-[5000px] opacity-[0.6]" 
-                style={{ 
-                    backgroundImage: 'radial-gradient(#e0e7ff 1.5px, transparent 1.5px)', 
-                    backgroundSize: '24px 24px',
-                }}
-            ></div>
+            <svg className="absolute top-0 left-0 w-[4000px] h-[4000px] pointer-events-none overflow-visible">
+                <defs>
+                    <marker id="arrowhead" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+                        <polygon points="0 0, 10 3.5, 0 7" fill="#cbd5e1" />
+                    </marker>
+                </defs>
+                {CONNECTIONS.map((conn, idx) => {
+                    const fromPos = nodePositions[conn.from];
+                    const toPos = nodePositions[conn.to];
+                    if (!fromPos || !toPos) return null;
 
-            {/* Nodes & Edges Container */}
-            <div className="w-full h-full relative">
-                <svg className="absolute -top-[5000px] -left-[5000px] w-[10000px] h-[10000px] pointer-events-none z-0 drop-shadow-sm overflow-visible">
-                    <defs>
-                        <marker id="arrow" markerWidth="6" markerHeight="6" refX="3" refY="3" orient="auto">
-                            <path d="M0,0 L6,3 L0,6 L0,0" fill="#cbd5e1" />
-                        </marker>
-                    </defs>
-                    {CONNECTIONS.map((conn, idx) => {
-                        const fromPos = nodePositions[conn.from];
-                        const toPos = nodePositions[conn.to];
-                        if (!fromPos || !toPos) return null;
-
-                        // Adjust coordinates based on the massive SVG offset
-                        const offset = 5000;
-                        const startX = fromPos.x + NODE_WIDTH + offset;
-                        const startY = fromPos.y + NODE_HEIGHT / 2 + offset;
-                        const endX = toPos.x + offset;
-                        const endY = toPos.y + NODE_HEIGHT / 2 + offset;
-                        
-                        const toNodeStatus = getNodeStatus(conn.to);
-                        const isCompletedPath = toNodeStatus === 'completed';
-                        
-                        // Calculate middle point and angle for arrow
-                        const midInfo = getBezierPoint(0.5, startX, startY, endX, endY);
-
-                        return (
-                            <g key={idx}>
-                                <path 
-                                    d={getBezierPath(startX, startY, endX, endY)}
-                                    fill="none"
-                                    stroke={isCompletedPath ? '#10b981' : '#cbd5e1'}
-                                    strokeWidth={isCompletedPath ? '3' : '2'}
-                                    className="transition-all duration-700 ease-out" 
-                                    style={{ strokeOpacity: isCompletedPath ? 0.8 : 0.4 }}
-                                />
-                                {/* Arrow at midpoint */}
-                                <path 
-                                    d="M -4,-4 L 4,0 L -4,4" 
-                                    fill="none"
-                                    stroke={isCompletedPath ? '#10b981' : '#cbd5e1'}
-                                    strokeWidth="2"
-                                    transform={`translate(${midInfo.x}, ${midInfo.y}) rotate(${midInfo.angle})`}
-                                />
-                            </g>
-                        );
-                    })}
-                </svg>
-
-                {NODES_CONFIG.map((node) => {
-                    const pos = nodePositions[node.id];
-                    const status = getNodeStatus(node.id);
-                    const isSelected = selectedNodeId === node.id;
-                    const isRunning = generatingNodes.has(node.id);
-                    const hasAction = node.id !== 'input';
-                    const disabled = isNodeDisabled(node.id);
-                    const isError = nodeErrors.has(node.id);
-                    
-                    const colorMap: Record<string, string> = {
-                    violet: 'from-violet-500 to-indigo-500 shadow-violet-500/20',
-                    blue: 'from-blue-500 to-cyan-500 shadow-blue-500/20',
-                    emerald: 'from-emerald-500 to-teal-500 shadow-emerald-500/20',
-                    rose: 'from-rose-500 to-pink-500 shadow-rose-500/20',
-                    fuchsia: 'from-fuchsia-500 to-purple-500 shadow-fuchsia-500/20',
-                    pink: 'from-pink-500 to-rose-500 shadow-pink-500/20',
-                    slate: 'from-slate-700 to-slate-900 shadow-slate-500/20',
-                    };
-
-                    const gradientClass = colorMap[node.color] || colorMap.slate;
-                    
-                    // Style logic: Error (Red) > Completed (Green) > Selected (Violet) > Default
-                    let borderClass = 'border-slate-100 hover:border-violet-200 border shadow-md hover:shadow-xl hover:shadow-indigo-500/5';
-                    
-                    if (isError) {
-                        borderClass = 'border-rose-500 border-2 shadow-lg shadow-rose-500/20';
-                    } else if (status === 'completed') {
-                         borderClass = 'border-emerald-500 border-2 shadow-lg shadow-emerald-500/10';
-                    } else if (isSelected) {
-                         borderClass = 'border-violet-500 ring-4 ring-violet-500/10 shadow-xl border';
-                    }
+                    // Calculate center points
+                    const startX = fromPos.x + NODE_WIDTH;
+                    const startY = fromPos.y + NODE_HEIGHT / 2;
+                    const endX = toPos.x;
+                    const endY = toPos.y + NODE_HEIGHT / 2;
 
                     return (
-                        <div
-                            key={node.id}
-                            onMouseDown={(e) => handleNodeMouseDown(e, node.id)}
-                            onClick={(e) => handleNodeClick(e, node.id)}
-                            className={`absolute bg-white rounded-3xl p-5 w-[260px] h-[110px] transition-all duration-200 group flex flex-col justify-between ${borderClass} ${disabled ? 'opacity-50 cursor-not-allowed grayscale' : 'cursor-pointer'}`}
-                            style={{ 
-                                left: pos.x, 
-                                top: pos.y,
-                            }}
-                        >
-                           <div className="flex items-start justify-between">
-                                <div className="flex items-center gap-3">
-                                    <div className={`w-10 h-10 rounded-2xl bg-gradient-to-br ${gradientClass} flex items-center justify-center text-white shadow-sm`}>
-                                        {isRunning ? <Loader2 className="w-5 h-5 animate-spin" /> : <node.icon className="w-5 h-5" />}
-                                    </div>
-                                    <div>
-                                        <h3 className="font-bold text-slate-800 text-sm leading-tight">{node.label}</h3>
-                                        <p className="text-[10px] text-slate-400 font-medium leading-tight mt-0.5">{node.description}</p>
-                                    </div>
-                                </div>
-                                
-                                {status === 'completed' && <div className="bg-emerald-100 text-emerald-600 p-1 rounded-full"><Check className="w-3 h-3 stroke-[3]" /></div>}
-                           </div>
-
-                           {hasAction && !disabled && (
-                               <div className="flex justify-end">
-                                    <button 
-                                        onClick={(e) => handleNodeRun(e, node.id)}
-                                        className="text-[10px] font-bold bg-slate-50 hover:bg-violet-50 text-slate-500 hover:text-violet-600 px-3 py-1.5 rounded-lg border border-slate-100 hover:border-violet-200 transition-colors flex items-center gap-1.5"
-                                    >
-                                        {node.id === 'image_gen' ? '前往工坊' : '立即生成'} 
-                                        {node.id !== 'image_gen' && <Wand2 className="w-3 h-3" />}
-                                    </button>
-                               </div>
-                           )}
-                        </div>
+                        <path
+                            key={idx}
+                            d={getBezierPath(startX, startY, endX, endY)}
+                            fill="none"
+                            stroke="#cbd5e1"
+                            strokeWidth="2"
+                            markerEnd="url(#arrowhead)"
+                        />
                     );
                 })}
+            </svg>
+
+            {NODES_CONFIG.map((node) => {
+                const pos = nodePositions[node.id];
+                const isActive = selectedNodeId === node.id;
+                const status = getNodeStatus(node.id);
+                const disabled = isNodeDisabled(node.id);
+                const isError = nodeErrors.has(node.id);
+                const isLoading = generatingNodes.has(node.id);
+
+                return (
+                    <div
+                        key={node.id}
+                        onMouseDown={(e) => handleNodeMouseDown(e, node.id)}
+                        onClick={(e) => handleNodeClick(e, node.id)}
+                        className={`absolute rounded-2xl p-4 w-[260px] h-[110px] shadow-sm border-2 transition-all duration-300 group flex flex-col justify-between ${
+                            disabled ? 'opacity-50 grayscale cursor-not-allowed bg-slate-50 border-slate-200' :
+                            isError ? 'bg-rose-50 border-rose-400 shadow-rose-200' :
+                            isActive 
+                            ? `bg-white border-${node.color}-500 shadow-xl shadow-${node.color}-500/20 scale-105 z-10` 
+                            : `bg-white border-slate-100 hover:border-${node.color}-300 hover:shadow-md cursor-pointer`
+                        }`}
+                        style={{
+                            left: pos.x,
+                            top: pos.y,
+                        }}
+                    >
+                        <div className="flex justify-between items-start">
+                            <div className="flex items-center gap-3">
+                                <div className={`w-10 h-10 rounded-xl flex items-center justify-center transition-colors ${
+                                    disabled ? 'bg-slate-200 text-slate-400' :
+                                    isActive ? `bg-${node.color}-100 text-${node.color}-600` : `bg-slate-50 text-slate-500 group-hover:bg-${node.color}-50 group-hover:text-${node.color}-500`
+                                }`}>
+                                    <node.icon className="w-5 h-5" />
+                                </div>
+                                <div>
+                                    <h3 className={`font-bold text-sm ${isActive ? 'text-slate-900' : 'text-slate-700'}`}>{node.label}</h3>
+                                    <p className="text-[10px] text-slate-400 leading-tight mt-0.5">{node.description}</p>
+                                </div>
+                            </div>
+                            {/* Status Indicator */}
+                            {isLoading ? (
+                                <Loader2 className={`w-4 h-4 animate-spin text-${node.color}-500`} />
+                            ) : isError ? (
+                                <AlertCircle className="w-4 h-4 text-rose-500" />
+                            ) : status === 'completed' ? (
+                                <CheckCircle2 className="w-4 h-4 text-emerald-500" />
+                            ) : (
+                                <div className={`w-2 h-2 rounded-full ${disabled ? 'bg-slate-200' : 'bg-slate-200 group-hover:bg-slate-300'}`} />
+                            )}
+                        </div>
+
+                        {/* Action Bar (Only Visible on Hover/Active) */}
+                        <div className={`mt-auto flex justify-end transition-opacity duration-200 ${isActive || isLoading ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'}`}>
+                             {node.id === 'image_gen' ? (
+                                 <button
+                                    onClick={(e) => handleNodeRun(e, node.id)}
+                                    disabled={disabled}
+                                    className={`text-[10px] font-bold px-3 py-1.5 rounded-lg flex items-center gap-1.5 transition-colors ${
+                                        disabled ? 'bg-slate-100 text-slate-400' : 'bg-slate-900 text-white hover:bg-slate-800'
+                                    }`}
+                                 >
+                                    进入工坊 <ArrowRight className="w-3 h-3" />
+                                 </button>
+                             ) : (
+                                <button
+                                    onClick={(e) => handleNodeRun(e, node.id)}
+                                    disabled={disabled || isLoading}
+                                    className={`text-[10px] font-bold px-3 py-1.5 rounded-lg flex items-center gap-1.5 transition-colors ${
+                                        disabled ? 'bg-slate-100 text-slate-400' : 
+                                        status === 'completed' ? 'bg-emerald-50 text-emerald-600 hover:bg-emerald-100' :
+                                        `bg-${node.color}-50 text-${node.color}-600 hover:bg-${node.color}-100`
+                                    }`}
+                                >
+                                    {isLoading ? '生成中...' : status === 'completed' ? '重新生成' : '开始生成'}
+                                    {isLoading ? null : <Play className="w-3 h-3 fill-current" />}
+                                </button>
+                             )}
+                        </div>
+                    </div>
+                );
+            })}
+        </div>
+
+        {/* Right Panel: Result Details */}
+        <div className={`absolute top-0 right-0 bottom-0 w-[420px] bg-white/90 backdrop-blur-xl border-l border-slate-200 shadow-[-4px_0_24px_rgba(0,0,0,0.02)] transform transition-transform duration-300 z-20 flex flex-col ${selectedNodeId ? 'translate-x-0' : 'translate-x-full'}`}>
+            <div className="p-5 border-b border-slate-100 flex justify-between items-center bg-white/50">
+                <div className="flex items-center gap-2">
+                     {selectedNodeId && (() => {
+                         const node = NODES_CONFIG.find(n => n.id === selectedNodeId);
+                         return (
+                            <>
+                                <div className={`w-8 h-8 rounded-lg bg-${node?.color}-100 text-${node?.color}-600 flex items-center justify-center`}>
+                                    {node?.icon && <node.icon className="w-4 h-4" />}
+                                </div>
+                                <div>
+                                    <h3 className="font-bold text-slate-800 text-sm">{node?.label}</h3>
+                                    <p className="text-[10px] text-slate-400">输出结果预览</p>
+                                </div>
+                            </>
+                         );
+                     })()}
+                </div>
+                <button onClick={() => setSelectedNodeId(null)} className="p-2 hover:bg-slate-100 rounded-lg text-slate-400 transition-colors">
+                    <PanelRightClose className="w-5 h-5" />
+                </button>
+            </div>
+
+            <div className="flex-1 overflow-y-auto p-6 bg-[#F8F9FC]">
+                 {/* Dynamic Content Based on Node */}
+                 {selectedNodeId === 'input' && (
+                     <div className="space-y-4 h-full">
+                         <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
+                             <label className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2 block">项目主题</label>
+                             <p className="text-sm font-medium text-slate-800">{project.inputs.topic}</p>
+                         </div>
+                          <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex-1">
+                             <label className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2 block">核心观点</label>
+                             <p className="text-sm text-slate-600 leading-relaxed whitespace-pre-wrap">{project.inputs.corePoint}</p>
+                         </div>
+                     </div>
+                 )}
+
+                 {selectedNodeId === 'script' && (
+                    <TextResultBox content={project.script || ''} title="视频文案脚本" />
+                 )}
+
+                 {selectedNodeId === 'summary' && (
+                    <TextResultBox content={project.summary || ''} title="简介与标签" />
+                 )}
+
+                 {selectedNodeId === 'titles' && (
+                     <TableResultBox 
+                        headers={['类型', '标题', '推荐指数', '操作']}
+                        data={project.titles || []}
+                        renderRow={(item: TitleItem, i) => (
+                            <tr key={i} className="hover:bg-slate-50 group">
+                                <td className="py-3 px-5 text-xs text-slate-500 font-medium">{item.type}</td>
+                                <td className="py-3 px-5 text-sm text-slate-800 font-bold leading-snug">{item.title}</td>
+                                <td className="py-3 px-5">
+                                    <span className={`inline-flex items-center gap-1 text-xs font-bold px-2 py-0.5 rounded ${item.score && item.score > 90 ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-100 text-slate-600'}`}>
+                                        {item.score}
+                                    </span>
+                                </td>
+                                <td className="py-3 px-5 text-right">
+                                    <RowCopyButton text={item.title} />
+                                </td>
+                            </tr>
+                        )}
+                     />
+                 )}
+
+                 {selectedNodeId === 'cover' && (
+                     <div className="space-y-6">
+                        {/* Render Options */}
+                        {project.coverOptions && project.coverOptions.length > 0 ? (
+                            <div className="space-y-4">
+                                {project.coverOptions.map((opt, i) => (
+                                    <div key={i} className="bg-white border border-slate-200 rounded-xl p-5 shadow-sm hover:shadow-md transition-shadow">
+                                        <div className="flex justify-between items-start mb-3">
+                                            <span className="bg-rose-50 text-rose-600 text-[10px] font-bold px-2 py-1 rounded border border-rose-100">方案 {i+1}</span>
+                                            <span className="text-xs font-bold text-slate-400">推荐指数: {opt.score}</span>
+                                        </div>
+                                        <div className="mb-4">
+                                            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">画面描述</p>
+                                            <p className="text-xs text-slate-600 leading-relaxed">{opt.visual}</p>
+                                        </div>
+                                        <div className="bg-slate-50 rounded-lg p-3 border border-slate-100 relative group">
+                                            <p className="text-sm font-bold text-slate-800 whitespace-pre-line leading-relaxed text-center font-serif">{opt.copy}</p>
+                                            <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                                                <RowCopyButton text={opt.copy} />
+                                            </div>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        ) : (
+                             <div className="text-center py-12 text-slate-400 border-2 border-dashed border-slate-200 rounded-2xl bg-slate-50/30">
+                                <p>暂无封面方案，点击生成按钮开始策划。</p>
+                            </div>
+                        )}
+                     </div>
+                 )}
+
+                 {selectedNodeId === 'sb_text' && (
+                     <TableResultBox 
+                        headers={['序号', '画面描述', '操作']}
+                        data={project.storyboard || []}
+                        renderRow={(item: StoryboardFrame, i) => (
+                            <tr key={item.id} className="hover:bg-slate-50 group">
+                                <td className="py-4 px-5 text-center text-xs font-bold text-slate-400">{item.sceneNumber}</td>
+                                <td className="py-4 px-5 text-xs text-slate-700 leading-relaxed">{item.description}</td>
+                                <td className="py-4 px-5 text-right">
+                                     <RowCopyButton text={item.description} />
+                                </td>
+                            </tr>
+                        )}
+                     />
+                 )}
+                 
+                 {selectedNodeId === 'image_gen' && (
+                     <div className="flex flex-col items-center justify-center h-full text-center p-8">
+                         <div className="w-16 h-16 bg-pink-100 text-pink-500 rounded-2xl flex items-center justify-center mb-4">
+                             <Images className="w-8 h-8" />
+                         </div>
+                         <h3 className="text-lg font-bold text-slate-900 mb-2">图片生成工坊</h3>
+                         <p className="text-slate-500 text-sm mb-6 max-w-xs">
+                             分镜脚本已就绪。请前往独立的工作台进行批量图片生成和管理。
+                         </p>
+                         <button
+                            onClick={() => navigate(`/project/${project.id}/images`)}
+                            className="bg-slate-900 text-white px-6 py-3 rounded-xl font-bold hover:bg-slate-800 transition-all flex items-center gap-2"
+                         >
+                            前往工坊 <ArrowRight className="w-4 h-4" />
+                         </button>
+                     </div>
+                 )}
             </div>
         </div>
+
       </div>
-
-      {/* Right Sidebar: Results */}
-      <div className={`${selectedNodeId ? 'w-[420px] translate-x-0 opacity-100' : 'w-0 translate-x-full opacity-0'} transition-all duration-300 ease-out border-l border-slate-200 bg-white/95 backdrop-blur-xl flex flex-col h-full flex-shrink-0 z-20 shadow-[-4px_0_24px_rgba(0,0,0,0.02)]`}>
-          {selectedNodeId && (
-              <>
-                 <div className="p-5 border-b border-slate-100 flex items-center justify-between">
-                    <h2 className="font-bold text-slate-800 flex items-center gap-2 text-sm tracking-wide">
-                        {NODES_CONFIG.find(n => n.id === selectedNodeId)?.label}
-                        <span className="text-slate-300">/</span>
-                        <span className="text-slate-400 font-normal">生成结果</span>
-                    </h2>
-                    <button onClick={() => setSelectedNodeId(null)} className="text-slate-400 hover:text-slate-600">
-                        <PanelRightClose className="w-5 h-5" />
-                    </button>
-                 </div>
-
-                 <div className="flex-1 overflow-y-auto p-6 space-y-6">
-                    {selectedNodeId === 'script' && (
-                        <TextResultBox content={project.script || ''} title="完整视频脚本" />
-                    )}
-
-                    {selectedNodeId === 'titles' && project.titles && (
-                        <TableResultBox 
-                            headers={['序号', '爆款标题', '得分', '操作']} 
-                            data={project.titles}
-                            renderRow={(item: TitleItem, idx) => (
-                                <tr key={idx} className="hover:bg-slate-50 transition-colors border-b border-slate-50">
-                                    <td className="py-4 px-6 text-center text-sm font-bold text-slate-400">{idx + 1}</td>
-                                    <td className="py-4 px-6">
-                                        <div className="font-bold text-slate-700 text-sm leading-relaxed">{item.title}</div>
-                                    </td>
-                                    <td className="py-4 px-6 text-center">
-                                         <span className={`inline-flex items-center justify-center w-8 h-8 rounded-lg text-sm font-extrabold shadow-sm ${
-                                            (item.score || 0) >= 90 ? 'bg-emerald-100 text-emerald-700 ring-1 ring-emerald-200' :
-                                            (item.score || 0) >= 80 ? 'bg-blue-100 text-blue-700 ring-1 ring-blue-200' :
-                                            'bg-amber-100 text-amber-700 ring-1 ring-amber-200'
-                                        }`}>
-                                            {item.score || '-'}
-                                        </span>
-                                    </td>
-                                    <td className="py-4 px-6 text-right">
-                                        <RowCopyButton text={item.title} />
-                                    </td>
-                                </tr>
-                            )}
-                        />
-                    )}
-
-                    {selectedNodeId === 'summary' && (
-                        <TextResultBox content={project.summary || ''} title="简介与标签" copyLabel="复制简介" />
-                    )}
-
-                    {selectedNodeId === 'sb_text' && (
-                        <div className="space-y-4">
-                            <div className="bg-fuchsia-50 border border-fuchsia-100 rounded-xl p-4 flex gap-3 items-center">
-                                <div className="bg-fuchsia-100 p-2 rounded-lg text-fuchsia-600">
-                                    <ImageIcon className="w-5 h-5" />
-                                </div>
-                                <div className="flex-1">
-                                    <h4 className="font-bold text-fuchsia-800 text-sm">分镜文案已生成</h4>
-                                    <p className="text-xs text-fuchsia-600/80">共 {project.storyboard?.length || 0} 个场景描述</p>
-                                </div>
-                                <button 
-                                    onClick={() => navigate(`/project/${project.id}/images`)}
-                                    className="bg-white text-fuchsia-600 text-xs font-bold px-3 py-2 rounded-lg border border-fuchsia-200 hover:bg-fuchsia-50 transition-colors shadow-sm"
-                                >
-                                    去生图
-                                </button>
-                            </div>
-                            <TableResultBox 
-                                headers={['#', '画面描述']} 
-                                data={project.storyboard || []}
-                                renderRow={(item: StoryboardFrame, idx) => (
-                                    <tr key={idx} className="hover:bg-slate-50 transition-colors border-b border-slate-50">
-                                        <td className="py-3 px-4 text-center text-xs font-bold text-slate-400 align-top pt-4">{item.sceneNumber}</td>
-                                        <td className="py-3 px-4 text-xs text-slate-600 leading-relaxed align-top pt-4 pb-4">
-                                            {item.description}
-                                        </td>
-                                    </tr>
-                                )}
-                            />
-                        </div>
-                    )}
-
-                    {selectedNodeId === 'cover' && (
-                         <TableResultBox 
-                            headers={['封面文案', '得分', '操作']} 
-                            data={project.coverOptions || []}
-                            renderRow={(item: CoverOption, idx) => (
-                                <tr key={idx} className="hover:bg-slate-50 transition-colors border-b border-slate-50 last:border-0">
-                                    <td className="py-6 px-6 align-top">
-                                        <div className="space-y-2">
-                                            {item.copy.split('\n').map((line, lIdx) => (
-                                                <div key={lIdx} className="text-base font-bold text-slate-800 leading-snug">
-                                                    {line}
-                                                </div>
-                                            ))}
-                                        </div>
-                                    </td>
-                                    <td className="py-6 px-6 align-top text-center">
-                                         <span className={`inline-flex items-center justify-center w-8 h-8 rounded-lg text-sm font-extrabold shadow-sm ${
-                                            (item.score || 0) >= 90 ? 'bg-emerald-100 text-emerald-700 ring-1 ring-emerald-200' :
-                                            (item.score || 0) >= 80 ? 'bg-blue-100 text-blue-700 ring-1 ring-blue-200' :
-                                            'bg-amber-100 text-amber-700 ring-1 ring-amber-200'
-                                        }`}>
-                                            {item.score || '-'}
-                                        </span>
-                                    </td>
-                                    <td className="py-6 px-6 text-right align-top">
-                                        <RowCopyButton text={item.copy} />
-                                    </td>
-                                </tr>
-                            )}
-                        />
-                    )}
-                    
-                    {selectedNodeId === 'input' && (
-                        <div className="space-y-6">
-                            <div className="space-y-2">
-                                <label className="text-xs font-bold text-slate-400 uppercase">视频主题</label>
-                                <div className="text-sm font-medium text-slate-800 bg-slate-50 p-3 rounded-xl border border-slate-100">
-                                    {project.inputs.topic}
-                                </div>
-                            </div>
-                             <div className="space-y-2">
-                                <label className="text-xs font-bold text-slate-400 uppercase">核心观点</label>
-                                <div className="text-sm font-medium text-slate-800 bg-slate-50 p-3 rounded-xl border border-slate-100 leading-relaxed">
-                                    {project.inputs.corePoint}
-                                </div>
-                            </div>
-                        </div>
-                    )}
-
-                 </div>
-              </>
-          )}
-      </div>
-
     </div>
   );
 };
