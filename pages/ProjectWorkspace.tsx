@@ -1,6 +1,7 @@
+
 import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ProjectData, TitleItem, StoryboardFrame, CoverOption, PromptTemplate } from '../types';
+import { ProjectData, TitleItem, StoryboardFrame, CoverOption, PromptTemplate, ProjectStatus } from '../types';
 import * as storage from '../services/storageService';
 import * as gemini from '../services/geminiService';
 import { 
@@ -155,7 +156,11 @@ const ProjectWorkspace: React.FC = () => {
 
         if (nodeId === 'script') {
             const text = await gemini.generateText(prompt, 'gemini-3-pro-preview'); // Use Pro for script
-            await saveProjectUpdate(p => ({ ...p, script: text, status: p.status === 'DRAFT' ? 'IN_PROGRESS' : p.status }));
+            await saveProjectUpdate(p => ({ 
+                ...p, 
+                script: text, 
+                status: p.status === ProjectStatus.DRAFT ? ProjectStatus.IN_PROGRESS : p.status 
+            }));
         } 
         else if (nodeId === 'summary') {
             const text = await gemini.generateText(prompt);
@@ -316,7 +321,7 @@ const ProjectWorkspace: React.FC = () => {
 
         {/* Right Panel: Result Details */}
         <div 
-            className={`absolute top-0 right-0 bottom-0 bg-white/95 backdrop-blur-xl border-l border-slate-200 shadow-[-4px_0_24px_rgba(0,0,0,0.05)] transform transition-all duration-300 z-20 flex flex-col ${selectedNodeId ? 'translate-x-0' : 'translate-x-full'} ${selectedNodeId === 'titles' || selectedNodeId === 'sb_text' ? 'w-[600px]' : 'w-[480px]'}`}
+            className={`absolute top-0 right-0 bottom-0 bg-white/95 backdrop-blur-xl border-l border-slate-200 shadow-[-4px_0_24px_rgba(0,0,0,0.05)] transform transition-all duration-300 z-20 flex flex-col ${selectedNodeId ? 'translate-x-0' : 'translate-x-full'} w-[480px]`}
             onMouseDown={(e) => e.stopPropagation()}
         >
             <div className="p-5 border-b border-slate-100 flex justify-between items-center bg-white/50">
