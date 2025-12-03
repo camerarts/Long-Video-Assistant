@@ -138,16 +138,14 @@ const InspirationRepo: React.FC = () => {
     let csvContent = "\uFEFF"; 
     
     // Headers
-    csvContent += "序号,分类,标题,评分,原始内容,创建时间\n";
+    csvContent += "序号,分类,标题,得分\n";
     
     sortedInspirations.forEach((item, index) => {
         const row = [
             index + 1,
             `"${(item.category || '').replace(/"/g, '""')}"`,
             `"${(item.viralTitle || '').replace(/"/g, '""')}"`,
-            `"${(item.rating || '').replace(/"/g, '""')}"`,
-            `"${(item.content || '').replace(/"/g, '""').replace(/\n/g, ' ')}"`,
-            new Date(item.createdAt).toLocaleString('zh-CN')
+            `"${(item.rating || '').replace(/"/g, '""')}"`
         ];
         csvContent += row.join(",") + "\n";
     });
@@ -245,8 +243,6 @@ const InspirationRepo: React.FC = () => {
     }
 
     // --- Strategy 2: Vertical Block (Specific User Format) ---
-    // Detect block size based on headers if present, or infer from data structure
-    // We assume the data is cleaned of empty lines
     if (rows.length >= 3) {
         // Check for headers in the first few lines
         const headerRange = rows.slice(0, 10).join(' ');
@@ -254,7 +250,6 @@ const InspirationRepo: React.FC = () => {
         const blockSize = hasRating ? 4 : 3;
         
         // Find where the data starts (skip headers)
-        // Heuristic: First line that is a pure number (Index)
         let startIndex = -1;
         for(let i=0; i<rows.length; i++) {
             if (/^\d+$/.test(rows[i])) {
@@ -273,7 +268,6 @@ const InspirationRepo: React.FC = () => {
                      const title = rows[i+2];
                      const rating = hasRating ? rows[i+3] : '';
                      
-                     // Basic validation: Title shouldn't be a number (in case sync is lost)
                      if (title && !/^\d+$/.test(title)) {
                         parsed.push({
                             category: category,
@@ -364,14 +358,14 @@ const InspirationRepo: React.FC = () => {
   };
 
   return (
-    <div className="space-y-6 md:space-y-8 h-full flex flex-col">
-      <div className="flex flex-col gap-4 md:flex-row md:justify-between md:items-end flex-shrink-0">
+    <div className="space-y-6 md:space-y-8 h-full flex flex-col pb-24 md:pb-0">
+      <div className="flex flex-col gap-3 md:flex-row md:justify-between md:items-end flex-shrink-0">
         <div>
-          <h1 className="text-2xl md:text-4xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-amber-500 to-orange-600 mb-1 md:mb-2 tracking-tight flex items-center gap-2 md:gap-3">
+          <h1 className="text-2xl md:text-4xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-amber-500 to-orange-600 mb-0.5 md:mb-2 tracking-tight flex items-center gap-2 md:gap-3">
             <Lightbulb className="w-6 h-6 md:w-8 md:h-8 text-amber-500" />
             视频灵感仓库
           </h1>
-          <p className="text-sm md:text-base text-slate-500 font-medium">收集灵感，打造爆款选题库。</p>
+          <p className="text-xs md:text-base text-slate-500 font-medium">收集灵感，打造爆款选题库。</p>
         </div>
         <div className="flex flex-col items-stretch md:items-end gap-2 w-full md:w-auto">
             <span className="hidden md:inline-block text-[10px] font-bold text-slate-400 tracking-wider bg-slate-50 px-2 py-1 rounded-md border border-slate-100 text-right">
@@ -380,15 +374,15 @@ const InspirationRepo: React.FC = () => {
             <div className="flex gap-2 md:gap-3">
                 <button 
                     onClick={handleDownloadExcel}
-                    className="flex-1 md:flex-none justify-center bg-white border border-slate-200 text-slate-600 hover:text-amber-600 hover:border-amber-200 px-4 py-3 rounded-xl font-bold shadow-sm transition-all flex items-center gap-2"
+                    className="flex-1 md:flex-none justify-center bg-white border border-slate-200 text-slate-600 hover:text-amber-600 hover:border-amber-200 px-4 py-2.5 md:py-3 rounded-xl font-bold shadow-sm transition-all flex items-center gap-2 text-sm"
                 >
-                    <Download className="w-5 h-5" /> <span className="md:inline">导出表格</span>
+                    <Download className="w-4 h-4 md:w-5 md:h-5" /> <span className="hidden md:inline">导出表格</span><span className="md:hidden">导出</span>
                 </button>
                 <button 
                     onClick={() => setShowModal(true)}
-                    className="flex-1 md:flex-none justify-center bg-amber-500 hover:bg-amber-600 text-white px-6 py-3 rounded-xl font-bold shadow-lg shadow-amber-500/30 flex items-center gap-2 transition-all hover:-translate-y-0.5"
+                    className="flex-1 md:flex-none justify-center bg-amber-500 hover:bg-amber-600 text-white px-6 py-2.5 md:py-3 rounded-xl font-bold shadow-lg shadow-amber-500/30 flex items-center gap-2 transition-all hover:-translate-y-0.5 text-sm"
                 >
-                    <Plus className="w-5 h-5" /> <span className="md:inline">记录新灵感</span>
+                    <Plus className="w-4 h-4 md:w-5 md:h-5" /> <span className="md:inline">记录新灵感</span><span className="md:hidden">新灵感</span>
                 </button>
             </div>
         </div>
@@ -472,9 +466,9 @@ const InspirationRepo: React.FC = () => {
                     >
                         <td className="py-3 px-4 text-center text-xs font-bold text-slate-400">{index + 1}</td>
                         <td className="py-3 px-4 text-center">
-                            <span className="bg-white text-slate-600 px-2 py-0.5 rounded text-[10px] font-bold border border-slate-200 shadow-sm inline-block whitespace-normal break-words max-w-[80px]" title={item.category}>
+                            <div className={`font-bold text-xs ${item.marked ? 'text-emerald-800' : 'text-slate-800'}`}>
                                 {item.category}
-                            </span>
+                            </div>
                         </td>
                         <td className="py-3 px-4">
                             <div className={`font-bold text-sm leading-snug transition-colors line-clamp-2 md:line-clamp-none ${item.marked ? 'text-emerald-800' : 'text-slate-800'}`}>
