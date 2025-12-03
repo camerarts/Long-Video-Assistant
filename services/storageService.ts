@@ -1,3 +1,5 @@
+
+
 import { ProjectData, PromptTemplate, DEFAULT_PROMPTS, ProjectStatus, Inspiration } from '../types';
 
 // API Endpoints
@@ -330,9 +332,6 @@ export const createProject = async (): Promise<string> => {
     updatedAt: Date.now(),
     inputs: {
       topic: '',
-      corePoint: '',
-      audience: '大众',
-      duration: '10分钟',
       tone: '信息丰富且引人入胜',
       language: '中文'
     }
@@ -373,7 +372,11 @@ export const deleteProject = async (id: string): Promise<void> => {
   // 3. Delete from Local DB
   await dbDelete(STORE_PROJECTS, id);
   
-  // 4. Delete from Remote D1
+  // 4. Delete from Remote D1 (Manual Sync approach means we usually wait for Upload, 
+  // but for deletion we might want to be cleaner or just let the next upload handle the removal logic?
+  // Our sync logic is "Upload Local to Remote". 
+  // The backend `sync` implementation performs INSERT/UPDATE. It DOES NOT delete records that are missing from payload.
+  // So we MUST explicity call DELETE on the API for the project record now.
   try {
     await fetch(`${API_BASE}/projects/${id}`, { method: 'DELETE' });
   } catch (e) {
@@ -383,26 +386,9 @@ export const deleteProject = async (id: string): Promise<void> => {
   trackChange();
 };
 
-// --- Prompts (Auto-Sync to API) ---
+// --- Prompts (Local Only) ---
 
 export const getPrompts = async (): Promise<Record<string, PromptTemplate>> => {
-  try {
-    // Strategy: ALWAYS attempt to fetch from server first to ensure synchronization
-    const res = await fetch(`${API_BASE}/prompts`);
-    if (res.ok) {
-        const serverData = await res.json();
-        if (serverData) {
-             const merged = { ...DEFAULT_PROMPTS, ...serverData };
-             localStorage.setItem(KEY_PROMPTS, JSON.stringify(merged));
-             return merged;
-        }
-    }
-  } catch (e) { 
-      // Network error, fall back to local
-      console.warn("Could not fetch prompts from server, using local cache");
-  }
-
-  // Fallback to local
   try {
     const local = localStorage.getItem(KEY_PROMPTS);
     if (local) {
@@ -413,27 +399,8 @@ export const getPrompts = async (): Promise<Record<string, PromptTemplate>> => {
 };
 
 export const savePrompts = async (prompts: Record<string, PromptTemplate>): Promise<void> => {
-  // 1. Save Local
   localStorage.setItem(KEY_PROMPTS, JSON.stringify(prompts));
   trackChange();
-
-  // 2. Sync to Server Immediately
-  try {
-    const res = await fetch(`${API_BASE}/prompts`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(prompts)
-    });
-    
-    if (res.ok) {
-        updateLastUploadTime(); // Update global upload time on success
-    } else {
-        throw new Error("Server sync failed");
-    }
-  } catch (e) {
-      console.error("Failed to sync prompts to server", e);
-      throw e; // Re-throw to let UI know
-  }
 };
 
 export const resetPrompts = async (): Promise<void> => {
