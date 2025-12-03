@@ -17,7 +17,8 @@ export interface StoryboardFrame {
 
 export interface TitleItem {
   title: string;
-  type: string; // e.g., "悬念型", "数字型"
+  type?: string; // Legacy
+  keywords?: string; // New field
   score?: number; // Recommendation score
 }
 
@@ -37,9 +38,7 @@ export interface ProjectData {
   // Inputs
   inputs: {
     topic: string;
-    corePoint: string;
-    audience: string;
-    duration: string;
+    // Removed corePoint, audience, duration
     tone: string;
     language: string;
   };
@@ -84,9 +83,6 @@ export const DEFAULT_PROMPTS: Record<string, PromptTemplate> = {
     template: `你是一位专业的长视频脚本撰稿人。请为一个视频创作详细的脚本，确保内容深度和逻辑性。
     
 主题: {{topic}}
-核心观点: {{corePoint}}
-目标受众: {{audience}}
-目标时长: {{duration}}
 语气风格: {{tone}}
 语言: {{language}}
 
@@ -128,13 +124,13 @@ export const DEFAULT_PROMPTS: Record<string, PromptTemplate> = {
 
 请返回一个纯 JSON 数组（不要Markdown格式），数组中每个对象包含三个字段：
 - "title": 具体的标题文本
-- "type": 标题的类型风格（例如：悬念型、直击痛点、数字盘点、情绪共鸣等）
+- "keywords": 标题对应的关键标签（例如：悬念、利益、反差、情绪、干货等），确保准确提炼。
 - "score": 推荐指数（1-100分），代表该标题的潜在点击率预估。
 
 示例：
 [
-  {"title": "普通人如何利用AI在30天内赚到第一桶金？", "type": "悬念利益型", "score": 95},
-  {"title": "揭秘OpenAI内部：你不知道的5个真相", "type": "揭秘型", "score": 88}
+  {"title": "普通人如何利用AI在30天内赚到第一桶金？", "keywords": "悬念,赚钱,AI", "score": 95},
+  {"title": "揭秘OpenAI内部：你不知道的5个真相", "keywords": "揭秘,科技,真相", "score": 88}
 ]
 `
   },
