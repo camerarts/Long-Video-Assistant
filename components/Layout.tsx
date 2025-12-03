@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { LayoutDashboard, Settings, Video, Plus, Image as ImageIcon, Lightbulb, LogOut, CloudUpload, CloudDownload, Loader2, CheckCircle2, XCircle, Circle } from 'lucide-react';
+import { LayoutDashboard, Settings, Video, Plus, Image as ImageIcon, Lightbulb, LogOut, CloudUpload, CloudDownload, Loader2, CheckCircle2, XCircle, Circle, Menu, X } from 'lucide-react';
 import * as storage from '../services/storageService';
 
 interface LayoutProps {
@@ -29,6 +29,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
     settings: 'idle'
   });
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   const isActive = (path: string) => location.pathname === path || (path !== '/' && location.pathname.startsWith(path));
 
@@ -45,9 +46,15 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
     return () => clearInterval(interval);
   }, []);
 
+  // Close mobile menu when route changes
+  useEffect(() => {
+    setMobileMenuOpen(false);
+  }, [location.pathname]);
+
   const handleCreateProject = async () => {
     const newId = await storage.createProject();
     navigate(`/project/${newId}`);
+    setMobileMenuOpen(false);
   };
 
   const handleLogout = () => {
@@ -129,9 +136,38 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
 
   return (
     <div className="h-screen flex bg-[#F8F9FC] text-slate-900 font-sans overflow-hidden">
+        
+      {/* Mobile Menu Toggle Button */}
+      <button 
+        onClick={() => setMobileMenuOpen(true)}
+        className="sm:hidden fixed bottom-6 left-6 z-40 p-3 bg-white/90 backdrop-blur-md border border-slate-200 rounded-full shadow-lg text-slate-600 hover:text-violet-600 transition-all active:scale-95"
+      >
+        <Menu className="w-6 h-6" />
+      </button>
+
+      {/* Mobile Menu Backdrop */}
+      {mobileMenuOpen && (
+        <div 
+            className="fixed inset-0 bg-black/40 z-40 sm:hidden backdrop-blur-sm animate-in fade-in duration-200"
+            onClick={() => setMobileMenuOpen(false)}
+        />
+      )}
+
       {/* App Sidebar (Global Navigation) */}
-      <aside className="w-24 flex-shrink-0 border-r border-slate-200/60 bg-white/80 backdrop-blur-md flex flex-col items-center py-6 z-30 transition-all duration-300">
-        <div className="flex flex-col items-center mb-6 gap-2">
+      <aside className={`
+        fixed inset-y-0 left-0 z-50 w-24 flex flex-col items-center py-6 border-r border-slate-200/60 bg-white/95 backdrop-blur-md transition-transform duration-300 ease-in-out
+        sm:relative sm:translate-x-0 sm:bg-white/80
+        ${mobileMenuOpen ? 'translate-x-0' : '-translate-x-full'}
+      `}>
+        {/* Mobile Close Button */}
+        <button 
+            onClick={() => setMobileMenuOpen(false)}
+            className="sm:hidden absolute top-2 right-2 p-2 text-slate-400 hover:text-rose-500 transition-colors"
+        >
+            <X className="w-5 h-5" />
+        </button>
+
+        <div className="flex flex-col items-center mb-6 gap-2 mt-8 sm:mt-0">
             <Link to="/dashboard" className="w-11 h-11 bg-gradient-to-br from-violet-600 to-indigo-600 rounded-2xl flex items-center justify-center shadow-lg shadow-indigo-500/30 hover:scale-105 transition-transform duration-300">
               <Video className="text-white w-6 h-6" />
             </Link>
@@ -236,16 +272,16 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
       </aside>
 
       {/* Main Content Area */}
-      <main className="flex-1 flex flex-col h-full overflow-hidden bg-[#F8F9FC]">
+      <main className="flex-1 flex flex-col h-full overflow-hidden bg-[#F8F9FC] w-full">
         {isWorkspace ? (
           /* Full screen workspace mode */
-          <div className="flex-1 h-full overflow-hidden">
+          <div className="flex-1 h-full overflow-hidden w-full">
             {children}
           </div>
         ) : (
           /* Standard page mode with container */
-          <div className="flex-1 overflow-y-auto">
-             <div className="container mx-auto px-8 py-10 max-w-7xl">
+          <div className="flex-1 overflow-y-auto w-full">
+             <div className="container mx-auto px-4 md:px-8 py-6 md:py-10 max-w-7xl">
               {children}
             </div>
           </div>
