@@ -706,9 +706,17 @@ const ProjectWorkspace: React.FC = () => {
 
   // Mouse Handlers for Canvas & Nodes
   const handleCanvasMouseDown = (e: React.MouseEvent) => {
-    // Middle mouse or Space+Left triggers pan
+    // Middle mouse (1) or Space+Left (0) triggers pan regardless of target (bubbled from nodes)
     if (isSpacePressed || e.button === 1) {
       setIsPanning(true);
+      return;
+    }
+    
+    // Pure Left click (0) triggers pan ONLY if clicking empty background
+    // We check e.target === e.currentTarget to avoid capturing clicks on UI elements (panels, buttons) 
+    // that might bubble up if they don't stop propagation.
+    if (e.button === 0 && e.target === e.currentTarget) {
+        setIsPanning(true);
     }
   };
 
@@ -1059,6 +1067,7 @@ const ProjectWorkspace: React.FC = () => {
             onClick={() => setShowSettings(!showSettings)}
             className="absolute left-6 top-6 z-30 p-2.5 bg-white border border-slate-200 rounded-xl text-slate-500 hover:text-violet-600 shadow-sm transition-all hover:scale-105 hover:shadow-md"
             title={showSettings ? "收起侧边栏" : "展开侧边栏"}
+            onMouseDown={(e) => e.stopPropagation()} 
         >
             {showSettings ? <PanelLeftClose className="w-5 h-5"/> : <PanelLeftOpen className="w-5 h-5"/>}
         </button>
@@ -1079,6 +1088,7 @@ const ProjectWorkspace: React.FC = () => {
                 disabled={isAutoGenerating || !project.script}
                 className="px-5 py-2.5 bg-white text-violet-600 border border-violet-100 rounded-xl hover:bg-violet-50 hover:border-violet-200 shadow-sm hover:shadow-md transition-all flex items-center gap-2 font-bold text-sm disabled:opacity-50 disabled:cursor-not-allowed"
                 title="并行执行后续所有任务"
+                onMouseDown={(e) => e.stopPropagation()}
             >
                 {isAutoGenerating ? <Loader2 className="w-4 h-4 animate-spin"/> : <Zap className="w-4 h-4 fill-violet-600" />}
                 一键生成
@@ -1092,6 +1102,7 @@ const ProjectWorkspace: React.FC = () => {
                     ? 'bg-emerald-500 text-white shadow-lg shadow-emerald-500/20' 
                     : 'bg-gradient-to-r from-slate-900 to-slate-800 text-white hover:shadow-lg hover:shadow-slate-500/20 hover:-translate-y-0.5'
                 }`}
+                onMouseDown={(e) => e.stopPropagation()}
             >
                 {savingGlobal ? <Loader2 className="w-4 h-4 animate-spin"/> : globalSuccess ? <Check className="w-4 h-4" /> : <Save className="w-4 h-4"/>}
                 {globalSuccess ? '已保存' : '保存进度'}
@@ -1231,7 +1242,10 @@ const ProjectWorkspace: React.FC = () => {
         </div>
 
         {/* Right Panel: Result Details */}
-        <div className={`absolute top-0 right-0 bottom-0 w-[420px] bg-white/90 backdrop-blur-xl border-l border-slate-200 shadow-[-4px_0_24px_rgba(0,0,0,0.02)] transform transition-transform duration-300 z-20 flex flex-col ${selectedNodeId ? 'translate-x-0' : 'translate-x-full'}`}>
+        <div 
+            className={`absolute top-0 right-0 bottom-0 w-[420px] bg-white/90 backdrop-blur-xl border-l border-slate-200 shadow-[-4px_0_24px_rgba(0,0,0,0.02)] transform transition-transform duration-300 z-20 flex flex-col ${selectedNodeId ? 'translate-x-0' : 'translate-x-full'}`}
+            onMouseDown={(e) => e.stopPropagation()}
+        >
             <div className="p-5 border-b border-slate-100 flex justify-between items-center bg-white/50">
                 <div className="flex items-center gap-2">
                      {selectedNodeId && (() => {
