@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ProjectData, ProjectStatus } from '../types';
@@ -9,10 +10,6 @@ const CreateProject: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState({
     topic: '',
-    corePoint: '',
-    // Hidden defaults
-    audience: '大众',
-    duration: '10分钟',
     tone: '信息丰富且引人入胜',
     language: '中文'
   });
@@ -66,19 +63,6 @@ const CreateProject: React.FC = () => {
                 onChange={handleChange}
                 placeholder="例如：人工智能的历史"
                 className="w-full bg-white border border-slate-300 rounded-lg px-4 py-3 text-slate-900 focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none transition-all placeholder:text-slate-400"
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-slate-600 mb-2">核心观点 / 角度</label>
-              <textarea
-                required
-                name="corePoint"
-                value={formData.corePoint}
-                onChange={handleChange}
-                rows={3}
-                placeholder="主要的论点或结论是什么？"
-                className="w-full bg-white border border-slate-300 rounded-lg px-4 py-3 text-slate-900 focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none transition-all resize-none placeholder:text-slate-400"
               />
             </div>
           </div>
