@@ -137,7 +137,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
   return (
     <div className="h-screen flex bg-[#F8F9FC] text-slate-900 font-sans overflow-hidden">
         
-      {/* Mobile Menu Toggle Button */}
+      {/* Mobile Menu Toggle Button - Hidden on sm (tablets/landscape phones) and up */}
       <button 
         onClick={() => setMobileMenuOpen(true)}
         className="sm:hidden fixed bottom-6 left-6 z-40 p-3 bg-white/90 backdrop-blur-md border border-slate-200 rounded-full shadow-lg text-slate-600 hover:text-violet-600 transition-all active:scale-95"
@@ -153,7 +153,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
         />
       )}
 
-      {/* App Sidebar (Global Navigation) */}
+      {/* App Sidebar (Global Navigation) - Visible on sm and up */}
       <aside className={`
         fixed inset-y-0 left-0 z-50 w-24 flex flex-col items-center py-6 border-r border-slate-200/60 bg-white/95 backdrop-blur-md transition-transform duration-300 ease-in-out
         sm:relative sm:translate-x-0 sm:bg-white/80
