@@ -2,7 +2,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import * as storage from '../services/storageService';
 import * as gemini from '../services/geminiService';
-import { Sparkles, Loader2, Copy, Eraser, Type, Image as ImageIcon, ALargeSmall, Save, Clock, Cloud, CloudCheck } from 'lucide-react';
+import { Sparkles, Loader2, Copy, Eraser, Type, Image as ImageIcon, ALargeSmall, Save, Clock, Cloud, CloudCheck, CheckCircle2, Circle, Wand2, Maximize2, X } from 'lucide-react';
 import { PromptTemplate } from '../types';
 
 interface AiTitlesResult {
@@ -11,11 +11,27 @@ interface AiTitlesResult {
     coverText: string;
 }
 
+// Extended interface for saved state
+interface AiTitlesState {
+    input: string;
+    result: AiTitlesResult | null;
+    selectedTitleIndex: number | null;
+    generatedCover: string | null;
+    updatedAt?: number;
+}
+
 const TOOL_ID = 'ai_titles';
 
 const AiTitles: React.FC = () => {
   const [userInput, setUserInput] = useState('');
   const [result, setResult] = useState<AiTitlesResult | null>(null);
+  
+  // New State for Selection and Image
+  const [selectedTitleIndex, setSelectedTitleIndex] = useState<number | null>(null);
+  const [generatedCover, setGeneratedCover] = useState<string | null>(null);
+  const [generatingImage, setGeneratingImage] = useState(false);
+  const [previewImage, setPreviewImage] = useState<string | null>(null); // For fullscreen preview
+
   const [loading, setLoading] = useState(false);
   const [promptTemplate, setPromptTemplate] = useState<PromptTemplate | null>(null);
   
@@ -38,7 +54,13 @@ const AiTitles: React.FC = () => {
     const saveData = async () => {
         setSyncStatus('saving');
         const now = Date.now();
-        const dataToSave = { input: userInput, result, updatedAt: now };
+        const dataToSave: AiTitlesState = { 
+            input: userInput, 
+            result, 
+            selectedTitleIndex,
+            generatedCover,
+            updatedAt: now 
+        };
 
         try {
             // 1. Local Save
@@ -60,7 +82,7 @@ const AiTitles: React.FC = () => {
     }, 1000); // 1s debounce
 
     return () => clearTimeout(timer);
-  }, [userInput, result]);
+  }, [userInput, result, selectedTitleIndex, generatedCover]);
 
   const loadPrompt = async () => {
     const prompts = await storage.getPrompts();
@@ -71,13 +93,13 @@ const AiTitles: React.FC = () => {
 
   const initData = async () => {
       // 1. Load Local First
-      const saved = await storage.getToolData<{input: string, result: AiTitlesResult, updatedAt?: number}>(TOOL_ID);
+      const saved = await storage.getToolData<AiTitlesState>(TOOL_ID);
       
       let currentData = saved;
 
       // 2. Check Remote (Sync on Load)
       try {
-          const remote = await storage.fetchRemoteToolData<{input: string, result: AiTitlesResult, updatedAt?: number}>(TOOL_ID);
+          const remote = await storage.fetchRemoteToolData<AiTitlesState>(TOOL_ID);
           if (remote && (!saved || (remote.updatedAt || 0) > (saved.updatedAt || 0))) {
               console.log("Found newer data on server, syncing...");
               currentData = remote;
@@ -91,6 +113,9 @@ const AiTitles: React.FC = () => {
       if (currentData) {
           setUserInput(currentData.input || '');
           setResult(currentData.result || null);
+          setSelectedTitleIndex(currentData.selectedTitleIndex !== undefined ? currentData.selectedTitleIndex : null);
+          setGeneratedCover(currentData.generatedCover || null);
+
           if (currentData.updatedAt) {
               setLastAutoSave(new Date(currentData.updatedAt).toLocaleTimeString());
               setSyncStatus('synced');
@@ -112,7 +137,6 @@ const AiTitles: React.FC = () => {
     try {
       // Use the new system variable TITLE_DIRECTION
       let prompt = promptTemplate.template.replace('{{TITLE_DIRECTION}}', userInput);
-      // Fallback for older templates that might still use {{topic}}
       prompt = prompt.replace('{{topic}}', userInput);
       
       const json = await gemini.generateJSON<AiTitlesResult>(prompt, {
@@ -126,11 +150,14 @@ const AiTitles: React.FC = () => {
       });
       
       setResult(json);
+      // Reset selection and image on new text generation? 
+      // User might want to keep image, but usually new text means new context. 
+      // Let's reset for consistency.
+      setSelectedTitleIndex(null);
+      // setGeneratedCover(null); // Optional: keep old cover until new one generated? Let's keep it.
       
-      // Immediate save logic will be handled by useEffect, but we can force update timestamp
       const now = Date.now();
       setLastAutoSave(new Date(now).toLocaleTimeString());
-      // The state update triggers the useEffect which handles cloud sync
 
     } catch (error: any) {
       alert(`生成失败: ${error.message}`);
@@ -139,6 +166,32 @@ const AiTitles: React.FC = () => {
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleGenerateImage = async () => {
+      if (!result || selectedTitleIndex === null) {
+          alert("请先选择一个标题");
+          return;
+      }
+      
+      setGeneratingImage(true);
+      setSyncStatus('saving');
+
+      try {
+          const selectedTitle = result.titles[selectedTitleIndex];
+          const prompt = `Youtube Video Thumbnail. High quality, cinematic lighting, 8k resolution. 
+          Visual Description: ${result.coverVisual}. 
+          Text overlay (for reference): "${result.coverText}". 
+          Context Title: "${selectedTitle}".`;
+
+          const base64 = await gemini.generateImage(prompt);
+          setGeneratedCover(base64);
+
+      } catch (e: any) {
+          alert(`图片生成失败: ${e.message}`);
+      } finally {
+          setGeneratingImage(false);
+      }
   };
 
   const handleCopyTitles = () => {
@@ -151,10 +204,13 @@ const AiTitles: React.FC = () => {
     if(!window.confirm("确定要清空所有内容吗？")) return;
     setUserInput('');
     setResult(null);
+    setSelectedTitleIndex(null);
+    setGeneratedCover(null);
     setLastAutoSave('');
     setSyncStatus(null);
-    await storage.saveToolData(TOOL_ID, { input: '', result: null, updatedAt: Date.now() });
-    await storage.uploadToolData(TOOL_ID, { input: '', result: null, updatedAt: Date.now() });
+    const emptyState: AiTitlesState = { input: '', result: null, selectedTitleIndex: null, generatedCover: null, updatedAt: Date.now() };
+    await storage.saveToolData(TOOL_ID, emptyState);
+    await storage.uploadToolData(TOOL_ID, emptyState);
   };
 
   // Content Edit Handlers
@@ -185,7 +241,18 @@ const AiTitles: React.FC = () => {
           </h1>
           <p className="text-xs md:text-base text-slate-500 font-medium">输入标题方向，AI 帮你从多个角度构思爆款标题与封面方案。</p>
         </div>
-        <div className="flex flex-col items-end justify-end">
+        <div className="flex flex-col items-end justify-end gap-2">
+            <div className="flex items-center gap-3">
+                 <button
+                    onClick={handleGenerateImage}
+                    disabled={generatingImage || !result || selectedTitleIndex === null}
+                    className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-fuchsia-600 to-pink-600 text-white rounded-xl font-bold shadow-lg shadow-fuchsia-500/30 hover:shadow-fuchsia-500/40 hover:-translate-y-0.5 transition-all disabled:opacity-50 disabled:cursor-not-allowed text-xs"
+                >
+                    {generatingImage ? <Loader2 className="w-4 h-4 animate-spin" /> : <ImageIcon className="w-4 h-4" />}
+                    生成封面图片
+                </button>
+            </div>
+            
             {lastAutoSave && (
                 <div className={`flex items-center gap-1.5 text-[10px] font-bold px-2 py-1 rounded-md border animate-in fade-in transition-colors ${
                     syncStatus === 'synced' ? 'bg-emerald-50 text-emerald-600 border-emerald-100' :
@@ -232,105 +299,178 @@ const AiTitles: React.FC = () => {
             </div>
         </div>
 
-        {/* Output Panel - Right 3/4 */}
+        {/* Output Panel - Right 3/4 - Scrollable Container */}
         <div className="w-full md:w-3/4 flex flex-col bg-white rounded-3xl border border-slate-200 shadow-sm overflow-hidden h-full">
-            {/* Top Section: Titles (75%) */}
-            <div className="flex-[3] flex flex-col min-h-0 border-b border-slate-200">
-                <div className="py-2 px-4 bg-slate-50 border-b border-slate-100 flex justify-between items-center flex-shrink-0">
-                    <span className="text-xs font-bold text-slate-500 uppercase tracking-wider flex items-center gap-1.5">
-                        <Type className="w-3.5 h-3.5" /> 标题结果
-                    </span>
-                    <button 
-                        onClick={handleCopyTitles} 
-                        disabled={!result?.titles?.length} 
-                        className="text-slate-400 hover:text-violet-600 p-1 rounded-md hover:bg-violet-50 transition-colors disabled:opacity-30" 
-                        title="复制所有标题"
-                    >
-                        <Copy className="w-4 h-4" />
-                    </button>
-                </div>
-                <div className="flex-1 overflow-y-auto p-4 bg-[#FAFAFA]">
-                    {loading ? (
-                        <div className="h-full flex flex-col items-center justify-center text-slate-400 gap-3">
-                            <Loader2 className="w-8 h-8 animate-spin text-violet-500" />
-                            <span className="text-sm font-medium animate-pulse">AI 正在构思标题与封面...</span>
-                        </div>
-                    ) : result?.titles ? (
-                        <div className="space-y-2">
-                            {result.titles.map((title, idx) => (
-                                <div key={idx} className="py-2 px-3 bg-white border border-slate-100 rounded-lg shadow-sm hover:shadow-md transition-shadow flex gap-2 items-center group">
-                                    <span className="text-[10px] font-bold text-slate-300 w-5 text-center shrink-0">{idx + 1}</span>
-                                    <input 
-                                        type="text"
-                                        value={title}
-                                        onChange={(e) => handleTitleChange(idx, e.target.value)}
-                                        className="flex-1 text-slate-800 font-medium text-sm leading-snug bg-transparent border-none focus:ring-0 outline-none w-full"
-                                    />
-                                    <button 
-                                        className="ml-auto opacity-0 group-hover:opacity-100 text-slate-300 hover:text-violet-600 transition-all p-1"
-                                        onClick={() => {
-                                            navigator.clipboard.writeText(title);
-                                        }}
-                                        title="复制此标题"
-                                    >
-                                        <Copy className="w-3.5 h-3.5" />
-                                    </button>
-                                </div>
-                            ))}
-                        </div>
-                    ) : (
-                        <div className="h-full flex flex-col items-center justify-center text-slate-300 gap-2 select-none">
-                            <Type className="w-12 h-12 opacity-20" />
-                            <span className="text-sm">生成的标题将显示在这里</span>
-                        </div>
-                    )}
-                </div>
-            </div>
-
-            {/* Bottom Section: Cover Details (25%) */}
-            <div className="flex-[1] flex flex-row min-h-0 bg-white">
-                {/* Bottom Left: Cover Elements */}
-                <div className="w-1/2 border-r border-slate-200 flex flex-col">
-                    <div className="py-2 px-3 bg-slate-50 border-b border-slate-100 flex-shrink-0">
+            <div className="flex-1 overflow-y-auto bg-[#FAFAFA]">
+                
+                {/* Section 1: Titles List */}
+                <div className="bg-white border-b border-slate-200">
+                    <div className="py-2 px-4 bg-slate-50 border-b border-slate-100 flex justify-between items-center sticky top-0 z-10">
                         <span className="text-xs font-bold text-slate-500 uppercase tracking-wider flex items-center gap-1.5">
-                            <ImageIcon className="w-3.5 h-3.5" /> 封面元素
+                            <Type className="w-3.5 h-3.5" /> 标题结果
                         </span>
+                        <button 
+                            onClick={handleCopyTitles} 
+                            disabled={!result?.titles?.length} 
+                            className="text-slate-400 hover:text-violet-600 p-1 rounded-md hover:bg-violet-50 transition-colors disabled:opacity-30" 
+                            title="复制所有标题"
+                        >
+                            <Copy className="w-4 h-4" />
+                        </button>
                     </div>
-                    <div className="flex-1 overflow-hidden relative">
-                         {result ? (
-                             <textarea
-                                value={result.coverVisual}
-                                onChange={(e) => handleCoverVisualChange(e.target.value)}
-                                className="w-full h-full p-3 text-xs text-slate-600 leading-relaxed resize-none border-none outline-none focus:bg-slate-50/50"
-                            />
-                         ) : (
-                             <div className="p-3 text-slate-300 italic text-xs">等待生成...</div>
-                         )}
+                    <div className="p-4">
+                        {loading ? (
+                            <div className="py-12 flex flex-col items-center justify-center text-slate-400 gap-3">
+                                <Loader2 className="w-8 h-8 animate-spin text-violet-500" />
+                                <span className="text-sm font-medium animate-pulse">AI 正在构思标题与封面...</span>
+                            </div>
+                        ) : result?.titles ? (
+                            <div className="space-y-2">
+                                {result.titles.map((title, idx) => (
+                                    <div key={idx} className={`py-2 px-3 border rounded-lg shadow-sm hover:shadow-md transition-all flex gap-3 items-center group ${selectedTitleIndex === idx ? 'bg-violet-50 border-violet-200' : 'bg-white border-slate-100 hover:border-violet-100'}`}>
+                                        
+                                        {/* Radio Selection */}
+                                        <button 
+                                            onClick={() => setSelectedTitleIndex(idx)}
+                                            className="shrink-0 text-slate-300 hover:text-violet-500 transition-colors"
+                                        >
+                                            {selectedTitleIndex === idx ? (
+                                                <CheckCircle2 className="w-5 h-5 text-violet-600 fill-violet-100" />
+                                            ) : (
+                                                <Circle className="w-5 h-5" />
+                                            )}
+                                        </button>
+
+                                        <span className="text-[10px] font-bold text-slate-300 w-4 text-center shrink-0">{idx + 1}</span>
+                                        
+                                        <input 
+                                            type="text"
+                                            value={title}
+                                            onChange={(e) => handleTitleChange(idx, e.target.value)}
+                                            className="flex-1 text-slate-800 font-medium text-sm leading-snug bg-transparent border-none focus:ring-0 outline-none w-full"
+                                        />
+                                        
+                                        <button 
+                                            className="ml-auto opacity-0 group-hover:opacity-100 text-slate-300 hover:text-violet-600 transition-all p-1"
+                                            onClick={() => navigator.clipboard.writeText(title)}
+                                            title="复制此标题"
+                                        >
+                                            <Copy className="w-3.5 h-3.5" />
+                                        </button>
+                                    </div>
+                                ))}
+                            </div>
+                        ) : (
+                            <div className="py-12 flex flex-col items-center justify-center text-slate-300 gap-2 select-none">
+                                <Type className="w-12 h-12 opacity-20" />
+                                <span className="text-sm">生成的标题将显示在这里</span>
+                            </div>
+                        )}
                     </div>
                 </div>
 
-                {/* Bottom Right: Cover Text */}
-                <div className="w-1/2 flex flex-col">
-                    <div className="py-2 px-3 bg-slate-50 border-b border-slate-100 flex-shrink-0">
-                         <span className="text-xs font-bold text-slate-500 uppercase tracking-wider flex items-center gap-1.5">
-                            <ALargeSmall className="w-3.5 h-3.5" /> 封面文字
-                        </span>
+                {/* Section 2: Cover Details Split View */}
+                <div className="flex flex-row bg-white min-h-[160px] border-b border-slate-200">
+                    <div className="w-1/2 border-r border-slate-200 flex flex-col">
+                        <div className="py-2 px-3 bg-slate-50 border-b border-slate-100 flex-shrink-0">
+                            <span className="text-xs font-bold text-slate-500 uppercase tracking-wider flex items-center gap-1.5">
+                                <ImageIcon className="w-3.5 h-3.5" /> 封面元素
+                            </span>
+                        </div>
+                        <div className="flex-1">
+                             {result ? (
+                                 <textarea
+                                    value={result.coverVisual}
+                                    onChange={(e) => handleCoverVisualChange(e.target.value)}
+                                    className="w-full h-full p-3 text-xs text-slate-600 leading-relaxed resize-none border-none outline-none focus:bg-slate-50/50"
+                                    placeholder="封面视觉描述..."
+                                />
+                             ) : (
+                                 <div className="p-3 text-slate-300 italic text-xs">等待生成...</div>
+                             )}
+                        </div>
                     </div>
-                    <div className="flex-1 overflow-hidden relative">
-                         {result ? (
-                             <textarea
-                                value={result.coverText}
-                                onChange={(e) => handleCoverTextChange(e.target.value)}
-                                className="w-full h-full p-3 text-sm text-slate-800 font-bold leading-relaxed resize-none border-none outline-none focus:bg-slate-50/50"
-                            />
-                         ) : (
-                             <div className="p-3 text-slate-300 italic text-xs">等待生成...</div>
-                         )}
+                    <div className="w-1/2 flex flex-col">
+                        <div className="py-2 px-3 bg-slate-50 border-b border-slate-100 flex-shrink-0">
+                             <span className="text-xs font-bold text-slate-500 uppercase tracking-wider flex items-center gap-1.5">
+                                <ALargeSmall className="w-3.5 h-3.5" /> 封面文字
+                            </span>
+                        </div>
+                        <div className="flex-1">
+                             {result ? (
+                                 <textarea
+                                    value={result.coverText}
+                                    onChange={(e) => handleCoverTextChange(e.target.value)}
+                                    className="w-full h-full p-3 text-sm text-slate-800 font-bold leading-relaxed resize-none border-none outline-none focus:bg-slate-50/50"
+                                    placeholder="封面大字文案..."
+                                />
+                             ) : (
+                                 <div className="p-3 text-slate-300 italic text-xs">等待生成...</div>
+                             )}
+                        </div>
                     </div>
                 </div>
+
+                {/* Section 3: Image Preview */}
+                <div className="bg-white">
+                    <div className="py-2 px-4 bg-slate-50 border-b border-slate-100 flex justify-between items-center">
+                        <span className="text-xs font-bold text-slate-500 uppercase tracking-wider flex items-center gap-1.5">
+                            <Wand2 className="w-3.5 h-3.5" /> 封面预览 (16:9)
+                        </span>
+                        {generatedCover && (
+                             <button
+                                onClick={() => setPreviewImage(generatedCover)}
+                                className="text-slate-400 hover:text-violet-600 p-1 rounded transition-colors"
+                            >
+                                <Maximize2 className="w-4 h-4" />
+                            </button>
+                        )}
+                    </div>
+                    <div className="p-4">
+                         <div className="aspect-video w-full bg-slate-100 rounded-xl overflow-hidden border border-slate-200 shadow-sm relative group">
+                            {generatedCover ? (
+                                <img 
+                                    src={generatedCover} 
+                                    alt="Generated Cover" 
+                                    className="w-full h-full object-cover"
+                                />
+                            ) : (
+                                <div className="absolute inset-0 flex flex-col items-center justify-center text-slate-300 gap-3">
+                                    {generatingImage ? (
+                                        <>
+                                            <Loader2 className="w-10 h-10 animate-spin text-fuchsia-500" />
+                                            <span className="text-sm font-medium animate-pulse text-fuchsia-500">正在绘制封面...</span>
+                                        </>
+                                    ) : (
+                                        <>
+                                            <ImageIcon className="w-12 h-12 opacity-20" />
+                                            <span className="text-sm">选中标题并点击右上角“生成封面图片”</span>
+                                        </>
+                                    )}
+                                </div>
+                            )}
+                         </div>
+                    </div>
+                </div>
+
             </div>
         </div>
       </div>
+
+      {/* Fullscreen Preview */}
+      {previewImage && (
+        <div className="fixed inset-0 z-[100] bg-black/90 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in duration-200" onClick={() => setPreviewImage(null)}>
+            <div className="relative max-w-[90vw] max-h-[90vh]">
+                <img src={previewImage} alt="Full Preview" className="max-w-full max-h-[90vh] rounded-lg shadow-2xl" />
+                <button 
+                    onClick={() => setPreviewImage(null)}
+                    className="absolute -top-12 right-0 text-white/70 hover:text-white transition-colors"
+                >
+                    <X className="w-8 h-8" />
+                </button>
+            </div>
+        </div>
+      )}
     </div>
   );
 };
