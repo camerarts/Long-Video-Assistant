@@ -4,7 +4,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { ProjectData, StoryboardFrame, PromptTemplate } from '../types';
 import * as storage from '../services/storageService';
 import * as gemini from '../services/geminiService';
-import { ArrowLeft, Download, Loader2, Sparkles, Image as ImageIcon, RefreshCw, X, Maximize2, CloudUpload, FileSpreadsheet } from 'lucide-react';
+import { ArrowLeft, Download, Loader2, Sparkles, Image as ImageIcon, RefreshCw, X, Maximize2, CloudUpload, FileSpreadsheet, Palette } from 'lucide-react';
 import JSZip from 'jszip';
 
 const StoryboardImages: React.FC = () => {
@@ -17,6 +17,9 @@ const StoryboardImages: React.FC = () => {
   const [generating, setGenerating] = useState(false);
   const [currentGenIds, setCurrentGenIds] = useState<Set<string>>(new Set());
   
+  // State for Style Selection
+  const [imageStyle, setImageStyle] = useState<string>('comic');
+
   // State for Batch Progress (Internal)
   const [batchProgress, setBatchProgress] = useState({ planned: 0, completed: 0, failed: 0 });
   
@@ -75,12 +78,21 @@ const StoryboardImages: React.FC = () => {
 
   const generateSingleImage = async (frame: StoryboardFrame): Promise<string | null> => {
       try {
-        const prompt = frame.imagePrompt || interpolatePrompt(prompts.IMAGE_GEN?.template || '', { description: frame.description });
-        // If prompt was empty, save the interpolated one for reference
+        let basePrompt = frame.imagePrompt || interpolatePrompt(prompts.IMAGE_GEN?.template || '', { description: frame.description });
+        
+        // Add Style Modifier
+        const stylePrefix = imageStyle === 'comic' 
+            ? "Comic realistic style, detailed lines, vibrant colors, 8k resolution, cinematic lighting. " 
+            : "Documentary photography style, hyper-realistic, 4k, raw photo, cinematic, highly detailed. ";
+        
+        const finalPrompt = stylePrefix + basePrompt;
+
+        // If prompt was empty in data, save the interpolated one (without style prefix) for reference in UI
         if (!frame.imagePrompt) {
-            handlePromptChange(frame.id, prompt);
+            handlePromptChange(frame.id, basePrompt);
         }
-        return await gemini.generateImage(prompt);
+        
+        return await gemini.generateImage(finalPrompt);
       } catch (e) {
           console.error(`Error generating frame ${frame.id}`, e);
           return null;
@@ -346,54 +358,67 @@ const StoryboardImages: React.FC = () => {
         </div>
 
         {/* Header */}
-        <div className="px-8 py-6 bg-white border-b border-slate-200 flex justify-between items-center shadow-sm z-10">
+        <div className="px-8 py-4 bg-white border-b border-slate-200 flex justify-between items-center shadow-sm z-10">
             <div className="flex items-center gap-4">
                  <button onClick={() => navigate(`/project/${project.id}`)} className="p-2 hover:bg-slate-100 rounded-full transition-colors text-slate-500">
                     <ArrowLeft className="w-5 h-5" />
                  </button>
                  <div>
-                    <h1 className="text-xl font-extrabold text-slate-900 flex items-center gap-2">
+                    <h1 className="text-lg font-extrabold text-slate-900 flex items-center gap-2">
                         <ImageIcon className="w-5 h-5 text-fuchsia-600" />
-                        分镜图片生成工坊
+                        分镜图片工坊
                     </h1>
-                    <p className="text-xs font-medium text-slate-400">批量将文案转化为视觉画面</p>
                  </div>
             </div>
 
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2">
+                {/* Style Selector */}
+                <div className="flex items-center bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1.5 mr-1 hover:border-slate-300 transition-colors">
+                    <Palette className="w-3.5 h-3.5 text-slate-400 mr-2" />
+                    <select 
+                        value={imageStyle} 
+                        onChange={(e) => setImageStyle(e.target.value)}
+                        className="text-xs font-bold text-slate-700 bg-transparent outline-none cursor-pointer appearance-none pr-1"
+                        title="选择生图风格"
+                    >
+                        <option value="comic">漫画写实风格</option>
+                        <option value="realism">纪实风格</option>
+                    </select>
+                </div>
+
                 <button
                     onClick={handleGenerateAll}
                     disabled={generating || unGeneratedCount === 0}
-                    className="flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-fuchsia-600 to-pink-600 text-white rounded-xl font-bold shadow-lg shadow-fuchsia-500/30 hover:shadow-fuchsia-500/40 hover:-translate-y-0.5 transition-all disabled:opacity-50 disabled:cursor-not-allowed text-sm"
+                    className="flex items-center gap-1.5 px-3 py-1.5 bg-gradient-to-r from-fuchsia-600 to-pink-600 text-white rounded-lg font-bold shadow-md shadow-fuchsia-500/20 hover:shadow-fuchsia-500/30 hover:-translate-y-0.5 transition-all disabled:opacity-50 disabled:cursor-not-allowed text-xs"
                 >
-                    {generating ? <Loader2 className="w-4 h-4 animate-spin"/> : <Sparkles className="w-4 h-4" />}
+                    {generating ? <Loader2 className="w-3.5 h-3.5 animate-spin"/> : <Sparkles className="w-3.5 h-3.5" />}
                     {unGeneratedCount === 0 ? '已全部生成' : '立刻生图'}
                 </button>
 
                 <button
                     onClick={handleUploadImages}
                     disabled={uploading || localCount === 0}
-                    className="flex items-center gap-2 px-5 py-2.5 bg-blue-600 text-white rounded-xl font-bold shadow-lg shadow-blue-500/30 hover:bg-blue-500 hover:-translate-y-0.5 transition-all disabled:opacity-50 disabled:cursor-not-allowed text-sm"
+                    className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-600 text-white rounded-lg font-bold shadow-md shadow-blue-500/20 hover:bg-blue-500 hover:-translate-y-0.5 transition-all disabled:opacity-50 disabled:cursor-not-allowed text-xs"
                     title={localCount > 0 ? `有 ${localCount} 张图片待上传` : '所有图片已同步'}
                 >
-                    {uploading ? <Loader2 className="w-4 h-4 animate-spin"/> : <CloudUpload className="w-4 h-4" />}
-                    上传图片到服务器 {localCount > 0 && `(${localCount})`}
+                    {uploading ? <Loader2 className="w-3.5 h-3.5 animate-spin"/> : <CloudUpload className="w-3.5 h-3.5" />}
+                    上传服务器
                 </button>
 
                 <button
                     onClick={handleDownloadPrompts}
-                    className="flex items-center gap-2 px-5 py-2.5 bg-white border border-slate-200 text-slate-700 rounded-xl font-bold hover:bg-slate-50 hover:text-blue-600 hover:border-blue-200 transition-all shadow-sm text-sm"
+                    className="flex items-center gap-1.5 px-3 py-1.5 bg-white border border-slate-200 text-slate-600 rounded-lg font-bold hover:bg-slate-50 hover:text-blue-600 hover:border-blue-200 transition-all shadow-sm text-xs"
                 >
-                    <FileSpreadsheet className="w-4 h-4" />
+                    <FileSpreadsheet className="w-3.5 h-3.5" />
                     下载提示词
                 </button>
 
                 <button
                     onClick={handleDownloadAll}
                     disabled={downloading}
-                    className="flex items-center gap-2 px-5 py-2.5 bg-white border border-slate-200 text-slate-700 rounded-xl font-bold hover:bg-slate-50 hover:text-fuchsia-600 hover:border-fuchsia-200 transition-all shadow-sm text-sm"
+                    className="flex items-center gap-1.5 px-3 py-1.5 bg-white border border-slate-200 text-slate-600 rounded-lg font-bold hover:bg-slate-50 hover:text-fuchsia-600 hover:border-fuchsia-200 transition-all shadow-sm text-xs"
                 >
-                    {downloading ? <Loader2 className="w-4 h-4 animate-spin"/> : <Download className="w-4 h-4" />}
+                    {downloading ? <Loader2 className="w-3.5 h-3.5 animate-spin"/> : <Download className="w-3.5 h-3.5" />}
                     批量下载
                 </button>
             </div>
