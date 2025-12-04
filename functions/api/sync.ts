@@ -1,4 +1,5 @@
 
+
 interface Env {
   DB: any;
 }
@@ -7,7 +8,8 @@ const ensureTables = async (db: any) => {
   await db.batch([
     db.prepare("CREATE TABLE IF NOT EXISTS projects (id TEXT PRIMARY KEY, title TEXT, status TEXT, created_at INTEGER, updated_at INTEGER, data TEXT)"),
     db.prepare("CREATE TABLE IF NOT EXISTS inspirations (id TEXT PRIMARY KEY, category TEXT, created_at INTEGER, data TEXT)"),
-    db.prepare("CREATE TABLE IF NOT EXISTS prompts (id TEXT PRIMARY KEY, data TEXT)")
+    db.prepare("CREATE TABLE IF NOT EXISTS prompts (id TEXT PRIMARY KEY, data TEXT)"),
+    db.prepare("CREATE TABLE IF NOT EXISTS tools (id TEXT PRIMARY KEY, data TEXT)")
   ]);
 };
 
@@ -56,6 +58,16 @@ export const onRequestPost = async (context: any) => {
          ON CONFLICT(id) DO UPDATE SET data = excluded.data`
       ).bind('global_prompts', JSON.stringify(data.prompts)));
     }
+    
+    // Tools (New)
+    if (data.tools && Array.isArray(data.tools)) {
+      for (const t of data.tools) {
+        statements.push(db.prepare(
+          `INSERT INTO tools (id, data) VALUES (?, ?)
+           ON CONFLICT(id) DO UPDATE SET data = excluded.data`
+        ).bind(t.id, JSON.stringify(t.data)));
+      }
+    }
 
     // Execute batch (chunked to avoid limits)
     const chunkSize = 10; // Reduced chunk size for safety
@@ -83,12 +95,14 @@ export const onRequestGet = async (context: any) => {
     const pRes = await db.prepare("SELECT * FROM projects").all();
     const iRes = await db.prepare("SELECT * FROM inspirations").all();
     const prRes = await db.prepare("SELECT * FROM prompts WHERE id = ?").bind('global_prompts').first();
+    const tRes = await db.prepare("SELECT * FROM tools").all();
 
     const projects = pRes.results.map((r: any) => JSON.parse(r.data));
     const inspirations = iRes.results.map((r: any) => JSON.parse(r.data));
     const prompts = prRes ? JSON.parse(prRes.data as string) : null;
+    const tools = tRes.results.map((r: any) => ({ id: r.id, data: JSON.parse(r.data) }));
 
-    return Response.json({ projects, inspirations, prompts });
+    return Response.json({ projects, inspirations, prompts, tools });
   } catch (err: any) {
     return Response.json({ error: err.message }, { status: 500 });
   }
