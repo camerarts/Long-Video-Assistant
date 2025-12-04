@@ -1,11 +1,9 @@
-
-
 import React, { useEffect, useState, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { ProjectData, StoryboardFrame, PromptTemplate } from '../types';
 import * as storage from '../services/storageService';
 import * as gemini from '../services/geminiService';
-import { ArrowLeft, Download, Loader2, Sparkles, Image as ImageIcon, RefreshCw, X, Maximize2, CloudUpload, FileSpreadsheet, Palette, RotateCcw, CheckCircle2, AlertCircle } from 'lucide-react';
+import { ArrowLeft, Download, Loader2, Sparkles, Image as ImageIcon, RefreshCw, X, Maximize2, CloudUpload, FileSpreadsheet, Palette, RotateCcw, CheckCircle2, AlertCircle, Key } from 'lucide-react';
 import JSZip from 'jszip';
 
 const StoryboardImages: React.FC = () => {
@@ -20,6 +18,10 @@ const StoryboardImages: React.FC = () => {
   
   // State for Style Selection (Configuration Template Key)
   const [style_mode, setStyleMode] = useState<string>('IMAGE_GEN_A');
+
+  // State for Custom API Key
+  const [showKeyModal, setShowKeyModal] = useState(false);
+  const [customKey, setCustomKey] = useState('');
 
   // State for Batch Progress (Internal)
   const [batchProgress, setBatchProgress] = useState({ planned: 0, completed: 0, failed: 0 });
@@ -53,9 +55,31 @@ const StoryboardImages: React.FC = () => {
         }
         const loadedPrompts = await storage.getPrompts();
         if (mountedRef.current) setPrompts(loadedPrompts);
+
+        // Load Custom Key
+        const savedKey = localStorage.getItem('lva_custom_gemini_key');
+        if (savedKey && mountedRef.current) setCustomKey(savedKey);
     };
     init();
   }, [id, navigate]);
+
+  const handleSaveKey = (val: string) => {
+    setCustomKey(val);
+    localStorage.setItem('lva_custom_gemini_key', val);
+    setShowKeyModal(false);
+    setMessageType('success');
+    setMessage("独立 API Key 已保存");
+    setTimeout(() => setMessage(null), 3000);
+  };
+
+  const handleClearKey = () => {
+    setCustomKey('');
+    localStorage.removeItem('lva_custom_gemini_key');
+    setShowKeyModal(false);
+    setMessageType('success');
+    setMessage("已恢复使用系统默认 API Key");
+    setTimeout(() => setMessage(null), 3000);
+  };
 
   const handlePromptChange = async (frameId: string, newPrompt: string) => {
     if (!project || !project.storyboard) return;
@@ -125,9 +149,8 @@ const StoryboardImages: React.FC = () => {
           handlePromptChange(frame.id, finalPrompt);
       }
     
-      // Note: We deliberately do NOT catch errors here, so the batch processor can catch them
-      // and display the specific error message (e.g., Safety Filter) to the user.
-      return await gemini.generateImage(finalPrompt);
+      // Pass custom key if set
+      return await gemini.generateImage(finalPrompt, customKey || undefined);
   };
 
   const handleBatchGenerate = async (framesToGenerate: StoryboardFrame[]) => {
@@ -426,6 +449,18 @@ const StoryboardImages: React.FC = () => {
 
             <div className="flex items-center gap-2">
 
+                {/* Custom API Key Button */}
+                <button
+                    onClick={() => setShowKeyModal(true)}
+                    className={`flex items-center gap-1.5 px-2 h-6 border rounded-md font-bold transition-all shadow-sm text-[9px] ${customKey ? 'bg-indigo-50 border-indigo-200 text-indigo-600' : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'}`}
+                    title={customKey ? "正在使用独立 API Key" : "点击配置独立 API Key"}
+                >
+                    <Key className="w-3 h-3" />
+                    {customKey ? '独立 Key' : '配置 Key'}
+                </button>
+
+                <div className="w-px h-4 bg-slate-200 mx-1"></div>
+
                 <button
                     onClick={handleReimportPrompts}
                     className="flex items-center gap-1.5 px-2 h-6 bg-white border border-slate-200 text-slate-600 rounded-md font-bold hover:bg-slate-50 hover:text-indigo-600 hover:border-indigo-200 transition-all shadow-sm text-[9px]"
@@ -633,6 +668,53 @@ const StoryboardImages: React.FC = () => {
                 </div>
             </div>
         )}
+
+      {/* API Key Configuration Modal */}
+      {showKeyModal && (
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in duration-200">
+            <div className="bg-white rounded-2xl shadow-2xl p-6 w-full max-w-sm animate-in zoom-in-95 duration-200">
+                <div className="flex justify-between items-center mb-4">
+                    <h3 className="text-lg font-bold text-slate-800 flex items-center gap-2">
+                        <Key className="w-5 h-5 text-indigo-600" />
+                        配置独立 API Key
+                    </h3>
+                    <button onClick={() => setShowKeyModal(false)} className="text-slate-400 hover:text-slate-600">
+                        <X className="w-5 h-5" />
+                    </button>
+                </div>
+                
+                <p className="text-xs text-slate-500 mb-4 leading-relaxed">
+                    您可以输入自己的 Google Gemini API Key 用于图片生成。
+                    该 Key 仅保存在本地浏览器中，用于当前页面的生图任务，不会同步到云端数据库。
+                </p>
+
+                <input
+                    type="password"
+                    value={customKey}
+                    onChange={(e) => setCustomKey(e.target.value)}
+                    placeholder="输入 sk-..."
+                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm mb-4 outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 font-mono"
+                />
+
+                <div className="flex gap-2">
+                    <button 
+                        onClick={handleClearKey}
+                        className="flex-1 py-2.5 bg-slate-100 text-slate-600 rounded-xl font-bold text-xs hover:bg-slate-200 transition-colors"
+                    >
+                        清除 / 使用默认
+                    </button>
+                    <button 
+                        onClick={() => handleSaveKey(customKey)}
+                        disabled={!customKey.trim()}
+                        className="flex-1 py-2.5 bg-indigo-600 text-white rounded-xl font-bold text-xs shadow-lg shadow-indigo-500/30 hover:bg-indigo-500 transition-colors disabled:opacity-50"
+                    >
+                        保存配置
+                    </button>
+                </div>
+            </div>
+        </div>
+      )}
+
     </div>
   );
 };
