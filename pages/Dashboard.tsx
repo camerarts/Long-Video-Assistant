@@ -98,7 +98,7 @@ const Dashboard: React.FC = () => {
                     <thead className="bg-slate-100 text-slate-600">
                         <tr>
                             <th className="py-4 px-6 text-xs font-bold uppercase tracking-wider w-20 text-center border border-slate-200">序号</th>
-                            <th className="py-4 px-6 text-xs font-bold uppercase tracking-wider text-center border border-slate-200">主题</th>
+                            <th className="py-4 px-6 text-xs font-bold uppercase tracking-wider text-center border border-slate-200 min-w-[300px]">主题</th>
                             <th className="py-4 px-6 text-xs font-bold uppercase tracking-wider w-32 text-center border border-slate-200">进度</th>
                             <th className="py-4 px-6 text-xs font-bold uppercase tracking-wider w-40 text-center hidden md:table-cell border border-slate-200">创建日期</th>
                             <th className="py-4 px-6 text-xs font-bold uppercase tracking-wider w-24 text-center border border-slate-200">操作</th>
@@ -115,9 +115,9 @@ const Dashboard: React.FC = () => {
                                     {index + 1}
                                 </td>
                                 <td className="py-5 px-6 border border-slate-200">
-                                    <span className="block font-bold text-slate-800 text-base md:text-lg group-hover:text-violet-700 transition-colors whitespace-normal break-all leading-relaxed">
+                                    <div className="font-bold text-slate-800 text-base md:text-lg group-hover:text-violet-700 transition-colors whitespace-normal break-words leading-relaxed">
                                         {project.title || '未命名项目'}
-                                    </span>
+                                    </div>
                                 </td>
                                 <td className="py-5 px-6 text-center border border-slate-200">
                                     <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-[10px] font-bold tracking-wide uppercase ${getStatusStyle(project.status)}`}>
