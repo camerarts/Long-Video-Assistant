@@ -1,3 +1,5 @@
+
+
 import React, { useState, useEffect } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { LayoutDashboard, Settings, Video, Plus, Image as ImageIcon, Lightbulb, LogOut, CloudUpload, CloudDownload, Loader2, CheckCircle2, XCircle, Circle, Menu, X, Sparkles, Type } from 'lucide-react';
@@ -13,6 +15,7 @@ interface UploadState {
   projects: SyncStatus;
   images: SyncStatus;
   inspirations: SyncStatus;
+  tools: SyncStatus;
   settings: SyncStatus;
 }
 
@@ -25,6 +28,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
     projects: 'idle',
     images: 'idle',
     inspirations: 'idle',
+    tools: 'idle',
     settings: 'idle'
   });
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
@@ -89,7 +93,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
 
     setShowUploadModal(true);
     setSyncing('upload');
-    setUploadState({ projects: 'loading', images: 'loading', inspirations: 'idle', settings: 'idle' });
+    setUploadState({ projects: 'loading', images: 'loading', inspirations: 'idle', tools: 'idle', settings: 'idle' });
 
     try {
         // 1. Upload Projects (Covers Project List & Image List data)
@@ -98,9 +102,13 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
         
         // 2. Upload Inspirations
         await storage.uploadInspirations();
-        setUploadState(prev => ({ ...prev, inspirations: 'success', settings: 'loading' }));
+        setUploadState(prev => ({ ...prev, inspirations: 'success', tools: 'loading' }));
+        
+        // 3. Upload Tools (AI Titles etc.)
+        await storage.uploadTools();
+        setUploadState(prev => ({ ...prev, tools: 'success', settings: 'loading' }));
 
-        // 3. Upload Prompts
+        // 4. Upload Prompts
         await storage.uploadPrompts();
         setUploadState(prev => ({ ...prev, settings: 'success' }));
 
@@ -120,6 +128,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
             const next = { ...prev };
             if (next.projects === 'loading') { next.projects = 'error'; next.images = 'error'; }
             if (next.inspirations === 'loading') next.inspirations = 'error';
+            if (next.tools === 'loading') next.tools = 'error';
             if (next.settings === 'loading') next.settings = 'error';
             return next;
         });
@@ -344,6 +353,10 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
                     <div className="flex items-center justify-between p-3 bg-slate-50 rounded-xl border border-slate-100">
                         <span className="text-sm font-bold text-slate-700">灵感仓库</span>
                         <StatusIcon status={uploadState.inspirations} />
+                    </div>
+                     <div className="flex items-center justify-between p-3 bg-slate-50 rounded-xl border border-slate-100">
+                        <span className="text-sm font-bold text-slate-700">AI工具数据</span>
+                        <StatusIcon status={uploadState.tools} />
                     </div>
                     <div className="flex items-center justify-between p-3 bg-slate-50 rounded-xl border border-slate-100">
                         <span className="text-sm font-bold text-slate-700">系统设置</span>
