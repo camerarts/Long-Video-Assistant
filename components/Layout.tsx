@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { LayoutDashboard, Settings, Video, Plus, Image as ImageIcon, Lightbulb, LogOut, CloudUpload, CloudDownload, Loader2, CheckCircle2, XCircle, Circle, Menu, X, Sparkles } from 'lucide-react';
+import { LayoutDashboard, Settings, Video, Plus, Image as ImageIcon, Lightbulb, LogOut, CloudUpload, CloudDownload, Loader2, CheckCircle2, XCircle, Circle, Menu, X, Sparkles, Type } from 'lucide-react';
 import * as storage from '../services/storageService';
 
 interface LayoutProps {
@@ -244,6 +244,18 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
           </Link>
 
           <Link
+            to="/ai-titles"
+            className={`flex flex-col items-center justify-center py-2.5 px-2 w-full rounded-2xl transition-all gap-1 duration-300 ${
+              isActive('/ai-titles') 
+                ? 'bg-indigo-50 text-indigo-600 shadow-sm' 
+                : 'text-slate-400 hover:bg-slate-50 hover:text-slate-700'
+            }`}
+          >
+            <Type className={`w-5 h-5 ${isActive('/ai-titles') ? 'stroke-[2.5px]' : 'stroke-2'}`} />
+            <span className="text-[10px] font-bold tracking-wide">AI 标题</span>
+          </Link>
+
+          <Link
             to="/settings"
             className={`flex flex-col items-center justify-center py-2.5 px-2 w-full rounded-2xl transition-all gap-1 duration-300 ${
               isActive('/settings') 
@@ -386,9 +398,9 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
                         <button
                             type="submit"
                             disabled={!newProjectTopic.trim() || creating}
-                            className="flex-1 py-3 bg-gradient-to-r from-violet-600 to-indigo-600 text-white rounded-xl font-bold shadow-lg shadow-indigo-500/30 hover:shadow-indigo-500/40 hover:-translate-y-0.5 transition-all flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                            className="flex-1 py-3 bg-gradient-to-r from-violet-600 to-indigo-600 text-white rounded-xl font-bold shadow-lg shadow-violet-500/30 hover:shadow-violet-500/40 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
                         >
-                            {creating ? <Loader2 className="w-5 h-5 animate-spin" /> : <Plus className="w-5 h-5 stroke-2" />}
+                            {creating ? <Loader2 className="w-5 h-5 animate-spin" /> : <Sparkles className="w-5 h-5" />}
                             立即创建
                         </button>
                     </div>
