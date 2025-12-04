@@ -1,3 +1,4 @@
+
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ProjectData, ProjectStatus } from '../types';
@@ -91,45 +92,45 @@ const Dashboard: React.FC = () => {
           </button>
         </div>
       ) : (
-        <div className="bg-white rounded-3xl border border-slate-100 shadow-[0_2px_20px_-5px_rgba(0,0,0,0.05)] overflow-hidden">
+        <div className="bg-white rounded-3xl border border-slate-200 shadow-[0_2px_20px_-5px_rgba(0,0,0,0.05)] overflow-hidden">
             <div className="overflow-x-auto">
-                <table className="w-full text-left border-collapse">
-                    <thead className="bg-slate-100 text-slate-600 border-b border-slate-200">
+                <table className="w-full text-left border-collapse border border-slate-200">
+                    <thead className="bg-slate-100 text-slate-600">
                         <tr>
-                            <th className="py-4 px-6 text-xs font-bold uppercase tracking-wider w-20 text-center">序号</th>
-                            <th className="py-4 px-6 text-xs font-bold uppercase tracking-wider text-center">主题</th>
-                            <th className="py-4 px-6 text-xs font-bold uppercase tracking-wider w-32 text-center">进度</th>
-                            <th className="py-4 px-6 text-xs font-bold uppercase tracking-wider w-40 text-center hidden md:table-cell">创建日期</th>
-                            <th className="py-4 px-6 text-xs font-bold uppercase tracking-wider w-24 text-center">操作</th>
+                            <th className="py-4 px-6 text-xs font-bold uppercase tracking-wider w-20 text-center border border-slate-200">序号</th>
+                            <th className="py-4 px-6 text-xs font-bold uppercase tracking-wider text-center border border-slate-200">主题</th>
+                            <th className="py-4 px-6 text-xs font-bold uppercase tracking-wider w-32 text-center border border-slate-200">进度</th>
+                            <th className="py-4 px-6 text-xs font-bold uppercase tracking-wider w-40 text-center hidden md:table-cell border border-slate-200">创建日期</th>
+                            <th className="py-4 px-6 text-xs font-bold uppercase tracking-wider w-24 text-center border border-slate-200">操作</th>
                         </tr>
                     </thead>
-                    <tbody className="divide-y divide-slate-50">
+                    <tbody>
                         {projects.map((project, index) => (
                             <tr 
                                 key={project.id} 
                                 onClick={() => navigate(`/project/${project.id}`)}
                                 className="group hover:bg-violet-50/30 transition-colors cursor-pointer"
                             >
-                                <td className="py-5 px-6 text-center text-sm font-bold text-slate-400">
+                                <td className="py-5 px-6 text-center text-sm font-bold text-slate-400 border border-slate-200">
                                     {index + 1}
                                 </td>
-                                <td className="py-5 px-6">
+                                <td className="py-5 px-6 border border-slate-200">
                                     <span className="block font-bold text-slate-800 text-base md:text-lg group-hover:text-violet-700 transition-colors whitespace-normal break-all leading-relaxed">
                                         {project.title || '未命名项目'}
                                     </span>
                                 </td>
-                                <td className="py-5 px-6 text-center">
+                                <td className="py-5 px-6 text-center border border-slate-200">
                                     <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-[10px] font-bold tracking-wide uppercase ${getStatusStyle(project.status)}`}>
                                         {getStatusText(project.status)}
                                     </span>
                                 </td>
-                                <td className="py-5 px-6 hidden md:table-cell">
+                                <td className="py-5 px-6 hidden md:table-cell border border-slate-200">
                                     <div className="flex items-center justify-center gap-2 text-sm font-medium text-slate-500">
                                         <Calendar className="w-4 h-4 text-slate-300" />
                                         {new Date(project.createdAt).toLocaleDateString('zh-CN')}
                                     </div>
                                 </td>
-                                <td className="py-5 px-6 text-center">
+                                <td className="py-5 px-6 text-center border border-slate-200">
                                     <button 
                                         onClick={(e) => handleDelete(e, project.id)}
                                         className="p-2 text-slate-300 hover:text-rose-500 hover:bg-rose-50 rounded-lg transition-all"
