@@ -209,11 +209,11 @@ export const DEFAULT_PROMPTS: Record<string, PromptTemplate> = {
   AI_TITLES_GENERATOR: {
     id: 'ai_titles_gen',
     name: 'AI 标题生成',
-    description: '独立工具：基于输入的主题或内容生成爆款标题',
-    template: `请基于以下输入的内容（可能是主题、一段话或文章概要），生成 10 个具有高点击率、病毒传播潜力的视频标题。
+    description: '独立工具：基于输入的标题方向或内容生成爆款标题',
+    template: `请基于以下给出的标题方向，生成 10 个具有高点击率、病毒传播潜力的视频标题。
 
-输入内容:
-{{topic}}
+标题方向:
+{{TITLE_DIRECTION}}
 
 要求：
 1. 标题风格多样（悬念、反差、干货、情感等）。
