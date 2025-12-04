@@ -1,5 +1,6 @@
 
 
+
 import React, { useEffect, useState, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { ProjectData, StoryboardFrame, PromptTemplate } from '../types';
@@ -19,7 +20,6 @@ const StoryboardImages: React.FC = () => {
   const [currentGenIds, setCurrentGenIds] = useState<Set<string>>(new Set());
   
   // State for Style Selection
-  // style_mode variable as requested
   const [style_mode, setStyleMode] = useState<string>('comic');
 
   // State for Batch Progress (Internal)
@@ -83,13 +83,17 @@ const StoryboardImages: React.FC = () => {
         let basePrompt = frame.imagePrompt || interpolatePrompt(prompts.IMAGE_GEN?.template || '', { description: frame.description });
         
         // Add Style Modifier using style_mode variable
-        const stylePrefix = style_mode === 'comic' 
-            ? "Comic realistic style, detailed lines, vibrant colors, 8k resolution, cinematic lighting. " 
-            : "Documentary photography style, hyper-realistic, 4k, raw photo, cinematic, highly detailed. ";
+        let stylePrefix = "";
+        if (style_mode === 'comic') {
+            stylePrefix = "线条漫画插画写实风格，半真实，仿真皮肤，OC质感，超清画质32K，黑色线条厚涂。"; 
+        } else if (style_mode === 'realism') {
+            stylePrefix = "写实照片，纪实摄影，真实皮肤质感。"; 
+        }
         
         const finalPrompt = stylePrefix + basePrompt;
 
-        // If prompt was empty in data, save the interpolated one (without style prefix) for reference in UI
+        // If prompt was empty in data, save the interpolated one (without style prefix if possible, or we can just leave it dynamic in UI)
+        // Ideally we save the base user intention. But for consistency with previous logic:
         if (!frame.imagePrompt) {
             handlePromptChange(frame.id, basePrompt);
         }
@@ -374,13 +378,13 @@ const StoryboardImages: React.FC = () => {
             </div>
 
             <div className="flex items-center gap-2">
-                {/* Style Selector - placed left of Generate button */}
-                <div className="flex items-center bg-slate-50 border border-slate-200 rounded-md px-2 py-1 hover:border-slate-300 transition-colors">
-                    <Palette className="w-3.5 h-3.5 text-slate-400 mr-2" />
+                {/* Style Selector */}
+                <div className="flex items-center bg-slate-50 border border-slate-200 rounded-md px-1.5 py-0.5 hover:border-slate-300 transition-colors h-6">
+                    <Palette className="w-3 h-3 text-slate-400 mr-1.5" />
                     <select 
                         value={style_mode} 
                         onChange={(e) => setStyleMode(e.target.value)}
-                        className="text-[10px] font-bold text-slate-700 bg-transparent outline-none cursor-pointer appearance-none pr-1"
+                        className="text-[10px] font-bold text-slate-700 bg-transparent outline-none cursor-pointer appearance-none pr-3"
                         title="选择生图风格"
                     >
                         <option value="comic">漫画写实风格</option>
@@ -391,36 +395,36 @@ const StoryboardImages: React.FC = () => {
                 <button
                     onClick={handleGenerateAll}
                     disabled={generating || unGeneratedCount === 0}
-                    className="flex items-center gap-1.5 px-2 py-1 bg-gradient-to-r from-fuchsia-600 to-pink-600 text-white rounded-md font-bold shadow-md shadow-fuchsia-500/20 hover:shadow-fuchsia-500/30 hover:-translate-y-0.5 transition-all disabled:opacity-50 disabled:cursor-not-allowed text-[10px]"
+                    className="flex items-center gap-1.5 px-2 h-6 bg-gradient-to-r from-fuchsia-600 to-pink-600 text-white rounded-md font-bold shadow-md shadow-fuchsia-500/20 hover:shadow-fuchsia-500/30 hover:-translate-y-0.5 transition-all disabled:opacity-50 disabled:cursor-not-allowed text-[9px]"
                 >
-                    {generating ? <Loader2 className="w-3.5 h-3.5 animate-spin"/> : <Sparkles className="w-3.5 h-3.5" />}
+                    {generating ? <Loader2 className="w-3 h-3 animate-spin"/> : <Sparkles className="w-3 h-3" />}
                     {unGeneratedCount === 0 ? '已全部生成' : '立刻生图'}
                 </button>
 
                 <button
                     onClick={handleUploadImages}
                     disabled={uploading || localCount === 0}
-                    className="flex items-center gap-1.5 px-2 py-1 bg-blue-600 text-white rounded-md font-bold shadow-md shadow-blue-500/20 hover:bg-blue-500 hover:-translate-y-0.5 transition-all disabled:opacity-50 disabled:cursor-not-allowed text-[10px]"
+                    className="flex items-center gap-1.5 px-2 h-6 bg-blue-600 text-white rounded-md font-bold shadow-md shadow-blue-500/20 hover:bg-blue-500 hover:-translate-y-0.5 transition-all disabled:opacity-50 disabled:cursor-not-allowed text-[9px]"
                     title={localCount > 0 ? `有 ${localCount} 张图片待上传` : '所有图片已同步'}
                 >
-                    {uploading ? <Loader2 className="w-3.5 h-3.5 animate-spin"/> : <CloudUpload className="w-3.5 h-3.5" />}
+                    {uploading ? <Loader2 className="w-3 h-3 animate-spin"/> : <CloudUpload className="w-3 h-3" />}
                     上传服务器
                 </button>
 
                 <button
                     onClick={handleDownloadPrompts}
-                    className="flex items-center gap-1.5 px-2 py-1 bg-white border border-slate-200 text-slate-600 rounded-md font-bold hover:bg-slate-50 hover:text-blue-600 hover:border-blue-200 transition-all shadow-sm text-[10px]"
+                    className="flex items-center gap-1.5 px-2 h-6 bg-white border border-slate-200 text-slate-600 rounded-md font-bold hover:bg-slate-50 hover:text-blue-600 hover:border-blue-200 transition-all shadow-sm text-[9px]"
                 >
-                    <FileSpreadsheet className="w-3.5 h-3.5" />
+                    <FileSpreadsheet className="w-3 h-3" />
                     下载提示词
                 </button>
 
                 <button
                     onClick={handleDownloadAll}
                     disabled={downloading}
-                    className="flex items-center gap-1.5 px-2 py-1 bg-white border border-slate-200 text-slate-600 rounded-md font-bold hover:bg-slate-50 hover:text-fuchsia-600 hover:border-fuchsia-200 transition-all shadow-sm text-[10px]"
+                    className="flex items-center gap-1.5 px-2 h-6 bg-white border border-slate-200 text-slate-600 rounded-md font-bold hover:bg-slate-50 hover:text-fuchsia-600 hover:border-fuchsia-200 transition-all shadow-sm text-[9px]"
                 >
-                    {downloading ? <Loader2 className="w-3.5 h-3.5 animate-spin"/> : <Download className="w-3.5 h-3.5" />}
+                    {downloading ? <Loader2 className="w-3 h-3 animate-spin"/> : <Download className="w-3 h-3" />}
                     批量下载
                 </button>
             </div>
