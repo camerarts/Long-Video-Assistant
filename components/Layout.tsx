@@ -184,7 +184,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
 
       {/* App Sidebar (Global Navigation) - Visible on sm and up */}
       <aside className={`
-        fixed inset-y-0 left-0 z-50 w-24 flex flex-col items-center py-6 border-r border-slate-200/60 bg-white/95 backdrop-blur-md transition-transform duration-300 ease-in-out
+        fixed inset-y-0 left-0 z-50 w-20 flex flex-col items-center py-4 border-r border-slate-200/60 bg-white/95 backdrop-blur-md transition-transform duration-300 ease-in-out
         sm:relative sm:translate-x-0 sm:bg-white/80
         ${mobileMenuOpen ? 'translate-x-0' : '-translate-x-full'}
       `}>
@@ -196,118 +196,118 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
             <X className="w-5 h-5" />
         </button>
 
-        <div className="flex flex-col items-center mb-6 gap-2 mt-8 sm:mt-0">
-            <Link to="/dashboard" className="w-11 h-11 bg-gradient-to-br from-violet-600 to-indigo-600 rounded-2xl flex items-center justify-center shadow-lg shadow-indigo-500/30 hover:scale-105 transition-transform duration-300">
-              <Video className="text-white w-6 h-6" />
+        <div className="flex flex-col items-center mb-4 gap-1.5 mt-8 sm:mt-0">
+            <Link to="/dashboard" className="w-10 h-10 bg-gradient-to-br from-violet-600 to-indigo-600 rounded-xl flex items-center justify-center shadow-lg shadow-indigo-500/30 hover:scale-105 transition-transform duration-300">
+              <Video className="text-white w-5 h-5" />
             </Link>
-            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">助手</span>
+            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest scale-90">助手</span>
         </div>
 
-        <nav className="flex-1 flex flex-col gap-2 w-full px-3 items-center">
+        <nav className="flex-1 flex flex-col gap-1 w-full px-2 items-center">
           
           {/* Big Add Button - High End Gradient */}
           <button
             onClick={handleCreateClick}
-            className="w-12 h-12 bg-gradient-to-r from-violet-600 to-fuchsia-600 text-white rounded-2xl flex items-center justify-center shadow-lg shadow-violet-500/30 hover:shadow-violet-500/50 hover:scale-105 transition-all duration-300 group mb-2"
+            className="w-10 h-10 bg-gradient-to-r from-violet-600 to-fuchsia-600 text-white rounded-xl flex items-center justify-center shadow-lg shadow-violet-500/30 hover:shadow-violet-500/50 hover:scale-105 transition-all duration-300 group mb-1"
             title="新建项目"
           >
-            <Plus className="w-6 h-6 group-hover:rotate-90 transition-transform duration-500" />
+            <Plus className="w-5 h-5 group-hover:rotate-90 transition-transform duration-500" />
           </button>
 
-          <div className="w-8 h-px bg-slate-100 my-1"></div>
+          <div className="w-6 h-px bg-slate-100 my-1"></div>
 
           <Link
             to="/dashboard"
-            className={`flex flex-col items-center justify-center py-2.5 px-2 w-full rounded-2xl transition-all gap-1 duration-300 ${
+            className={`flex flex-col items-center justify-center py-2 px-1 w-full rounded-xl transition-all gap-0.5 duration-300 ${
               isActive('/dashboard') 
                 ? 'bg-violet-50 text-violet-700 shadow-sm' 
                 : 'text-slate-400 hover:bg-slate-50 hover:text-slate-700'
             }`}
           >
             <LayoutDashboard className={`w-5 h-5 ${isActive('/dashboard') ? 'stroke-[2.5px]' : 'stroke-2'}`} />
-            <span className="text-[10px] font-bold tracking-wide">项目列表</span>
+            <span className="text-[10px] font-bold tracking-wide scale-90">项目</span>
           </Link>
           
           <Link
             to="/images"
-            className={`flex flex-col items-center justify-center py-2.5 px-2 w-full rounded-2xl transition-all gap-1 duration-300 ${
+            className={`flex flex-col items-center justify-center py-2 px-1 w-full rounded-xl transition-all gap-0.5 duration-300 ${
               isActive('/images') 
                 ? 'bg-fuchsia-50 text-fuchsia-700 shadow-sm' 
                 : 'text-slate-400 hover:bg-slate-50 hover:text-slate-700'
             }`}
           >
             <ImageIcon className={`w-5 h-5 ${isActive('/images') ? 'stroke-[2.5px]' : 'stroke-2'}`} />
-            <span className="text-[10px] font-bold tracking-wide">生图列表</span>
+            <span className="text-[10px] font-bold tracking-wide scale-90">生图</span>
           </Link>
 
           <Link
             to="/inspiration"
-            className={`flex flex-col items-center justify-center py-2.5 px-2 w-full rounded-2xl transition-all gap-1 duration-300 ${
+            className={`flex flex-col items-center justify-center py-2 px-1 w-full rounded-xl transition-all gap-0.5 duration-300 ${
               isActive('/inspiration') 
                 ? 'bg-amber-50 text-amber-600 shadow-sm' 
                 : 'text-slate-400 hover:bg-slate-50 hover:text-slate-700'
             }`}
           >
             <Lightbulb className={`w-5 h-5 ${isActive('/inspiration') ? 'stroke-[2.5px]' : 'stroke-2'}`} />
-            <span className="text-[10px] font-bold tracking-wide">灵感仓库</span>
+            <span className="text-[10px] font-bold tracking-wide scale-90">灵感</span>
           </Link>
 
           <Link
             to="/ai-titles"
-            className={`flex flex-col items-center justify-center py-2.5 px-2 w-full rounded-2xl transition-all gap-1 duration-300 ${
+            className={`flex flex-col items-center justify-center py-2 px-1 w-full rounded-xl transition-all gap-0.5 duration-300 ${
               isActive('/ai-titles') 
                 ? 'bg-indigo-50 text-indigo-600 shadow-sm' 
                 : 'text-slate-400 hover:bg-slate-50 hover:text-slate-700'
             }`}
           >
             <Type className={`w-5 h-5 ${isActive('/ai-titles') ? 'stroke-[2.5px]' : 'stroke-2'}`} />
-            <span className="text-[10px] font-bold tracking-wide">AI 标题</span>
+            <span className="text-[10px] font-bold tracking-wide scale-90">标题</span>
           </Link>
 
           <Link
             to="/settings"
-            className={`flex flex-col items-center justify-center py-2.5 px-2 w-full rounded-2xl transition-all gap-1 duration-300 ${
+            className={`flex flex-col items-center justify-center py-2 px-1 w-full rounded-xl transition-all gap-0.5 duration-300 ${
               isActive('/settings') 
                 ? 'bg-violet-50 text-violet-700 shadow-sm' 
                 : 'text-slate-400 hover:bg-slate-50 hover:text-slate-700'
             }`}
           >
             <Settings className={`w-5 h-5 ${isActive('/settings') ? 'stroke-[2.5px]' : 'stroke-2'}`} />
-            <span className="text-[10px] font-bold tracking-wide">系统设置</span>
+            <span className="text-[10px] font-bold tracking-wide scale-90">设置</span>
           </Link>
 
-          <div className="mt-auto w-full flex flex-col gap-2 border-t border-slate-100 pt-3">
+          <div className="mt-auto w-full flex flex-col gap-1 border-t border-slate-100 pt-2">
              <button
                 onClick={handleUpload}
                 disabled={!!syncing}
-                className={`flex flex-col items-center justify-center py-2 px-2 w-full rounded-xl transition-all gap-1 text-slate-100 disabled:opacity-50 ${
+                className={`flex flex-col items-center justify-center py-1.5 px-1 w-full rounded-lg transition-all gap-0.5 text-slate-100 disabled:opacity-50 ${
                     hasUnsavedChanges
                     ? 'bg-rose-500 hover:bg-rose-600 shadow-lg shadow-rose-500/30 animate-pulse'
                     : 'bg-emerald-500 hover:bg-emerald-600 shadow-lg shadow-emerald-500/30'
                 }`}
                 title={hasUnsavedChanges ? "有未保存的本地数据，请点击上传" : "数据已同步到云端"}
             >
-                {syncing === 'upload' ? <Loader2 className="w-5 h-5 animate-spin text-white" /> : <CloudUpload className="w-5 h-5 stroke-2" />}
-                <span className="text-[10px] font-bold tracking-wide">上传</span>
+                {syncing === 'upload' ? <Loader2 className="w-4 h-4 animate-spin text-white" /> : <CloudUpload className="w-4 h-4 stroke-2" />}
+                <span className="text-[9px] font-bold tracking-wide scale-90">上传</span>
             </button>
             <button
                 onClick={handleDownload}
                 disabled={!!syncing}
-                className="flex flex-col items-center justify-center py-2 px-2 w-full rounded-xl transition-all gap-1 text-slate-400 hover:bg-emerald-50 hover:text-emerald-600 disabled:opacity-50"
+                className="flex flex-col items-center justify-center py-1.5 px-1 w-full rounded-lg transition-all gap-0.5 text-slate-400 hover:bg-emerald-50 hover:text-emerald-600 disabled:opacity-50"
                 title="从云端下载数据"
             >
-                {syncing === 'download' ? <Loader2 className="w-5 h-5 animate-spin text-emerald-500" /> : <CloudDownload className="w-5 h-5 stroke-2" />}
-                <span className="text-[10px] font-bold tracking-wide">下载</span>
+                {syncing === 'download' ? <Loader2 className="w-4 h-4 animate-spin text-emerald-500" /> : <CloudDownload className="w-4 h-4 stroke-2" />}
+                <span className="text-[9px] font-bold tracking-wide scale-90">下载</span>
             </button>
           </div>
 
           <button
             onClick={handleLogout}
-            className="mb-2 flex flex-col items-center justify-center py-2.5 px-2 w-full rounded-2xl transition-all gap-1 duration-300 text-slate-400 hover:bg-rose-50 hover:text-rose-600"
+            className="mb-1 flex flex-col items-center justify-center py-2 px-1 w-full rounded-xl transition-all gap-0.5 duration-300 text-slate-400 hover:bg-rose-50 hover:text-rose-600"
             title="退出登录"
           >
             <LogOut className="w-5 h-5 stroke-2" />
-            <span className="text-[10px] font-bold tracking-wide">退出</span>
+            <span className="text-[10px] font-bold tracking-wide scale-90">退出</span>
           </button>
         </nav>
       </aside>
