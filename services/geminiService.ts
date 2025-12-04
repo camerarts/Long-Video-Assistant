@@ -69,13 +69,23 @@ export const generateImage = async (prompt: string): Promise<string> => {
       }
     });
 
+    const candidate = response.candidates?.[0];
+    
+    // Check for safety blocking or other finish reasons
+    if (candidate?.finishReason === 'SAFETY') {
+        throw new Error("Image generation was blocked by safety filters. Please modify the prompt.");
+    }
+    if (candidate?.finishReason && candidate.finishReason !== 'STOP') {
+        throw new Error(`Generation stopped unexpectedly: ${candidate.finishReason}`);
+    }
+
     // Extract image
-    for (const part of response.candidates?.[0]?.content?.parts || []) {
+    for (const part of candidate?.content?.parts || []) {
       if (part.inlineData) {
         return `data:${part.inlineData.mimeType};base64,${part.inlineData.data}`;
       }
     }
-    throw new Error("No image data returned from API");
+    throw new Error("No image data returned from API (Response empty)");
   } catch (error: any) {
     console.error("Image generation error:", error);
     throw new Error(error.message || "Failed to generate image");
