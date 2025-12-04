@@ -81,19 +81,19 @@ const ImageWorkshopList: React.FC = () => {
           </button>
         </div>
       ) : (
-        <div className="bg-white rounded-3xl border border-slate-100 shadow-[0_2px_20px_-5px_rgba(0,0,0,0.05)] overflow-hidden">
+        <div className="bg-white rounded-2xl border border-slate-200 shadow-[0_2px_20px_-5px_rgba(0,0,0,0.05)] overflow-hidden">
             <div className="overflow-x-auto">
-                <table className="w-full text-left border-collapse">
-                    <thead className="bg-slate-100 border-b border-slate-200 text-slate-600">
+                <table className="w-full text-left border-collapse border border-slate-200">
+                    <thead className="bg-slate-50 text-slate-600">
                         <tr>
-                            <th className="py-4 px-6 text-xs font-bold uppercase tracking-wider w-20 text-center">序号</th>
-                            <th className="py-4 px-6 text-xs font-bold uppercase tracking-wider text-center min-w-[350px]">主题</th>
-                            <th className="py-4 px-6 text-xs font-bold uppercase tracking-wider w-36 md:w-48 text-center">生图进度</th>
-                            <th className="py-4 px-6 text-xs font-bold uppercase tracking-wider w-40 text-center hidden md:table-cell">完成日期</th>
-                            <th className="py-4 px-6 text-xs font-bold uppercase tracking-wider w-24 text-center">操作</th>
+                            <th className="py-2 px-3 text-xs font-bold uppercase tracking-wider w-16 text-center border border-slate-200">序号</th>
+                            <th className="py-2 px-3 text-xs font-bold uppercase tracking-wider text-center border border-slate-200 min-w-[300px]">主题</th>
+                            <th className="py-2 px-3 text-xs font-bold uppercase tracking-wider w-36 md:w-48 text-center border border-slate-200">生图进度</th>
+                            <th className="py-2 px-3 text-xs font-bold uppercase tracking-wider w-40 text-center hidden md:table-cell border border-slate-200">完成日期</th>
+                            <th className="py-2 px-3 text-xs font-bold uppercase tracking-wider w-24 text-center border border-slate-200">操作</th>
                         </tr>
                     </thead>
-                    <tbody className="divide-y divide-slate-50">
+                    <tbody>
                         {projects.map((project, index) => {
                             const progress = getImageProgress(project);
                             const hasStoryboard = !!progress;
@@ -102,30 +102,30 @@ const ImageWorkshopList: React.FC = () => {
                                 <tr 
                                     key={project.id} 
                                     onClick={() => handleRowClick(project)}
-                                    className={`group transition-colors border-b border-slate-50 last:border-0 ${
+                                    className={`group transition-colors ${
                                         hasStoryboard 
                                         ? 'hover:bg-fuchsia-50/30 cursor-pointer' 
                                         : 'opacity-60 bg-slate-50/30 cursor-not-allowed grayscale-[0.5]'
                                     }`}
                                 >
-                                    <td className="py-5 px-6 text-center text-sm font-bold text-slate-400 align-middle">
+                                    <td className="py-2.5 px-3 text-center text-sm font-bold text-slate-400 border border-slate-200 align-middle">
                                         {index + 1}
                                     </td>
-                                    <td className="py-5 px-6 align-top">
-                                        <div className="font-bold text-base md:text-lg transition-colors whitespace-normal break-all block h-auto leading-relaxed text-slate-800 group-hover:text-fuchsia-700">
+                                    <td className="py-2.5 px-3 border border-slate-200 align-middle">
+                                        <div className="font-bold text-sm md:text-base text-slate-800 group-hover:text-fuchsia-700 transition-colors whitespace-normal break-all block h-auto leading-normal">
                                             {project.title || '未命名项目'}
                                         </div>
                                     </td>
-                                    <td className="py-5 px-6 align-middle">
+                                    <td className="py-2.5 px-3 border border-slate-200 align-middle">
                                         {hasStoryboard ? (
-                                            <div className="flex flex-col gap-1.5">
-                                                <div className="flex items-center justify-between text-xs font-bold text-slate-600">
+                                            <div className="flex flex-col gap-1.5 px-2">
+                                                <div className="flex items-center justify-between text-[10px] md:text-xs font-bold text-slate-600">
                                                     <span>{progress.generated} / {progress.total} 张</span>
                                                     {progress.generated === progress.total && (
                                                         <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500" />
                                                     )}
                                                 </div>
-                                                <div className="w-full h-1.5 bg-slate-100 rounded-full overflow-hidden">
+                                                <div className="w-full h-1.5 bg-slate-100 rounded-full overflow-hidden border border-slate-100">
                                                     <div 
                                                         className={`h-full rounded-full transition-all duration-500 ${progress.generated === progress.total ? 'bg-emerald-500' : 'bg-fuchsia-500'}`}
                                                         style={{ width: `${(progress.generated / progress.total) * 100}%` }}
@@ -139,13 +139,13 @@ const ImageWorkshopList: React.FC = () => {
                                             </div>
                                         )}
                                     </td>
-                                    <td className="py-5 px-6 hidden md:table-cell align-middle">
-                                        <div className="flex items-center justify-center gap-2 text-sm font-medium text-slate-500">
-                                            <Calendar className="w-4 h-4 text-slate-300" />
+                                    <td className="py-2.5 px-3 hidden md:table-cell border border-slate-200 align-middle">
+                                        <div className="flex items-center justify-center gap-1.5 text-xs font-medium text-slate-500">
+                                            <Calendar className="w-3.5 h-3.5 text-slate-300" />
                                             {new Date(project.updatedAt).toLocaleDateString('zh-CN')}
                                         </div>
                                     </td>
-                                    <td className="py-5 px-6 text-center align-middle">
+                                    <td className="py-2.5 px-3 text-center border border-slate-200 align-middle">
                                         {deleteConfirmId === project.id ? (
                                             <button 
                                                 onClick={(e) => handleDelete(e, project.id)}
@@ -157,10 +157,10 @@ const ImageWorkshopList: React.FC = () => {
                                         ) : (
                                             <button 
                                                 onClick={(e) => { e.stopPropagation(); setDeleteConfirmId(project.id); }}
-                                                className="p-2 text-slate-300 hover:text-rose-500 hover:bg-rose-50 rounded-lg transition-all"
+                                                className="p-1.5 text-slate-300 hover:text-rose-500 hover:bg-rose-50 rounded-md transition-all"
                                                 title="删除项目"
                                             >
-                                                <Trash2 className="w-4.5 h-4.5" />
+                                                <Trash2 className="w-4 h-4" />
                                             </button>
                                         )}
                                     </td>
