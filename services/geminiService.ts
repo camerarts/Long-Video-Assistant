@@ -14,6 +14,25 @@ const getClient = () => {
   return new GoogleGenAI({ apiKey });
 };
 
+// Centralized error handler
+const handleApiError = (error: any, defaultMsg: string): never => {
+  console.error(defaultMsg, error);
+  const msg = error.message || error.toString();
+  
+  // Check for Rate Limiting / Quota issues
+  if (msg.includes('429') || msg.includes('RESOURCE_EXHAUSTED') || msg.includes('Quota exceeded')) {
+      throw new Error("API 调用频率过高 (429)。请稍休息 1 分钟等待配额恢复后重试。");
+  }
+  
+  // Check for Safety Filters (if not caught earlier)
+  if (msg.includes('SAFETY') || msg.includes('blocked')) {
+      throw new Error("生成内容被 AI 安全策略拦截。请尝试修改提示词或主题。");
+  }
+
+  // Return the original message if it's already a clean Error object, otherwise default
+  throw new Error(msg || defaultMsg);
+};
+
 export const generateText = async (prompt: string, modelName: string = 'gemini-2.5-flash'): Promise<string> => {
   try {
     const ai = getClient();
@@ -23,9 +42,9 @@ export const generateText = async (prompt: string, modelName: string = 'gemini-2
     });
     return response.text || '';
   } catch (error: any) {
-    console.error("Text generation error:", error);
-    throw new Error(error.message || "Failed to generate text");
+    handleApiError(error, "Failed to generate text");
   }
+  return ''; // Should be unreachable
 };
 
 export const generateJSON = async <T>(prompt: string, schema?: any): Promise<T> => {
@@ -47,9 +66,9 @@ export const generateJSON = async <T>(prompt: string, schema?: any): Promise<T> 
     
     return JSON.parse(text) as T;
   } catch (error: any) {
-    console.error("JSON generation error:", error);
-    throw new Error(error.message || "Failed to generate structured data");
+    handleApiError(error, "Failed to generate structured data");
   }
+  return {} as T; // Should be unreachable
 };
 
 export const generateImage = async (prompt: string): Promise<string> => {
@@ -71,12 +90,12 @@ export const generateImage = async (prompt: string): Promise<string> => {
 
     const candidate = response.candidates?.[0];
     
-    // Check for safety blocking or other finish reasons
+    // Check for safety blocking or other finish reasons explicitly
     if (candidate?.finishReason === 'SAFETY') {
-        throw new Error("Image generation was blocked by safety filters. Please modify the prompt.");
+        throw new Error("图片生成被安全策略拦截 (Safety Filter)。请修改提示词。");
     }
     if (candidate?.finishReason && candidate.finishReason !== 'STOP') {
-        throw new Error(`Generation stopped unexpectedly: ${candidate.finishReason}`);
+        throw new Error(`生成意外停止: ${candidate.finishReason}`);
     }
 
     // Extract image
@@ -85,9 +104,9 @@ export const generateImage = async (prompt: string): Promise<string> => {
         return `data:${part.inlineData.mimeType};base64,${part.inlineData.data}`;
       }
     }
-    throw new Error("No image data returned from API (Response empty)");
+    throw new Error("API 未返回图片数据 (Response empty)");
   } catch (error: any) {
-    console.error("Image generation error:", error);
-    throw new Error(error.message || "Failed to generate image");
+    handleApiError(error, "Failed to generate image");
   }
+  return ''; // Should be unreachable
 };
