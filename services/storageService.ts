@@ -1,5 +1,4 @@
 
-
 import { ProjectData, PromptTemplate, DEFAULT_PROMPTS, ProjectStatus, Inspiration } from '../types';
 
 // API Endpoints
@@ -450,11 +449,40 @@ export const deleteInspiration = async (id: string): Promise<void> => {
   trackChange();
 };
 
-// --- Tools Methods (Generic Store for One-Off Tools like AI Titles) ---
+// --- Tools Methods (Real-time Cloud Sync) ---
 
 export const saveToolData = async (id: string, data: any): Promise<void> => {
+    // 1. Save Local
     await dbPut(STORE_TOOLS, { id, data });
     trackChange();
+};
+
+export const uploadToolData = async (id: string, data: any): Promise<void> => {
+    // 2. Push to Cloud (Individual Update)
+    const payload = {
+        tools: [{ id, data }]
+    };
+    
+    const res = await fetch(`${API_BASE}/sync`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+    });
+
+    if (!res.ok) {
+        throw new Error('Cloud save failed');
+    }
+};
+
+export const fetchRemoteToolData = async <T>(id: string): Promise<T | null> => {
+    try {
+        const res = await fetch(`${API_BASE}/tools/${id}`);
+        if (!res.ok) return null;
+        const data = await res.json();
+        return data as T;
+    } catch {
+        return null;
+    }
 };
 
 export const getToolData = async <T>(id: string): Promise<T | null> => {
