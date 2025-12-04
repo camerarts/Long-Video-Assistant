@@ -1,4 +1,5 @@
 
+
 import React, { useEffect, useState, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { ProjectData, StoryboardFrame, PromptTemplate } from '../types';
@@ -18,7 +19,8 @@ const StoryboardImages: React.FC = () => {
   const [currentGenIds, setCurrentGenIds] = useState<Set<string>>(new Set());
   
   // State for Style Selection
-  const [imageStyle, setImageStyle] = useState<string>('comic');
+  // style_mode variable as requested
+  const [style_mode, setStyleMode] = useState<string>('comic');
 
   // State for Batch Progress (Internal)
   const [batchProgress, setBatchProgress] = useState({ planned: 0, completed: 0, failed: 0 });
@@ -80,8 +82,8 @@ const StoryboardImages: React.FC = () => {
       try {
         let basePrompt = frame.imagePrompt || interpolatePrompt(prompts.IMAGE_GEN?.template || '', { description: frame.description });
         
-        // Add Style Modifier
-        const stylePrefix = imageStyle === 'comic' 
+        // Add Style Modifier using style_mode variable
+        const stylePrefix = style_mode === 'comic' 
             ? "Comic realistic style, detailed lines, vibrant colors, 8k resolution, cinematic lighting. " 
             : "Documentary photography style, hyper-realistic, 4k, raw photo, cinematic, highly detailed. ";
         
@@ -358,7 +360,7 @@ const StoryboardImages: React.FC = () => {
         </div>
 
         {/* Header */}
-        <div className="px-8 py-4 bg-white border-b border-slate-200 flex justify-between items-center shadow-sm z-10">
+        <div className="px-6 py-3 bg-white border-b border-slate-200 flex justify-between items-center shadow-sm z-10">
             <div className="flex items-center gap-4">
                  <button onClick={() => navigate(`/project/${project.id}`)} className="p-2 hover:bg-slate-100 rounded-full transition-colors text-slate-500">
                     <ArrowLeft className="w-5 h-5" />
@@ -372,13 +374,13 @@ const StoryboardImages: React.FC = () => {
             </div>
 
             <div className="flex items-center gap-2">
-                {/* Style Selector */}
-                <div className="flex items-center bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1.5 mr-1 hover:border-slate-300 transition-colors">
+                {/* Style Selector - placed left of Generate button */}
+                <div className="flex items-center bg-slate-50 border border-slate-200 rounded-md px-2 py-1 hover:border-slate-300 transition-colors">
                     <Palette className="w-3.5 h-3.5 text-slate-400 mr-2" />
                     <select 
-                        value={imageStyle} 
-                        onChange={(e) => setImageStyle(e.target.value)}
-                        className="text-xs font-bold text-slate-700 bg-transparent outline-none cursor-pointer appearance-none pr-1"
+                        value={style_mode} 
+                        onChange={(e) => setStyleMode(e.target.value)}
+                        className="text-[10px] font-bold text-slate-700 bg-transparent outline-none cursor-pointer appearance-none pr-1"
                         title="选择生图风格"
                     >
                         <option value="comic">漫画写实风格</option>
@@ -389,7 +391,7 @@ const StoryboardImages: React.FC = () => {
                 <button
                     onClick={handleGenerateAll}
                     disabled={generating || unGeneratedCount === 0}
-                    className="flex items-center gap-1.5 px-3 py-1.5 bg-gradient-to-r from-fuchsia-600 to-pink-600 text-white rounded-lg font-bold shadow-md shadow-fuchsia-500/20 hover:shadow-fuchsia-500/30 hover:-translate-y-0.5 transition-all disabled:opacity-50 disabled:cursor-not-allowed text-xs"
+                    className="flex items-center gap-1.5 px-2 py-1 bg-gradient-to-r from-fuchsia-600 to-pink-600 text-white rounded-md font-bold shadow-md shadow-fuchsia-500/20 hover:shadow-fuchsia-500/30 hover:-translate-y-0.5 transition-all disabled:opacity-50 disabled:cursor-not-allowed text-[10px]"
                 >
                     {generating ? <Loader2 className="w-3.5 h-3.5 animate-spin"/> : <Sparkles className="w-3.5 h-3.5" />}
                     {unGeneratedCount === 0 ? '已全部生成' : '立刻生图'}
@@ -398,7 +400,7 @@ const StoryboardImages: React.FC = () => {
                 <button
                     onClick={handleUploadImages}
                     disabled={uploading || localCount === 0}
-                    className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-600 text-white rounded-lg font-bold shadow-md shadow-blue-500/20 hover:bg-blue-500 hover:-translate-y-0.5 transition-all disabled:opacity-50 disabled:cursor-not-allowed text-xs"
+                    className="flex items-center gap-1.5 px-2 py-1 bg-blue-600 text-white rounded-md font-bold shadow-md shadow-blue-500/20 hover:bg-blue-500 hover:-translate-y-0.5 transition-all disabled:opacity-50 disabled:cursor-not-allowed text-[10px]"
                     title={localCount > 0 ? `有 ${localCount} 张图片待上传` : '所有图片已同步'}
                 >
                     {uploading ? <Loader2 className="w-3.5 h-3.5 animate-spin"/> : <CloudUpload className="w-3.5 h-3.5" />}
@@ -407,7 +409,7 @@ const StoryboardImages: React.FC = () => {
 
                 <button
                     onClick={handleDownloadPrompts}
-                    className="flex items-center gap-1.5 px-3 py-1.5 bg-white border border-slate-200 text-slate-600 rounded-lg font-bold hover:bg-slate-50 hover:text-blue-600 hover:border-blue-200 transition-all shadow-sm text-xs"
+                    className="flex items-center gap-1.5 px-2 py-1 bg-white border border-slate-200 text-slate-600 rounded-md font-bold hover:bg-slate-50 hover:text-blue-600 hover:border-blue-200 transition-all shadow-sm text-[10px]"
                 >
                     <FileSpreadsheet className="w-3.5 h-3.5" />
                     下载提示词
@@ -416,7 +418,7 @@ const StoryboardImages: React.FC = () => {
                 <button
                     onClick={handleDownloadAll}
                     disabled={downloading}
-                    className="flex items-center gap-1.5 px-3 py-1.5 bg-white border border-slate-200 text-slate-600 rounded-lg font-bold hover:bg-slate-50 hover:text-fuchsia-600 hover:border-fuchsia-200 transition-all shadow-sm text-xs"
+                    className="flex items-center gap-1.5 px-2 py-1 bg-white border border-slate-200 text-slate-600 rounded-md font-bold hover:bg-slate-50 hover:text-fuchsia-600 hover:border-fuchsia-200 transition-all shadow-sm text-[10px]"
                 >
                     {downloading ? <Loader2 className="w-3.5 h-3.5 animate-spin"/> : <Download className="w-3.5 h-3.5" />}
                     批量下载
