@@ -2,7 +2,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import * as storage from '../services/storageService';
 import * as gemini from '../services/geminiService';
-import { Sparkles, Loader2, Copy, Eraser, Type, Image as ImageIcon, ALargeSmall, Save, Clock, Cloud, CloudCheck, CheckCircle2, Circle, Wand2, Maximize2, X } from 'lucide-react';
+import { Sparkles, Loader2, Copy, Eraser, Type, Image as ImageIcon, ALargeSmall, Save, Clock, Cloud, CloudCheck, CheckCircle2, Circle, Wand2, Maximize2, X, Download } from 'lucide-react';
 import { PromptTemplate } from '../types';
 
 interface AiTitlesResult {
@@ -179,10 +179,11 @@ const AiTitles: React.FC = () => {
 
       try {
           const selectedTitle = result.titles[selectedTitleIndex];
+          // Updated prompt to strictly request no text
           const prompt = `Youtube Video Thumbnail. High quality, cinematic lighting, 8k resolution. 
           Visual Description: ${result.coverVisual}. 
-          Text overlay (for reference): "${result.coverText}". 
-          Context Title: "${selectedTitle}".`;
+          IMPORTANT: The image must be completely text-free. Do not include any text, words, letters, or logos in the image.
+          Mood/Context based on title: "${selectedTitle}".`;
 
           const base64 = await gemini.generateImage(prompt);
           setGeneratedCover(base64);
@@ -192,6 +193,19 @@ const AiTitles: React.FC = () => {
       } finally {
           setGeneratingImage(false);
       }
+  };
+
+  const handleDownloadCover = () => {
+      if (!generatedCover || !result || selectedTitleIndex === null) return;
+      
+      const title = result.titles[selectedTitleIndex];
+      // Create a temporary link to download
+      const link = document.createElement("a");
+      link.href = generatedCover;
+      link.download = `${title}.png`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
   };
 
   const handleCopyTitles = () => {
@@ -429,11 +443,22 @@ const AiTitles: React.FC = () => {
                     <div className="p-4">
                          <div className="aspect-video w-full bg-slate-100 rounded-xl overflow-hidden border border-slate-200 shadow-sm relative group">
                             {generatedCover ? (
-                                <img 
-                                    src={generatedCover} 
-                                    alt="Generated Cover" 
-                                    className="w-full h-full object-cover"
-                                />
+                                <>
+                                    <img 
+                                        src={generatedCover} 
+                                        alt="Generated Cover" 
+                                        className="w-full h-full object-cover"
+                                    />
+                                    {/* Download Button */}
+                                    <div className="absolute bottom-3 right-3 opacity-0 group-hover:opacity-100 transition-opacity">
+                                        <button 
+                                            onClick={handleDownloadCover}
+                                            className="bg-white/90 hover:bg-white text-slate-700 hover:text-violet-600 px-3 py-1.5 rounded-lg font-bold text-xs shadow-lg backdrop-blur flex items-center gap-1.5 border border-white/50"
+                                        >
+                                            <Download className="w-3.5 h-3.5" /> 下载封面
+                                        </button>
+                                    </div>
+                                </>
                             ) : (
                                 <div className="absolute inset-0 flex flex-col items-center justify-center text-slate-300 gap-3">
                                     {generatingImage ? (
