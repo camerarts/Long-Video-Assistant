@@ -1,6 +1,8 @@
 
 
 
+
+
 import React, { useEffect, useState, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { ProjectData, StoryboardFrame, PromptTemplate } from '../types';
@@ -87,7 +89,7 @@ const StoryboardImages: React.FC = () => {
 
     // Fetch latest prompts to ensure we use current settings
     const currentPrompts = await storage.getPrompts();
-    const template = currentPrompts.IMAGE_GEN?.template || ''; // Fallback or empty if missing
+    const template = currentPrompts.IMAGE_GEN?.template || '{{description}}';
     
     // Update storage
     const updatedProject = await storage.updateProject(id!, (latest) => {
@@ -405,7 +407,7 @@ const StoryboardImages: React.FC = () => {
             </div>
 
             <div className="flex items-center gap-2">
-                
+
                 <button
                     onClick={handleReimportPrompts}
                     className="flex items-center gap-1.5 px-2 h-6 bg-white border border-slate-200 text-slate-600 rounded-md font-bold hover:bg-slate-50 hover:text-indigo-600 hover:border-indigo-200 transition-all shadow-sm text-[9px]"
@@ -414,7 +416,7 @@ const StoryboardImages: React.FC = () => {
                     <RotateCcw className="w-3 h-3" />
                     重新导入提示词
                 </button>
-
+                
                 {/* Style Selector */}
                 <div className="flex items-center bg-slate-50 border border-slate-200 rounded-md px-1.5 py-0.5 hover:border-slate-300 transition-colors h-6">
                     <Palette className="w-3 h-3 text-slate-400 mr-1.5" />
