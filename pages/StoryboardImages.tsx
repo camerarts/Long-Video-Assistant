@@ -18,8 +18,8 @@ const StoryboardImages: React.FC = () => {
   const [generating, setGenerating] = useState(false);
   const [currentGenIds, setCurrentGenIds] = useState<Set<string>>(new Set());
   
-  // State for Style Selection
-  const [style_mode, setStyleMode] = useState<string>('comic');
+  // State for Style Selection (Configuration Template Key)
+  const [style_mode, setStyleMode] = useState<string>('IMAGE_GEN_A');
 
   // State for Batch Progress (Internal)
   const [batchProgress, setBatchProgress] = useState({ planned: 0, completed: 0, failed: 0 });
@@ -81,13 +81,16 @@ const StoryboardImages: React.FC = () => {
   const handleReimportPrompts = async () => {
     if (!project || !project.storyboard) return;
     
-    if (!window.confirm('确定要重新导入提示词吗？这将使用最新的“图片生成配置”和“分镜描述”覆盖当前所有输入框的内容。')) {
+    // Get the name of current configuration for the alert
+    const configName = prompts[style_mode]?.name || style_mode;
+
+    if (!window.confirm(`确定要重新导入提示词吗？\n\n这将使用【${configName}】的最新模板覆盖当前所有图片的提示词内容。`)) {
         return;
     }
 
     // Fetch latest prompts to ensure we use current settings
     const currentPrompts = await storage.getPrompts();
-    const template = currentPrompts.IMAGE_GEN?.template || '{{description}}';
+    const template = currentPrompts[style_mode]?.template || '{{description}}';
     
     // Update storage
     const updatedProject = await storage.updateProject(id!, (latest) => {
@@ -110,22 +113,15 @@ const StoryboardImages: React.FC = () => {
 
   const generateSingleImage = async (frame: StoryboardFrame): Promise<string | null> => {
       try {
-        let basePrompt = frame.imagePrompt || interpolatePrompt(prompts.IMAGE_GEN?.template || '', { description: frame.description });
+        // If the frame already has a specific user-edited prompt, use it.
+        // Otherwise, interpolate using the CURRENTLY selected configuration template.
+        let finalPrompt = frame.imagePrompt;
         
-        // Add Style Modifier using style_mode variable
-        let stylePrefix = "";
-        if (style_mode === 'comic') {
-            stylePrefix = "线条漫画插画写实风格，半真实，仿真皮肤，OC质感，超清画质32K，黑色线条厚涂。"; 
-        } else if (style_mode === 'realism') {
-            stylePrefix = "写实照片，纪实摄影，真实皮肤质感。"; 
-        }
-        
-        const finalPrompt = stylePrefix + basePrompt;
-
-        // If prompt was empty in data, save the interpolated one (without style prefix if possible, or we can just leave it dynamic in UI)
-        // Ideally we save the base user intention. But for consistency with previous logic:
-        if (!frame.imagePrompt) {
-            handlePromptChange(frame.id, basePrompt);
+        if (!finalPrompt) {
+            const template = prompts[style_mode]?.template || '{{description}}';
+            finalPrompt = interpolatePrompt(template, { description: frame.description });
+            // Save the interpolated prompt so the user can see what was used
+            handlePromptChange(frame.id, finalPrompt);
         }
         
         return await gemini.generateImage(finalPrompt);
@@ -280,7 +276,8 @@ const StoryboardImages: React.FC = () => {
     csvContent += "序号,AI绘画提示词\n";
 
     project.storyboard.forEach((frame) => {
-        const prompt = frame.imagePrompt || interpolatePrompt(prompts.IMAGE_GEN?.template || '', { description: frame.description });
+        // Use frame prompt if available, else interpolate using current mode
+        const prompt = frame.imagePrompt || interpolatePrompt(prompts[style_mode]?.template || '', { description: frame.description });
         // Escape quotes
         const safePrompt = `"${prompt.replace(/"/g, '""')}"`;
         csvContent += `${frame.sceneNumber},${safePrompt}\n`;
@@ -419,23 +416,23 @@ const StoryboardImages: React.FC = () => {
                 <button
                     onClick={handleReimportPrompts}
                     className="flex items-center gap-1.5 px-2 h-6 bg-white border border-slate-200 text-slate-600 rounded-md font-bold hover:bg-slate-50 hover:text-indigo-600 hover:border-indigo-200 transition-all shadow-sm text-[9px]"
-                    title="重新根据分镜文案和配置生成提示词"
+                    title="使用当前选择的配置模板，覆盖所有分镜的提示词"
                 >
                     <RotateCcw className="w-3 h-3" />
                     重新导入提示词
                 </button>
                 
-                {/* Style Selector */}
+                {/* Style Selector / Configuration Selector */}
                 <div className="flex items-center bg-slate-50 border border-slate-200 rounded-md px-1.5 py-0.5 hover:border-slate-300 transition-colors h-6">
                     <Palette className="w-3 h-3 text-slate-400 mr-1.5" />
                     <select 
                         value={style_mode} 
                         onChange={(e) => setStyleMode(e.target.value)}
                         className="text-[10px] font-bold text-slate-700 bg-transparent outline-none cursor-pointer appearance-none pr-3"
-                        title="选择生图风格"
+                        title="选择提示词配置模板"
                     >
-                        <option value="comic">漫画写实风格</option>
-                        <option value="realism">纪实风格</option>
+                        <option value="IMAGE_GEN_A">使用配置 A (默认)</option>
+                        <option value="IMAGE_GEN_B">使用配置 B (备用)</option>
                     </select>
                 </div>
 
@@ -497,7 +494,7 @@ const StoryboardImages: React.FC = () => {
                                 <td className="py-6 px-6 align-top">
                                     <div className="space-y-2">
                                         <textarea
-                                            value={frame.imagePrompt || interpolatePrompt(prompts.IMAGE_GEN?.template || '', { description: frame.description })}
+                                            value={frame.imagePrompt || interpolatePrompt(prompts[style_mode]?.template || '', { description: frame.description })}
                                             onChange={(e) => handlePromptChange(frame.id, e.target.value)}
                                             className="w-full h-32 bg-slate-50 border border-slate-200 rounded-xl p-4 text-sm text-slate-700 resize-none outline-none focus:ring-2 focus:ring-fuchsia-500/20 focus:border-fuchsia-300 transition-all font-mono leading-relaxed"
                                             placeholder="输入提示词..."
