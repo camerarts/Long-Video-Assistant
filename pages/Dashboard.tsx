@@ -1,5 +1,3 @@
-
-
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ProjectData, ProjectStatus } from '../types';
@@ -116,11 +114,9 @@ const Dashboard: React.FC = () => {
                                     {index + 1}
                                 </td>
                                 <td className="py-5 px-6">
-                                    <div className="flex flex-col">
-                                        <span className="font-bold text-slate-800 text-base md:text-lg group-hover:text-violet-700 transition-colors mb-1 whitespace-normal break-words">
-                                            {project.title || '未命名项目'}
-                                        </span>
-                                    </div>
+                                    <span className="block font-bold text-slate-800 text-base md:text-lg group-hover:text-violet-700 transition-colors whitespace-normal break-all leading-relaxed">
+                                        {project.title || '未命名项目'}
+                                    </span>
                                 </td>
                                 <td className="py-5 px-6 text-center">
                                     <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-[10px] font-bold tracking-wide uppercase ${getStatusStyle(project.status)}`}>
