@@ -28,17 +28,61 @@ const RowCopyButton = ({ text }: { text: string }) => {
   );
 };
 
-const TextResultBox = ({ content, title }: { content: string, title: string }) => (
-  <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden flex flex-col h-full max-h-[600px]">
-    <div className="bg-slate-50 px-4 py-3 border-b border-slate-100 flex justify-between items-center flex-shrink-0">
-      <h4 className="text-xs font-bold text-slate-500 uppercase tracking-wider">{title}</h4>
-      <RowCopyButton text={content} />
+interface TextResultBoxProps {
+    content: string;
+    title: string;
+    onSave?: (val: string) => void;
+    placeholder?: string;
+}
+
+const TextResultBox = ({ content, title, onSave, placeholder }: TextResultBoxProps) => {
+  const [value, setValue] = useState(content || '');
+  const [isDirty, setIsDirty] = useState(false);
+
+  useEffect(() => {
+    if (!isDirty) setValue(content || '');
+  }, [content, isDirty]);
+
+  const handleChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    setValue(e.target.value);
+    setIsDirty(true);
+  };
+
+  const handleSave = () => {
+    if (onSave) {
+        onSave(value);
+        setIsDirty(false);
+    }
+  };
+
+  return (
+    <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden flex flex-col h-full max-h-[600px]">
+      <div className="bg-slate-50 px-4 py-3 border-b border-slate-100 flex justify-between items-center flex-shrink-0">
+        <h4 className="text-xs font-bold text-slate-500 uppercase tracking-wider">{title}</h4>
+        <div className="flex items-center gap-2">
+            {onSave && isDirty && (
+                 <button onClick={handleSave} className="flex items-center gap-1 text-[10px] font-bold text-white bg-emerald-500 hover:bg-emerald-600 px-2 py-1 rounded shadow-sm transition-all animate-pulse">
+                    <Check className="w-3 h-3" /> 保存
+                 </button>
+            )}
+            <RowCopyButton text={value} />
+        </div>
+      </div>
+      {onSave ? (
+        <textarea 
+            className="flex-1 w-full p-4 text-sm text-slate-700 leading-relaxed font-mono outline-none resize-none bg-white focus:bg-slate-50/30 transition-colors"
+            value={value}
+            onChange={handleChange}
+            placeholder={placeholder || "暂无内容..."}
+        />
+      ) : (
+        <div className="p-4 overflow-y-auto whitespace-pre-wrap text-sm text-slate-700 leading-relaxed font-mono flex-1">
+          {content || <span className="text-slate-400 italic">暂无内容...</span>}
+        </div>
+      )}
     </div>
-    <div className="p-4 overflow-y-auto whitespace-pre-wrap text-sm text-slate-700 leading-relaxed font-mono">
-      {content || <span className="text-slate-400 italic">暂无内容...</span>}
-    </div>
-  </div>
-);
+  );
+};
 
 interface TableResultBoxProps<T> {
     headers: string[];
@@ -102,7 +146,7 @@ const ProjectWorkspace: React.FC = () => {
   const [project, setProject] = useState<ProjectData | null>(null);
   const [loading, setLoading] = useState(true);
   
-  const [selectedNodeId, setSelectedNodeId] = useState<string | null>('input');
+  const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null); // Initialized to null for default collapsed state
   // Changed to Set to allow concurrent generation indicators
   const [generatingNodes, setGeneratingNodes] = useState<Set<string>>(new Set());
   const [prompts, setPrompts] = useState<Record<string, PromptTemplate>>({});
@@ -312,10 +356,9 @@ const ProjectWorkspace: React.FC = () => {
                   await generateNodeContent(id);
               } catch (retryError: any) {
                   console.error(`模块 [${id}] 第二次生成失败`, retryError);
-                  alert(`模块 [${id}] 生成失败 (重试无效): ${retryError.message}`);
               }
           } finally {
-              if (mountedRef.current) {
+               if (mountedRef.current) {
                   setGeneratingNodes(prev => {
                       const next = new Set(prev);
                       next.delete(id);
@@ -368,7 +411,7 @@ const ProjectWorkspace: React.FC = () => {
                     onClick={handleOneClickStart}
                     disabled={generatingNodes.size > 0 || !project.script}
                     className="flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-violet-600 to-indigo-600 text-white rounded-xl font-bold shadow-lg shadow-violet-500/20 hover:shadow-violet-500/40 hover:-translate-y-0.5 transition-all disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none disabled:shadow-none"
-                    title={!project.script ? "请先生成视频脚本" : "一键生成标题、分镜与简介"}
+                    title={!project.script ? "请先生成视频脚本" : "一键生成标题、分镜与简介 (自动失败重试)"}
                  >
                     {generatingNodes.size > 0 && ['titles', 'sb_text', 'summary'].some(id => generatingNodes.has(id)) ? <Loader2 className="w-4 h-4 animate-spin" /> : <Rocket className="w-4 h-4" />}
                     一键启动
@@ -576,7 +619,12 @@ const ProjectWorkspace: React.FC = () => {
                  )}
 
                  {selectedNodeId === 'script' && (
-                    <TextResultBox content={project.script || ''} title="视频文案脚本" />
+                    <TextResultBox 
+                        content={project.script || ''} 
+                        title="视频文案脚本" 
+                        placeholder="在此输入或粘贴视频脚本内容。输入完成后点击右上角保存，即可作为后续步骤的依据。"
+                        onSave={(val) => saveProjectUpdate(p => ({ ...p, script: val, status: p.status === ProjectStatus.DRAFT ? ProjectStatus.IN_PROGRESS : p.status }))}
+                    />
                  )}
 
                  {selectedNodeId === 'summary' && (
