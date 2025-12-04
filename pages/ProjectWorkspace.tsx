@@ -8,7 +8,7 @@ import {
   ArrowLeft, Layout, FileText, Type, 
   List, PanelRightClose, Sparkles, Loader2, Copy, 
   Check, Images, ArrowRight, Palette, Film, Maximize2, Play,
-  ZoomIn, ZoomOut, Move, RefreshCw
+  ZoomIn, ZoomOut, Move, RefreshCw, Rocket
 } from 'lucide-react';
 
 // --- Sub-Components ---
@@ -103,7 +103,8 @@ const ProjectWorkspace: React.FC = () => {
   const [loading, setLoading] = useState(true);
   
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>('input');
-  const [generatingNodeId, setGeneratingNodeId] = useState<string | null>(null);
+  // Changed to Set to allow concurrent generation indicators
+  const [generatingNodes, setGeneratingNodes] = useState<Set<string>>(new Set());
   const [prompts, setPrompts] = useState<Record<string, PromptTemplate>>({});
   
   // Canvas State
@@ -184,8 +185,82 @@ const ProjectWorkspace: React.FC = () => {
       if (updated && mountedRef.current) setProject(updated);
   };
 
+  const generateNodeContent = async (nodeId: string) => {
+      if (!project) throw new Error("项目数据未加载");
+
+      const config = NODES_CONFIG.find(n => n.id === nodeId);
+      if (!config || !config.promptKey) return;
+      
+      const template = prompts[config.promptKey]?.template || '';
+      
+      // Prepare context data for interpolation
+      // Using current project state. For parallel execution, ensure dependencies (script) are present.
+      const contextData: Record<string, string> = {
+          topic: project.inputs.topic,
+          tone: project.inputs.tone,
+          language: project.inputs.language,
+          title: project.title, 
+          script: project.script || ''
+      };
+
+      const prompt = interpolate(template, contextData);
+
+      if (nodeId === 'script') {
+          const text = await gemini.generateText(prompt, 'gemini-3-pro-preview'); 
+          await saveProjectUpdate(p => ({ 
+              ...p, 
+              script: text, 
+              status: p.status === ProjectStatus.DRAFT ? ProjectStatus.IN_PROGRESS : p.status 
+          }));
+      } 
+      else if (nodeId === 'summary') {
+          const text = await gemini.generateText(prompt);
+          await saveProjectUpdate(p => ({ ...p, summary: text }));
+      }
+      else if (nodeId === 'titles') {
+          const data = await gemini.generateJSON<TitleItem[]>(prompt, {
+              type: "ARRAY", items: {
+                  type: "OBJECT", properties: {
+                      title: {type: "STRING"},
+                      keywords: {type: "STRING"},
+                      score: {type: "NUMBER"}
+                  }
+              }
+          });
+          await saveProjectUpdate(p => ({ ...p, titles: data }));
+      }
+      else if (nodeId === 'cover') {
+          const data = await gemini.generateJSON<CoverOption[]>(prompt, {
+              type: "ARRAY", items: {
+                  type: "OBJECT", properties: {
+                      visual: {type: "STRING"},
+                      copy: {type: "STRING"},
+                      score: {type: "NUMBER"}
+                  }
+              }
+          });
+          await saveProjectUpdate(p => ({ ...p, coverOptions: data }));
+      }
+      else if (nodeId === 'sb_text') {
+          const data = await gemini.generateJSON<{description: string}[]>(prompt, {
+              type: "ARRAY", items: {
+                  type: "OBJECT", properties: {
+                      description: {type: "STRING"}
+                  }
+              }
+          });
+          const frames: StoryboardFrame[] = data.map((item, idx) => ({
+              id: crypto.randomUUID(),
+              sceneNumber: idx + 1,
+              description: item.description
+          }));
+          await saveProjectUpdate(p => ({ ...p, storyboard: frames }));
+      }
+  };
+
   const handleGenerate = async (nodeId: string) => {
     if (!project) return;
+    if (generatingNodes.has(nodeId)) return;
     
     // Check dependencies
     if (['sb_text', 'titles', 'summary', 'cover'].includes(nodeId) && !project.script) {
@@ -193,85 +268,65 @@ const ProjectWorkspace: React.FC = () => {
         return;
     }
 
-    setGeneratingNodeId(nodeId);
+    setGeneratingNodes(prev => new Set(prev).add(nodeId));
 
     try {
-        const config = NODES_CONFIG.find(n => n.id === nodeId);
-        if (!config || !config.promptKey) return;
-        
-        const template = prompts[config.promptKey]?.template || '';
-        
-        // Prepare context data for interpolation
-        const contextData: Record<string, string> = {
-            topic: project.inputs.topic,
-            tone: project.inputs.tone,
-            language: project.inputs.language,
-            title: project.title, // For steps that need the title
-            script: project.script || ''
-        };
-
-        const prompt = interpolate(template, contextData);
-
-        if (nodeId === 'script') {
-            const text = await gemini.generateText(prompt, 'gemini-3-pro-preview'); // Use Pro for script
-            await saveProjectUpdate(p => ({ 
-                ...p, 
-                script: text, 
-                status: p.status === ProjectStatus.DRAFT ? ProjectStatus.IN_PROGRESS : p.status 
-            }));
-        } 
-        else if (nodeId === 'summary') {
-            const text = await gemini.generateText(prompt);
-            await saveProjectUpdate(p => ({ ...p, summary: text }));
-        }
-        else if (nodeId === 'titles') {
-            // Requesting explicit keyword field now
-            const data = await gemini.generateJSON<TitleItem[]>(prompt, {
-                type: "ARRAY", items: {
-                    type: "OBJECT", properties: {
-                        title: {type: "STRING"},
-                        keywords: {type: "STRING"},
-                        score: {type: "NUMBER"}
-                    }
-                }
-            });
-            await saveProjectUpdate(p => ({ ...p, titles: data }));
-        }
-        else if (nodeId === 'cover') {
-            const data = await gemini.generateJSON<CoverOption[]>(prompt, {
-                type: "ARRAY", items: {
-                    type: "OBJECT", properties: {
-                        visual: {type: "STRING"},
-                        copy: {type: "STRING"},
-                        score: {type: "NUMBER"}
-                    }
-                }
-            });
-            await saveProjectUpdate(p => ({ ...p, coverOptions: data }));
-        }
-        else if (nodeId === 'sb_text') {
-            const data = await gemini.generateJSON<{description: string}[]>(prompt, {
-                type: "ARRAY", items: {
-                    type: "OBJECT", properties: {
-                        description: {type: "STRING"}
-                    }
-                }
-            });
-            // Map to StoryboardFrame structure with IDs
-            const frames: StoryboardFrame[] = data.map((item, idx) => ({
-                id: crypto.randomUUID(),
-                sceneNumber: idx + 1,
-                description: item.description
-            }));
-            await saveProjectUpdate(p => ({ ...p, storyboard: frames }));
-        }
-
+        await generateNodeContent(nodeId);
     } catch (error: any) {
         alert(`生成失败: ${error.message}`);
         console.error(error);
     } finally {
-        if (mountedRef.current) setGeneratingNodeId(null);
+        if (mountedRef.current) {
+            setGeneratingNodes(prev => {
+                const next = new Set(prev);
+                next.delete(nodeId);
+                return next;
+            });
+        }
     }
+  };
+
+  const handleOneClickStart = async () => {
+      if (!project?.script) {
+          alert("【一键启动】需要先生成视频脚本。请先完成脚本生成。");
+          return;
+      }
+
+      const targets = ['titles', 'sb_text', 'summary'];
+      
+      // Mark all as generating
+      setGeneratingNodes(prev => {
+          const next = new Set(prev);
+          targets.forEach(t => next.add(t));
+          return next;
+      });
+
+      const processWithRetry = async (id: string) => {
+          try {
+              await generateNodeContent(id);
+          } catch (error) {
+              console.warn(`模块 [${id}] 第一次生成失败，正在重试...`, error);
+              // Simple wait before retry
+              await new Promise(r => setTimeout(r, 1000));
+              try {
+                  await generateNodeContent(id);
+              } catch (retryError: any) {
+                  console.error(`模块 [${id}] 第二次生成失败`, retryError);
+                  alert(`模块 [${id}] 生成失败 (重试无效): ${retryError.message}`);
+              }
+          } finally {
+              if (mountedRef.current) {
+                  setGeneratingNodes(prev => {
+                      const next = new Set(prev);
+                      next.delete(id);
+                      return next;
+                  });
+              }
+          }
+      };
+
+      // Execute in parallel
+      await Promise.all(targets.map(id => processWithRetry(id)));
   };
 
   // SVG Curve Calculator
@@ -308,13 +363,25 @@ const ProjectWorkspace: React.FC = () => {
                 </div>
              </div>
 
-             <div className="pointer-events-auto flex gap-2">
-                 <button onClick={() => setTransform(prev => ({...prev, scale: prev.scale + 0.1}))} className="p-3 bg-white border border-slate-200 rounded-xl hover:bg-slate-50 shadow-sm text-slate-600">
-                     <ZoomIn className="w-5 h-5" />
+             <div className="pointer-events-auto flex gap-3">
+                 <button 
+                    onClick={handleOneClickStart}
+                    disabled={generatingNodes.size > 0 || !project.script}
+                    className="flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-violet-600 to-indigo-600 text-white rounded-xl font-bold shadow-lg shadow-violet-500/20 hover:shadow-violet-500/40 hover:-translate-y-0.5 transition-all disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none disabled:shadow-none"
+                    title={!project.script ? "请先生成视频脚本" : "一键生成标题、分镜与简介"}
+                 >
+                    {generatingNodes.size > 0 && ['titles', 'sb_text', 'summary'].some(id => generatingNodes.has(id)) ? <Loader2 className="w-4 h-4 animate-spin" /> : <Rocket className="w-4 h-4" />}
+                    一键启动
                  </button>
-                 <button onClick={() => setTransform(prev => ({...prev, scale: Math.max(0.5, prev.scale - 0.1)}))} className="p-3 bg-white border border-slate-200 rounded-xl hover:bg-slate-50 shadow-sm text-slate-600">
-                     <ZoomOut className="w-5 h-5" />
-                 </button>
+
+                 <div className="flex gap-2">
+                    <button onClick={() => setTransform(prev => ({...prev, scale: prev.scale + 0.1}))} className="p-3 bg-white border border-slate-200 rounded-xl hover:bg-slate-50 shadow-sm text-slate-600">
+                        <ZoomIn className="w-5 h-5" />
+                    </button>
+                    <button onClick={() => setTransform(prev => ({...prev, scale: Math.max(0.5, prev.scale - 0.1)}))} className="p-3 bg-white border border-slate-200 rounded-xl hover:bg-slate-50 shadow-sm text-slate-600">
+                        <ZoomOut className="w-5 h-5" />
+                    </button>
+                 </div>
              </div>
         </div>
 
@@ -370,7 +437,8 @@ const ProjectWorkspace: React.FC = () => {
                 {/* Nodes Layer */}
                 {NODES_CONFIG.map((node) => {
                      const isActive = selectedNodeId === node.id;
-                     const isGenerating = generatingNodeId === node.id;
+                     // Check if this specific node is currently regenerating
+                     const isGenerating = generatingNodes.has(node.id);
                      
                      // Determine status of data
                      let hasData = false;
