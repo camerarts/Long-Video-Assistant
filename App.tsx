@@ -10,6 +10,7 @@ import InspirationRepo from './pages/InspirationRepo';
 import AuthGuard from './components/AuthGuard';
 import LandingPage from './pages/LandingPage';
 import CreateProject from './pages/CreateProject';
+import AiTitles from './pages/AiTitles';
 
 const ProtectedRoute = ({ children }: { children: React.ReactNode }) => (
   <AuthGuard>
@@ -27,6 +28,7 @@ const App: React.FC = () => {
         <Route path="/create" element={<ProtectedRoute><CreateProject /></ProtectedRoute>} />
         <Route path="/images" element={<ProtectedRoute><ImageWorkshopList /></ProtectedRoute>} />
         <Route path="/inspiration" element={<ProtectedRoute><InspirationRepo /></ProtectedRoute>} />
+        <Route path="/ai-titles" element={<ProtectedRoute><AiTitles /></ProtectedRoute>} />
         <Route path="/project/:id" element={<ProtectedRoute><ProjectWorkspace /></ProtectedRoute>} />
         <Route path="/project/:id/images" element={<ProtectedRoute><StoryboardImages /></ProtectedRoute>} />
         <Route path="/settings" element={<ProtectedRoute><Settings /></ProtectedRoute>} />
