@@ -87,7 +87,7 @@ const AiTitles: React.FC = () => {
       <div className="flex-1 flex flex-col md:flex-row gap-6 overflow-hidden">
         {/* Input Panel - Left 1/4 */}
         <div className="w-full md:w-1/4 flex flex-col bg-white rounded-3xl border border-slate-200 shadow-sm overflow-hidden h-full">
-            <div className="p-4 bg-slate-50 border-b border-slate-100 flex justify-between items-center flex-shrink-0">
+            <div className="py-2 px-4 bg-slate-50 border-b border-slate-100 flex justify-between items-center flex-shrink-0">
                 <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">标题方向</span>
                 <button onClick={handleClear} className="text-slate-400 hover:text-slate-600 p-1 rounded-md hover:bg-slate-100 transition-colors" title="清空">
                     <Eraser className="w-4 h-4" />
@@ -97,15 +97,15 @@ const AiTitles: React.FC = () => {
                 value={userInput}
                 onChange={(e) => setUserInput(e.target.value)}
                 placeholder="例如：\n1. 2024年人工智能行业发展趋势\n2. 适合新手的理财技巧\n3. 悬念感强的开箱视频..."
-                className="flex-1 w-full p-6 text-slate-700 placeholder:text-slate-300 resize-none outline-none focus:bg-slate-50/50 transition-colors text-base leading-relaxed"
+                className="flex-1 w-full p-4 text-slate-700 placeholder:text-slate-300 resize-none outline-none focus:bg-slate-50/50 transition-colors text-sm leading-relaxed"
             />
             <div className="p-4 border-t border-slate-100 bg-white flex-shrink-0">
                 <button
                     onClick={handleGenerate}
                     disabled={loading || !userInput.trim()}
-                    className="w-full bg-gradient-to-r from-violet-600 to-indigo-600 text-white py-3 rounded-xl font-bold shadow-lg shadow-indigo-500/30 hover:shadow-indigo-500/40 hover:-translate-y-0.5 transition-all flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed disabled:shadow-none disabled:transform-none"
+                    className="w-full bg-gradient-to-r from-violet-600 to-indigo-600 text-white py-2.5 rounded-xl font-bold shadow-lg shadow-indigo-500/30 hover:shadow-indigo-500/40 hover:-translate-y-0.5 transition-all flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed disabled:shadow-none disabled:transform-none text-sm"
                 >
-                    {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : <Sparkles className="w-5 h-5" />}
+                    {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4" />}
                     开始生成
                 </button>
             </div>
@@ -115,7 +115,7 @@ const AiTitles: React.FC = () => {
         <div className="w-full md:w-3/4 flex flex-col bg-white rounded-3xl border border-slate-200 shadow-sm overflow-hidden h-full">
             {/* Top Section: Titles (75%) */}
             <div className="flex-[3] flex flex-col min-h-0 border-b border-slate-200">
-                <div className="p-4 bg-slate-50 border-b border-slate-100 flex justify-between items-center flex-shrink-0">
+                <div className="py-2 px-4 bg-slate-50 border-b border-slate-100 flex justify-between items-center flex-shrink-0">
                     <span className="text-xs font-bold text-slate-500 uppercase tracking-wider flex items-center gap-1.5">
                         <Type className="w-3.5 h-3.5" /> 标题结果
                     </span>
@@ -128,18 +128,18 @@ const AiTitles: React.FC = () => {
                         <Copy className="w-4 h-4" />
                     </button>
                 </div>
-                <div className="flex-1 overflow-y-auto p-6 bg-[#FAFAFA]">
+                <div className="flex-1 overflow-y-auto p-4 bg-[#FAFAFA]">
                     {loading ? (
                         <div className="h-full flex flex-col items-center justify-center text-slate-400 gap-3">
                             <Loader2 className="w-8 h-8 animate-spin text-violet-500" />
                             <span className="text-sm font-medium animate-pulse">AI 正在构思标题与封面...</span>
                         </div>
                     ) : result?.titles ? (
-                        <div className="space-y-3">
+                        <div className="space-y-2">
                             {result.titles.map((title, idx) => (
-                                <div key={idx} className="p-3 bg-white border border-slate-100 rounded-xl shadow-sm hover:shadow-md transition-shadow flex gap-3 items-start group">
-                                    <span className="text-xs font-bold text-slate-300 mt-1 w-6 text-center shrink-0">{idx + 1}</span>
-                                    <p className="text-slate-800 font-medium text-lg leading-relaxed">{title}</p>
+                                <div key={idx} className="py-2 px-3 bg-white border border-slate-100 rounded-lg shadow-sm hover:shadow-md transition-shadow flex gap-2 items-center group">
+                                    <span className="text-[10px] font-bold text-slate-300 w-5 text-center shrink-0">{idx + 1}</span>
+                                    <p className="text-slate-800 font-medium text-sm leading-snug flex-1">{title}</p>
                                     <button 
                                         className="ml-auto opacity-0 group-hover:opacity-100 text-slate-300 hover:text-violet-600 transition-all p-1"
                                         onClick={() => {
@@ -148,7 +148,7 @@ const AiTitles: React.FC = () => {
                                         }}
                                         title="复制此标题"
                                     >
-                                        <Copy className="w-4 h-4" />
+                                        <Copy className="w-3.5 h-3.5" />
                                     </button>
                                 </div>
                             ))}
@@ -166,28 +166,28 @@ const AiTitles: React.FC = () => {
             <div className="flex-[1] flex flex-row min-h-0 bg-white">
                 {/* Bottom Left: Cover Elements */}
                 <div className="w-1/2 border-r border-slate-200 flex flex-col">
-                    <div className="p-3 bg-slate-50 border-b border-slate-100 flex-shrink-0">
+                    <div className="py-2 px-3 bg-slate-50 border-b border-slate-100 flex-shrink-0">
                         <span className="text-xs font-bold text-slate-500 uppercase tracking-wider flex items-center gap-1.5">
                             <ImageIcon className="w-3.5 h-3.5" /> 封面元素
                         </span>
                     </div>
-                    <div className="flex-1 p-4 overflow-y-auto text-sm text-slate-600 leading-relaxed">
+                    <div className="flex-1 p-3 overflow-y-auto text-xs text-slate-600 leading-relaxed">
                         {result?.coverVisual ? (
                             result.coverVisual
                         ) : (
-                             <span className="text-slate-300 text-xs italic">等待生成...</span>
+                             <span className="text-slate-300 italic">等待生成...</span>
                         )}
                     </div>
                 </div>
 
                 {/* Bottom Right: Cover Text */}
                 <div className="w-1/2 flex flex-col">
-                    <div className="p-3 bg-slate-50 border-b border-slate-100 flex-shrink-0">
+                    <div className="py-2 px-3 bg-slate-50 border-b border-slate-100 flex-shrink-0">
                          <span className="text-xs font-bold text-slate-500 uppercase tracking-wider flex items-center gap-1.5">
                             <ALargeSmall className="w-3.5 h-3.5" /> 封面文字
                         </span>
                     </div>
-                    <div className="flex-1 p-4 overflow-y-auto text-sm text-slate-800 font-bold leading-relaxed whitespace-pre-wrap">
+                    <div className="flex-1 p-3 overflow-y-auto text-sm text-slate-800 font-bold leading-relaxed whitespace-pre-wrap">
                         {result?.coverText ? (
                             result.coverText
                         ) : (
