@@ -41,8 +41,8 @@ const ImageWorkshopList: React.FC = () => {
   };
 
   const handleRowClick = (project: ProjectData) => {
+    // If no storyboard data, do nothing (no alert, no feedback)
     if (!project.storyboard || project.storyboard.length === 0) {
-        alert("该项目暂无分镜数据，无法进入生图工坊。\n\n请先进入【项目列表】，在画布中生成【分镜文案】。");
         return;
     }
     navigate(`/project/${project.id}/images`);
@@ -87,7 +87,7 @@ const ImageWorkshopList: React.FC = () => {
                     <thead className="bg-slate-100 border-b border-slate-200 text-slate-600">
                         <tr>
                             <th className="py-4 px-6 text-xs font-bold uppercase tracking-wider w-20 text-center">序号</th>
-                            <th className="py-4 px-6 text-xs font-bold uppercase tracking-wider text-center min-w-[300px]">主题</th>
+                            <th className="py-4 px-6 text-xs font-bold uppercase tracking-wider text-center min-w-[350px]">主题</th>
                             <th className="py-4 px-6 text-xs font-bold uppercase tracking-wider w-36 md:w-48 text-center">生图进度</th>
                             <th className="py-4 px-6 text-xs font-bold uppercase tracking-wider w-40 text-center hidden md:table-cell">完成日期</th>
                             <th className="py-4 px-6 text-xs font-bold uppercase tracking-wider w-24 text-center">操作</th>
@@ -108,15 +108,15 @@ const ImageWorkshopList: React.FC = () => {
                                         : 'opacity-60 bg-slate-50/30 cursor-not-allowed grayscale-[0.5]'
                                     }`}
                                 >
-                                    <td className="py-5 px-6 text-center text-sm font-bold text-slate-400">
+                                    <td className="py-5 px-6 text-center text-sm font-bold text-slate-400 align-middle">
                                         {index + 1}
                                     </td>
-                                    <td className="py-5 px-6">
-                                        <div className={`font-bold text-base md:text-lg transition-colors whitespace-normal break-words leading-relaxed ${hasStoryboard ? 'text-slate-800 group-hover:text-fuchsia-700' : 'text-slate-500'}`}>
+                                    <td className="py-5 px-6 align-top">
+                                        <div className="font-bold text-base md:text-lg transition-colors whitespace-normal break-all block h-auto leading-relaxed text-slate-800 group-hover:text-fuchsia-700">
                                             {project.title || '未命名项目'}
                                         </div>
                                     </td>
-                                    <td className="py-5 px-6">
+                                    <td className="py-5 px-6 align-middle">
                                         {hasStoryboard ? (
                                             <div className="flex flex-col gap-1.5">
                                                 <div className="flex items-center justify-between text-xs font-bold text-slate-600">
@@ -139,13 +139,13 @@ const ImageWorkshopList: React.FC = () => {
                                             </div>
                                         )}
                                     </td>
-                                    <td className="py-5 px-6 hidden md:table-cell">
+                                    <td className="py-5 px-6 hidden md:table-cell align-middle">
                                         <div className="flex items-center justify-center gap-2 text-sm font-medium text-slate-500">
                                             <Calendar className="w-4 h-4 text-slate-300" />
                                             {new Date(project.updatedAt).toLocaleDateString('zh-CN')}
                                         </div>
                                     </td>
-                                    <td className="py-5 px-6 text-center">
+                                    <td className="py-5 px-6 text-center align-middle">
                                         {deleteConfirmId === project.id ? (
                                             <button 
                                                 onClick={(e) => handleDelete(e, project.id)}
