@@ -209,15 +209,20 @@ export const DEFAULT_PROMPTS: Record<string, PromptTemplate> = {
   AI_TITLES_GENERATOR: {
     id: 'ai_titles_gen',
     name: 'AI 标题生成',
-    description: '独立工具：基于输入的标题方向或内容生成爆款标题',
-    template: `请基于以下给出的标题方向，生成 10 个具有高点击率、病毒传播潜力的视频标题。
+    description: '独立工具：基于输入的标题方向或内容生成爆款标题与封面方案',
+    template: `请基于以下给出的标题方向，生成一组爆款视频标题，以及一个高点击率的封面策划方案。
 
 标题方向:
 {{TITLE_DIRECTION}}
 
 要求：
-1. 标题风格多样（悬念、反差、干货、情感等）。
-2. 适配 YouTube/B站/抖音 调性。
-3. 直接输出标题列表，每行一个，不要带序号或额外解释。`
+1. 标题风格多样，适配 YouTube/B站/抖音 调性。
+2. 封面策划要吸睛。
+
+请返回一个纯 JSON 对象（不要Markdown格式），包含以下字段：
+- "titles": 字符串数组，包含 10 个具有病毒传播潜力的标题。
+- "coverVisual": 字符串，描述封面画面的视觉元素、构图和氛围。
+- "coverText": 字符串，封面上的大字文案（简短有力）。
+`
   }
 };
