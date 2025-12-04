@@ -1,4 +1,5 @@
 
+
 import React, { useState, useEffect } from 'react';
 import * as storage from '../services/storageService';
 import * as gemini from '../services/geminiService';
@@ -11,6 +12,8 @@ interface AiTitlesResult {
     coverText: string;
 }
 
+const TOOL_ID = 'ai_titles';
+
 const AiTitles: React.FC = () => {
   const [userInput, setUserInput] = useState('');
   const [result, setResult] = useState<AiTitlesResult | null>(null);
@@ -19,6 +22,7 @@ const AiTitles: React.FC = () => {
 
   useEffect(() => {
     loadPrompt();
+    loadSavedData();
   }, []);
 
   const loadPrompt = async () => {
@@ -26,6 +30,14 @@ const AiTitles: React.FC = () => {
     if (prompts.AI_TITLES_GENERATOR) {
       setPromptTemplate(prompts.AI_TITLES_GENERATOR);
     }
+  };
+
+  const loadSavedData = async () => {
+      const saved = await storage.getToolData<{input: string, result: AiTitlesResult}>(TOOL_ID);
+      if (saved) {
+          setUserInput(saved.input || '');
+          setResult(saved.result || null);
+      }
   };
 
   const handleGenerate = async () => {
@@ -36,7 +48,8 @@ const AiTitles: React.FC = () => {
     }
 
     setLoading(true);
-    setResult(null);
+    // Explicitly do not clear result here so UI doesn't jump, 
+    // but the logic below will overwrite it on success.
 
     try {
       // Use the new system variable TITLE_DIRECTION
@@ -50,9 +63,14 @@ const AiTitles: React.FC = () => {
               titles: { type: "ARRAY", items: { type: "STRING" } },
               coverVisual: { type: "STRING" },
               coverText: { type: "STRING" }
-          }
+          },
+          required: ["titles", "coverVisual", "coverText"]
       });
+      
       setResult(json);
+      // Save persistence
+      await storage.saveToolData(TOOL_ID, { input: userInput, result: json });
+
     } catch (error: any) {
       alert(`生成失败: ${error.message}`);
       console.error(error);
@@ -67,9 +85,10 @@ const AiTitles: React.FC = () => {
     alert("已复制标题列表");
   };
 
-  const handleClear = () => {
+  const handleClear = async () => {
     setUserInput('');
     setResult(null);
+    await storage.saveToolData(TOOL_ID, { input: '', result: null });
   };
 
   return (
