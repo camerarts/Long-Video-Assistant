@@ -112,7 +112,7 @@ export const DEFAULT_PROMPTS: Record<string, PromptTemplate> = {
     id: 'titles',
     name: '标题生成',
     description: '基于脚本生成具有病毒传播潜力的标题',
-    template: `请基于以下完整的视频脚本，生成10个具有病毒传播潜力、高点击率的YouTube/B站风格标题。
+    template: `请基于以下视频脚本，生成10个具有病毒传播潜力、高点击率的YouTube/B站风格标题。
 
 主题: {{title}}
 脚本内容概要：
@@ -205,5 +205,19 @@ export const DEFAULT_PROMPTS: Record<string, PromptTemplate> = {
   "viralTitle": "普通人翻身机会！2025年这3个风口搞钱项目，错过再等十年"
 }
 `
+  },
+  AI_TITLES_GENERATOR: {
+    id: 'ai_titles_gen',
+    name: 'AI 标题生成',
+    description: '独立工具：基于输入的主题或内容生成爆款标题',
+    template: `请基于以下输入的内容（可能是主题、一段话或文章概要），生成 10 个具有高点击率、病毒传播潜力的视频标题。
+
+输入内容:
+{{topic}}
+
+要求：
+1. 标题风格多样（悬念、反差、干货、情感等）。
+2. 适配 YouTube/B站/抖音 调性。
+3. 直接输出标题列表，每行一个，不要带序号或额外解释。`
   }
 };
