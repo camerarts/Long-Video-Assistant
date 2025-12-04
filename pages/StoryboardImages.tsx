@@ -180,11 +180,10 @@ const StoryboardImages: React.FC = () => {
                 
                 // Show Error Toast
                 setMessageType('error');
-                // Shorten message if too long
-                const msg = e.message.length > 50 ? e.message.substring(0, 50) + '...' : e.message;
-                setMessage(`场景 ${frame.sceneNumber} 失败: ${msg}`);
-                // Clear message after 5s so user has time to read
-                setTimeout(() => setMessage(null), 5000);
+                // No truncation, show full error
+                setMessage(`场景 ${frame.sceneNumber} 失败: ${e.message}`);
+                // Clear message after 6s so user has time to read
+                setTimeout(() => setMessage(null), 6000);
             }
         } finally {
              // UI: Unmark loading
@@ -356,9 +355,16 @@ const StoryboardImages: React.FC = () => {
   return (
     <div className="flex flex-col h-full bg-[#F8F9FC] relative">
         {message && (
-            <div className={`fixed bottom-8 right-8 text-white px-6 py-3 rounded-xl shadow-xl z-50 font-bold flex items-center gap-2 animate-in fade-in slide-in-from-bottom-5 duration-300 ${messageType === 'error' ? 'bg-rose-500' : 'bg-emerald-500'}`}>
-                {messageType === 'error' ? <AlertCircle className="w-5 h-5" /> : <CheckCircle2 className="w-5 h-5" />}
-                {message}
+            <div className={`fixed bottom-8 right-8 max-w-[90vw] md:max-w-lg text-white px-6 py-4 rounded-xl shadow-2xl z-50 font-bold flex items-start gap-3 animate-in fade-in slide-in-from-bottom-5 duration-300 shadow-rose-900/20 ${messageType === 'error' ? 'bg-rose-600' : 'bg-emerald-600'}`}>
+                <div className="shrink-0 mt-0.5">
+                    {messageType === 'error' ? <AlertCircle className="w-5 h-5" /> : <CheckCircle2 className="w-5 h-5" />}
+                </div>
+                <div className="break-words text-sm leading-relaxed whitespace-pre-wrap">
+                    {message}
+                </div>
+                <button onClick={() => setMessage(null)} className="shrink-0 text-white/70 hover:text-white ml-2">
+                    <X className="w-4 h-4" />
+                </button>
             </div>
         )}
 
@@ -573,7 +579,7 @@ const StoryboardImages: React.FC = () => {
                                                             console.error(e);
                                                             setMessageType('error');
                                                             setMessage(`生成失败: ${e.message}`);
-                                                            setTimeout(() => setMessage(null), 3000);
+                                                            setTimeout(() => setMessage(null), 6000);
                                                         } finally {
                                                             setCurrentGenIds(prev => {
                                                                 const next = new Set(prev);
