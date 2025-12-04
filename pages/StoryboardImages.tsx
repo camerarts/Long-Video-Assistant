@@ -5,7 +5,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { ProjectData, StoryboardFrame, PromptTemplate } from '../types';
 import * as storage from '../services/storageService';
 import * as gemini from '../services/geminiService';
-import { ArrowLeft, Download, Loader2, Sparkles, Image as ImageIcon, RefreshCw, X, Maximize2, CloudUpload, FileSpreadsheet, Palette, RotateCcw, CheckCircle2 } from 'lucide-react';
+import { ArrowLeft, Download, Loader2, Sparkles, Image as ImageIcon, RefreshCw, X, Maximize2, CloudUpload, FileSpreadsheet, Palette, RotateCcw, CheckCircle2, AlertCircle } from 'lucide-react';
 import JSZip from 'jszip';
 
 const StoryboardImages: React.FC = () => {
@@ -32,6 +32,7 @@ const StoryboardImages: React.FC = () => {
   const [downloading, setDownloading] = useState(false);
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
+  const [messageType, setMessageType] = useState<'success' | 'error'>('success');
   
   const mountedRef = useRef(true);
 
@@ -106,29 +107,27 @@ const StoryboardImages: React.FC = () => {
         // Also update local prompts state just in case
         setPrompts(currentPrompts);
 
+        setMessageType('success');
         setMessage("提示词已重新导入成功！");
         setTimeout(() => setMessage(null), 3000);
     }
   };
 
   const generateSingleImage = async (frame: StoryboardFrame): Promise<string | null> => {
-      try {
-        // If the frame already has a specific user-edited prompt, use it.
-        // Otherwise, interpolate using the CURRENTLY selected configuration template.
-        let finalPrompt = frame.imagePrompt;
-        
-        if (!finalPrompt) {
-            const template = prompts[style_mode]?.template || '{{description}}';
-            finalPrompt = interpolatePrompt(template, { description: frame.description });
-            // Save the interpolated prompt so the user can see what was used
-            handlePromptChange(frame.id, finalPrompt);
-        }
-        
-        return await gemini.generateImage(finalPrompt);
-      } catch (e) {
-          console.error(`Error generating frame ${frame.id}`, e);
-          return null;
+      // If the frame already has a specific user-edited prompt, use it.
+      // Otherwise, interpolate using the CURRENTLY selected configuration template.
+      let finalPrompt = frame.imagePrompt;
+    
+      if (!finalPrompt) {
+          const template = prompts[style_mode]?.template || '{{description}}';
+          finalPrompt = interpolatePrompt(template, { description: frame.description });
+          // Save the interpolated prompt so the user can see what was used
+          handlePromptChange(frame.id, finalPrompt);
       }
+    
+      // Note: We deliberately do NOT catch errors here, so the batch processor can catch them
+      // and display the specific error message (e.g., Safety Filter) to the user.
+      return await gemini.generateImage(finalPrompt);
   };
 
   const handleBatchGenerate = async (framesToGenerate: StoryboardFrame[]) => {
@@ -174,10 +173,18 @@ const StoryboardImages: React.FC = () => {
                     setBatchProgress(prev => ({ ...prev, failed: prev.failed + 1 }));
                  }
             }
-        } catch(e) {
-            console.error("Failed to generate image", e);
+        } catch(e: any) {
+            console.error(`Failed to generate image for scene ${frame.sceneNumber}`, e);
             if (mountedRef.current) {
                 setBatchProgress(prev => ({ ...prev, failed: prev.failed + 1 }));
+                
+                // Show Error Toast
+                setMessageType('error');
+                // Shorten message if too long
+                const msg = e.message.length > 50 ? e.message.substring(0, 50) + '...' : e.message;
+                setMessage(`场景 ${frame.sceneNumber} 失败: ${msg}`);
+                // Clear message after 5s so user has time to read
+                setTimeout(() => setMessage(null), 5000);
             }
         } finally {
              // UI: Unmark loading
@@ -349,8 +356,8 @@ const StoryboardImages: React.FC = () => {
   return (
     <div className="flex flex-col h-full bg-[#F8F9FC] relative">
         {message && (
-            <div className="fixed bottom-8 right-8 bg-emerald-500 text-white px-6 py-3 rounded-xl shadow-xl z-50 font-bold flex items-center gap-2 animate-in fade-in slide-in-from-bottom-5 duration-300">
-                <CheckCircle2 className="w-5 h-5" />
+            <div className={`fixed bottom-8 right-8 text-white px-6 py-3 rounded-xl shadow-xl z-50 font-bold flex items-center gap-2 animate-in fade-in slide-in-from-bottom-5 duration-300 ${messageType === 'error' ? 'bg-rose-500' : 'bg-emerald-500'}`}>
+                {messageType === 'error' ? <AlertCircle className="w-5 h-5" /> : <CheckCircle2 className="w-5 h-5" />}
                 {message}
             </div>
         )}
@@ -562,8 +569,11 @@ const StoryboardImages: React.FC = () => {
                                                                  const updated = await storage.getProject(id!);
                                                                  if(updated) setProject(updated);
                                                             }
-                                                        } catch(e) {
+                                                        } catch(e: any) {
                                                             console.error(e);
+                                                            setMessageType('error');
+                                                            setMessage(`生成失败: ${e.message}`);
+                                                            setTimeout(() => setMessage(null), 3000);
                                                         } finally {
                                                             setCurrentGenIds(prev => {
                                                                 const next = new Set(prev);
