@@ -148,11 +148,17 @@ export const DEFAULT_PROMPTS: Record<string, PromptTemplate> = {
 2. 时间戳（基于脚本结构估算）
 3. 相关标签（Hashtags）`
   },
-  IMAGE_GEN: {
-    id: 'image_gen',
-    name: '分镜画面提示词前缀',
-    description: '图片生成提示词的前缀配置',
+  IMAGE_GEN_A: {
+    id: 'image_gen_a',
+    name: '分镜画面提示词A',
+    description: '图片生成配置方案 A (默认：电影质感)',
     template: `电影感，大师级构图，8k分辨率，极高细节，照片级真实，16:9宽画幅。 {{description}}`
+  },
+  IMAGE_GEN_B: {
+    id: 'image_gen_b',
+    name: '分镜画面提示词B',
+    description: '图片生成配置方案 B (备用：漫画风格)',
+    template: `线条漫画插画写实风格，半真实，仿真皮肤，OC质感，超清画质32K，黑色线条厚涂。 {{description}}`
   },
   COVER_GEN: {
     id: 'cover_gen',
