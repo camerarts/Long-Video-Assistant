@@ -120,12 +120,12 @@ const NODE_HEIGHT = 180;
 const NODES_CONFIG = [
   { id: 'input', label: '项目输入', icon: Layout, color: 'blue', description: '选题与基本信息', x: 50, y: 300 },
   { id: 'script', label: '视频脚本', icon: FileText, color: 'violet', promptKey: 'SCRIPT', description: '生成分章节的详细脚本', x: 450, y: 300 },
-  // Swapped Titles (Top) and Storyboard Text (Bottom)
+  // Column 2: Outputs from Script
   { id: 'titles', label: '爆款标题', icon: Type, color: 'amber', promptKey: 'TITLES', description: '生成高点击率标题', x: 850, y: 100 },
   { id: 'sb_text', label: '分镜文案', icon: Film, color: 'fuchsia', promptKey: 'STORYBOARD_TEXT', description: '拆解为可视化画面描述', x: 850, y: 300 },
   { id: 'summary', label: '简介与标签', icon: List, color: 'emerald', promptKey: 'SUMMARY', description: '生成简介和Hashtags', x: 850, y: 500 },
-  // Swapped Cover (Top) and Image Gen (Bottom) to align with previous nodes
-  { id: 'cover', label: '封面策划', icon: Palette, color: 'rose', promptKey: 'COVER_GEN', description: '策划封面视觉与文案', x: 1250, y: 100 },
+  { id: 'cover', label: '封面策划', icon: Palette, color: 'rose', promptKey: 'COVER_GEN', description: '策划封面视觉与文案', x: 850, y: 700 },
+  // Column 3: Image Generation
   { id: 'image_gen', label: '图片工坊', icon: Images, color: 'pink', description: '前往生图页面', x: 1250, y: 300 },
 ];
 
@@ -134,8 +134,8 @@ const CONNECTIONS = [
   { from: 'script', to: 'sb_text' },
   { from: 'script', to: 'titles' },
   { from: 'script', to: 'summary' },
+  { from: 'script', to: 'cover' },
   { from: 'sb_text', to: 'image_gen' },
-  { from: 'titles', to: 'cover' },
 ];
 
 // --- Main Component ---
