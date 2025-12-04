@@ -4,7 +4,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { ProjectData, StoryboardFrame, PromptTemplate } from '../types';
 import * as storage from '../services/storageService';
 import * as gemini from '../services/geminiService';
-import { ArrowLeft, Download, Loader2, Sparkles, Image as ImageIcon, RefreshCw, X, Maximize2, CloudUpload } from 'lucide-react';
+import { ArrowLeft, Download, Loader2, Sparkles, Image as ImageIcon, RefreshCw, X, Maximize2, CloudUpload, FileSpreadsheet } from 'lucide-react';
 import JSZip from 'jszip';
 
 const StoryboardImages: React.FC = () => {
@@ -222,6 +222,32 @@ const StoryboardImages: React.FC = () => {
       setUploading(false);
   };
 
+  const handleDownloadPrompts = () => {
+    if (!project || !project.storyboard || project.storyboard.length === 0) {
+        alert("暂无分镜数据");
+        return;
+    }
+
+    let csvContent = "\uFEFF";
+    csvContent += "序号,AI绘画提示词\n";
+
+    project.storyboard.forEach((frame) => {
+        const prompt = frame.imagePrompt || interpolatePrompt(prompts.IMAGE_GEN?.template || '', { description: frame.description });
+        // Escape quotes
+        const safePrompt = `"${prompt.replace(/"/g, '""')}"`;
+        csvContent += `${frame.sceneNumber},${safePrompt}\n`;
+    });
+
+    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.setAttribute("href", url);
+    link.setAttribute("download", `${project.title}_prompts.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
   const handleDownloadAll = async () => {
     if (!project || !project.storyboard) return;
     setDownloading(true);
@@ -352,6 +378,14 @@ const StoryboardImages: React.FC = () => {
                 >
                     {uploading ? <Loader2 className="w-4 h-4 animate-spin"/> : <CloudUpload className="w-4 h-4" />}
                     上传图片到服务器 {localCount > 0 && `(${localCount})`}
+                </button>
+
+                <button
+                    onClick={handleDownloadPrompts}
+                    className="flex items-center gap-2 px-5 py-2.5 bg-white border border-slate-200 text-slate-700 rounded-xl font-bold hover:bg-slate-50 hover:text-blue-600 hover:border-blue-200 transition-all shadow-sm text-sm"
+                >
+                    <FileSpreadsheet className="w-4 h-4" />
+                    下载提示词
                 </button>
 
                 <button
