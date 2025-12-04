@@ -513,9 +513,9 @@ const ProjectWorkspace: React.FC = () => {
                          hasData = generatedCount > 0;
                      }
 
-                     // Visual Feedback Logic for Titles, Storyboard, Summary
+                     // Visual Feedback Logic for Titles, Storyboard, Summary, Cover
                      let bgClass = 'bg-white';
-                     if (['titles', 'sb_text', 'summary'].includes(node.id)) {
+                     if (['titles', 'sb_text', 'summary', 'cover'].includes(node.id)) {
                         if (hasData) {
                             bgClass = 'bg-emerald-50';
                         } else if (isFailed) {
