@@ -21,7 +21,8 @@ const Settings: React.FC = () => {
     'STORYBOARD_TEXT',
     'IMAGE_GEN',
     'SUMMARY',
-    'COVER_GEN'
+    'COVER_GEN',
+    'AI_TITLES_GENERATOR'
   ];
 
   useEffect(() => {
