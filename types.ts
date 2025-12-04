@@ -150,7 +150,7 @@ export const DEFAULT_PROMPTS: Record<string, PromptTemplate> = {
   },
   IMAGE_GEN: {
     id: 'image_gen',
-    name: '图片生成助手',
+    name: '分镜画面提示词前缀',
     description: '图片生成提示词的前缀配置',
     template: `电影感，大师级构图，8k分辨率，极高细节，照片级真实，16:9宽画幅。 {{description}}`
   },
