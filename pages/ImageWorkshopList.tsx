@@ -1,5 +1,3 @@
-
-
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ProjectData } from '../types';
@@ -113,11 +111,9 @@ const ImageWorkshopList: React.FC = () => {
                                         {index + 1}
                                     </td>
                                     <td className="py-5 px-6">
-                                        <div className="flex flex-col">
-                                            <span className={`font-bold text-base md:text-lg transition-colors mb-1 whitespace-normal break-words ${hasStoryboard ? 'text-slate-800 group-hover:text-fuchsia-700' : 'text-slate-500'}`}>
-                                                {project.title || '未命名项目'}
-                                            </span>
-                                        </div>
+                                        <span className={`block font-bold text-base md:text-lg transition-colors whitespace-normal break-all leading-relaxed ${hasStoryboard ? 'text-slate-800 group-hover:text-fuchsia-700' : 'text-slate-500'}`}>
+                                            {project.title || '未命名项目'}
+                                        </span>
                                     </td>
                                     <td className="py-5 px-6">
                                         {hasStoryboard ? (
