@@ -20,7 +20,8 @@ const Settings: React.FC = () => {
     'SCRIPT',
     'TITLES',
     'STORYBOARD_TEXT',
-    'IMAGE_GEN',
+    'IMAGE_GEN_A',
+    'IMAGE_GEN_B',
     'SUMMARY',
     'COVER_GEN',
     'AI_TITLES_GENERATOR'
