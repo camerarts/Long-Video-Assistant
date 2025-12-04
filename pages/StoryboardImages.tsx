@@ -6,7 +6,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { ProjectData, StoryboardFrame, PromptTemplate } from '../types';
 import * as storage from '../services/storageService';
 import * as gemini from '../services/geminiService';
-import { ArrowLeft, Download, Loader2, Sparkles, Image as ImageIcon, RefreshCw, X, Maximize2, CloudUpload, FileSpreadsheet, Palette } from 'lucide-react';
+import { ArrowLeft, Download, Loader2, Sparkles, Image as ImageIcon, RefreshCw, X, Maximize2, CloudUpload, FileSpreadsheet, Palette, RotateCcw } from 'lucide-react';
 import JSZip from 'jszip';
 
 const StoryboardImages: React.FC = () => {
@@ -76,6 +76,33 @@ const StoryboardImages: React.FC = () => {
 
   const interpolatePrompt = (template: string, data: Record<string, string>) => {
     return template.replace(/\{\{(\w+)\}\}/g, (_, key) => data[key] || '');
+  };
+
+  const handleReimportPrompts = async () => {
+    if (!project || !project.storyboard) return;
+    
+    if (!window.confirm('确定要重新导入提示词吗？这将使用最新的“图片生成配置”和“分镜描述”覆盖当前所有输入框的内容。')) {
+        return;
+    }
+
+    // Fetch latest prompts to ensure we use current settings
+    const currentPrompts = await storage.getPrompts();
+    const template = currentPrompts.IMAGE_GEN?.template || ''; // Fallback or empty if missing
+    
+    // Update storage
+    const updatedProject = await storage.updateProject(id!, (latest) => {
+        const newSb = latest.storyboard?.map(f => ({
+            ...f,
+            imagePrompt: interpolatePrompt(template, { description: f.description })
+        }));
+        return { ...latest, storyboard: newSb };
+    });
+    
+    if (updatedProject && mountedRef.current) {
+        setProject(updatedProject);
+        // Also update local prompts state just in case
+        setPrompts(currentPrompts);
+    }
   };
 
   const generateSingleImage = async (frame: StoryboardFrame): Promise<string | null> => {
@@ -378,6 +405,16 @@ const StoryboardImages: React.FC = () => {
             </div>
 
             <div className="flex items-center gap-2">
+                
+                <button
+                    onClick={handleReimportPrompts}
+                    className="flex items-center gap-1.5 px-2 h-6 bg-white border border-slate-200 text-slate-600 rounded-md font-bold hover:bg-slate-50 hover:text-indigo-600 hover:border-indigo-200 transition-all shadow-sm text-[9px]"
+                    title="重新根据分镜文案和配置生成提示词"
+                >
+                    <RotateCcw className="w-3 h-3" />
+                    重新导入提示词
+                </button>
+
                 {/* Style Selector */}
                 <div className="flex items-center bg-slate-50 border border-slate-200 rounded-md px-1.5 py-0.5 hover:border-slate-300 transition-colors h-6">
                     <Palette className="w-3 h-3 text-slate-400 mr-1.5" />
