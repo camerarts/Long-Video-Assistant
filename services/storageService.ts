@@ -5,9 +5,10 @@ import { ProjectData, PromptTemplate, DEFAULT_PROMPTS, ProjectStatus, Inspiratio
 // API Endpoints
 const API_BASE = '/api';
 const DB_NAME = 'LVA_DB';
-const DB_VERSION = 1;
+const DB_VERSION = 2; // Increased for 'tools' store
 const STORE_PROJECTS = 'projects';
 const STORE_INSPIRATIONS = 'inspirations';
+const STORE_TOOLS = 'tools'; // New store
 const KEY_PROMPTS = 'lva_prompts'; 
 const KEY_LAST_UPLOAD = 'lva_last_upload_time';
 const KEY_LAST_LOCAL_CHANGE = 'lva_last_local_change_time';
@@ -25,6 +26,9 @@ const openDB = (): Promise<IDBDatabase> => {
       }
       if (!db.objectStoreNames.contains(STORE_INSPIRATIONS)) {
         db.createObjectStore(STORE_INSPIRATIONS, { keyPath: 'id' });
+      }
+      if (!db.objectStoreNames.contains(STORE_TOOLS)) {
+        db.createObjectStore(STORE_TOOLS, { keyPath: 'id' });
       }
     };
 
@@ -204,6 +208,22 @@ export const uploadPrompts = async (): Promise<void> => {
   }
 };
 
+export const uploadTools = async (): Promise<void> => {
+  const tools = await dbGetAll<{id: string, data: any}>(STORE_TOOLS);
+  const payload = { tools };
+  
+  const res = await fetch(`${API_BASE}/sync`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload)
+  });
+
+  if (!res.ok) {
+    const errData = await res.json().catch(() => ({}));
+    throw new Error(errData.error || `Tools upload failed: ${res.statusText}`);
+  }
+};
+
 export const downloadAllData = async (): Promise<void> => {
   // 1. Fetch from D1 Sync Endpoint
   const res = await fetch(`${API_BASE}/sync`);
@@ -221,6 +241,10 @@ export const downloadAllData = async (): Promise<void> => {
   
   if (data.inspirations && Array.isArray(data.inspirations)) {
     for (const i of data.inspirations) await dbPut(STORE_INSPIRATIONS, i);
+  }
+
+  if (data.tools && Array.isArray(data.tools)) {
+    for (const t of data.tools) await dbPut(STORE_TOOLS, t);
   }
   
   if (data.prompts) {
@@ -372,11 +396,7 @@ export const deleteProject = async (id: string): Promise<void> => {
   // 3. Delete from Local DB
   await dbDelete(STORE_PROJECTS, id);
   
-  // 4. Delete from Remote D1 (Manual Sync approach means we usually wait for Upload, 
-  // but for deletion we might want to be cleaner or just let the next upload handle the removal logic?
-  // Our sync logic is "Upload Local to Remote". 
-  // The backend `sync` implementation performs INSERT/UPDATE. It DOES NOT delete records that are missing from payload.
-  // So we MUST explicity call DELETE on the API for the project record now.
+  // 4. Delete from Remote D1
   try {
     await fetch(`${API_BASE}/projects/${id}`, { method: 'DELETE' });
   } catch (e) {
@@ -424,9 +444,24 @@ export const saveInspiration = async (item: Inspiration): Promise<void> => {
 
 export const deleteInspiration = async (id: string): Promise<void> => {
   await dbDelete(STORE_INSPIRATIONS, id);
-  // Same logic as projects: Explicit delete for D1
   try {
     await fetch(`${API_BASE}/inspirations/${id}`, { method: 'DELETE' });
   } catch (e) {}
   trackChange();
+};
+
+// --- Tools Methods (Generic Store for One-Off Tools like AI Titles) ---
+
+export const saveToolData = async (id: string, data: any): Promise<void> => {
+    await dbPut(STORE_TOOLS, { id, data });
+    trackChange();
+};
+
+export const getToolData = async <T>(id: string): Promise<T | null> => {
+    try {
+        const item = await dbGet<{id: string, data: T}>(STORE_TOOLS, id);
+        return item ? item.data : null;
+    } catch { 
+        return null;
+    }
 };
