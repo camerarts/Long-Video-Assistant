@@ -1,6 +1,7 @@
 
+
 import React, { useState, useEffect } from 'react';
-import { PromptTemplate } from '../types';
+import { PromptTemplate, DEFAULT_PROMPTS } from '../types';
 import * as storage from '../services/storageService';
 import { Save, RefreshCw, AlertTriangle, ClipboardPaste, Check, Maximize2, X, Loader2, Copy } from 'lucide-react';
 
@@ -133,6 +134,13 @@ const Settings: React.FC = () => {
             if (!prompt) return null;
             const isDirty = dirtyKeys.has(key);
 
+            // Use system default for metadata (Name/Description) if available
+            // This ensures app updates to labels reflect immediately even if user has saved data,
+            // while preserving the user's custom template.
+            const systemDef = DEFAULT_PROMPTS[key];
+            const displayName = systemDef ? systemDef.name : prompt.name;
+            const displayDesc = systemDef ? systemDef.description : prompt.description;
+
             return (
               <div key={key} className="bg-white border border-slate-100 rounded-3xl p-6 md:p-8 shadow-[0_2px_10px_-4px_rgba(0,0,0,0.05)] relative group hover:shadow-[0_20px_40px_-12px_rgba(0,0,0,0.1)] transition-all hover:-translate-y-1 flex flex-col">
                 
@@ -142,7 +150,7 @@ const Settings: React.FC = () => {
                         <span className="flex-shrink-0 w-7 h-7 rounded-full bg-rose-500 text-white text-sm font-bold flex items-center justify-center shadow-lg shadow-rose-500/30 select-none">
                             {index + 1}
                         </span>
-                        {prompt.name}
+                        {displayName}
                         <button 
                             onClick={() => handleCopy(prompt.template)}
                             className="ml-1 p-1.5 text-slate-400 hover:text-violet-600 bg-transparent hover:bg-violet-50 rounded-lg transition-colors"
@@ -151,7 +159,7 @@ const Settings: React.FC = () => {
                             <Copy className="w-4 h-4" />
                         </button>
                     </h3>
-                    <p className="text-xs font-medium text-slate-400 mt-1 pl-10">{prompt.description}</p>
+                    <p className="text-xs font-medium text-slate-400 mt-1 pl-10">{displayDesc}</p>
                   </div>
                   <div className="flex flex-col items-end gap-3">
                     {/* Key Tag */}
@@ -215,7 +223,7 @@ const Settings: React.FC = () => {
                 <div className="px-8 py-5 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
                     <div>
                         <h2 className="text-xl font-extrabold text-slate-800 flex items-center gap-2">
-                            {prompts[expandedKey].name}
+                            {DEFAULT_PROMPTS[expandedKey] ? DEFAULT_PROMPTS[expandedKey].name : prompts[expandedKey].name}
                             <span className="text-sm font-medium text-slate-400 bg-white px-2 py-0.5 rounded border border-slate-200 hidden md:inline-block">{expandedKey}</span>
                         </h2>
                     </div>
