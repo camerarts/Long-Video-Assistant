@@ -217,12 +217,20 @@ export const DEFAULT_PROMPTS: Record<string, PromptTemplate> = {
 
 要求：
 1. 标题风格多样，适配 YouTube/B站/抖音 调性。
-2. 封面策划要吸睛。
+2. 封面策划要吸睛，元素丰富。
+3. 封面文案要简短有力。
 
-请返回一个纯 JSON 对象（不要Markdown格式），包含以下字段：
+请返回一个纯 JSON 对象（不要Markdown格式），**必须严格包含**以下三个字段：
 - "titles": 字符串数组，包含 10 个具有病毒传播潜力的标题。
-- "coverVisual": 字符串，描述封面画面的视觉元素、构图和氛围。
-- "coverText": 字符串，封面上的大字文案（简短有力）。
+- "coverVisual": 字符串，详细描述封面画面的视觉元素、构图、颜色和氛围。
+- "coverText": 字符串，封面上的大字文案（简短有力，建议2-4行）。
+
+示例 JSON 结构:
+{
+  "titles": ["标题1", "标题2", ...],
+  "coverVisual": "一个震惊的表情特写...",
+  "coverText": "文字行1\\n文字行2"
+}
 `
   }
 };
