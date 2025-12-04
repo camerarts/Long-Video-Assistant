@@ -1,14 +1,11 @@
 
 
-
-
-
 import React, { useEffect, useState, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { ProjectData, StoryboardFrame, PromptTemplate } from '../types';
 import * as storage from '../services/storageService';
 import * as gemini from '../services/geminiService';
-import { ArrowLeft, Download, Loader2, Sparkles, Image as ImageIcon, RefreshCw, X, Maximize2, CloudUpload, FileSpreadsheet, Palette, RotateCcw } from 'lucide-react';
+import { ArrowLeft, Download, Loader2, Sparkles, Image as ImageIcon, RefreshCw, X, Maximize2, CloudUpload, FileSpreadsheet, Palette, RotateCcw, CheckCircle2 } from 'lucide-react';
 import JSZip from 'jszip';
 
 const StoryboardImages: React.FC = () => {
@@ -34,6 +31,7 @@ const StoryboardImages: React.FC = () => {
   // State for Downloads and UI
   const [downloading, setDownloading] = useState(false);
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
+  const [message, setMessage] = useState<string | null>(null);
   
   const mountedRef = useRef(true);
 
@@ -104,6 +102,9 @@ const StoryboardImages: React.FC = () => {
         setProject(updatedProject);
         // Also update local prompts state just in case
         setPrompts(currentPrompts);
+
+        setMessage("提示词已重新导入成功！");
+        setTimeout(() => setMessage(null), 3000);
     }
   };
 
@@ -350,6 +351,13 @@ const StoryboardImages: React.FC = () => {
 
   return (
     <div className="flex flex-col h-full bg-[#F8F9FC] relative">
+        {message && (
+            <div className="fixed bottom-8 right-8 bg-emerald-500 text-white px-6 py-3 rounded-xl shadow-xl z-50 font-bold flex items-center gap-2 animate-in fade-in slide-in-from-bottom-5 duration-300">
+                <CheckCircle2 className="w-5 h-5" />
+                {message}
+            </div>
+        )}
+
         {/* Top Status Bar */}
         <div className="bg-slate-900 text-white shadow-md z-20 border-b border-slate-800">
             <div className="max-w-7xl mx-auto px-4 py-4 flex flex-wrap items-center justify-center gap-x-8 gap-y-2">
