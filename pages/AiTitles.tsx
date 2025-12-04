@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import * as storage from '../services/storageService';
 import * as gemini from '../services/geminiService';
@@ -30,8 +31,12 @@ const AiTitles: React.FC = () => {
 
     setLoading(true);
     try {
-      const prompt = promptTemplate.template.replace('{{topic}}', userInput);
-      const result = await gemini.generateText(prompt);
+      // Use the new system variable TITLE_DIRECTION
+      const prompt = promptTemplate.template.replace('{{TITLE_DIRECTION}}', userInput);
+      // Fallback for older templates that might still use {{topic}}
+      const finalPrompt = prompt.replace('{{topic}}', userInput);
+      
+      const result = await gemini.generateText(finalPrompt);
       setGeneratedResult(result);
     } catch (error: any) {
       alert(`生成失败: ${error.message}`);
@@ -59,15 +64,15 @@ const AiTitles: React.FC = () => {
             <Type className="w-6 h-6 md:w-8 md:h-8 text-violet-600" />
             AI 标题生成
           </h1>
-          <p className="text-xs md:text-base text-slate-500 font-medium">输入主题或概要，AI 帮你从多个角度构思爆款标题。</p>
+          <p className="text-xs md:text-base text-slate-500 font-medium">输入标题方向，AI 帮你从多个角度构思爆款标题。</p>
         </div>
       </div>
 
-      <div className="flex-1 flex flex-col md:flex-row gap-6 overflow-hidden">
-        {/* Input Panel */}
-        <div className="flex-1 flex flex-col bg-white rounded-3xl border border-slate-200 shadow-sm overflow-hidden">
+      <div className="flex-1 flex flex-col gap-4 overflow-hidden">
+        {/* Input Panel - Top (Reduced height) */}
+        <div className="flex-none h-64 flex flex-col bg-white rounded-3xl border border-slate-200 shadow-sm overflow-hidden">
             <div className="p-4 bg-slate-50 border-b border-slate-100 flex justify-between items-center">
-                <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">输入主题 / 内容概要</span>
+                <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">标题方向</span>
                 <button onClick={handleClear} className="text-slate-400 hover:text-slate-600 p-1 rounded-md hover:bg-slate-100 transition-colors" title="清空">
                     <Eraser className="w-4 h-4" />
                 </button>
@@ -75,14 +80,14 @@ const AiTitles: React.FC = () => {
             <textarea
                 value={userInput}
                 onChange={(e) => setUserInput(e.target.value)}
-                placeholder="例如：\n1. 2024年人工智能行业发展趋势\n2. 教你如何在家做正宗的红烧肉\n3. 粘贴一段文章摘要..."
+                placeholder="例如：\n1. 2024年人工智能行业发展趋势\n2. 适合新手的理财技巧\n3. 悬念感强的开箱视频..."
                 className="flex-1 w-full p-6 text-slate-700 placeholder:text-slate-300 resize-none outline-none focus:bg-slate-50/50 transition-colors text-base leading-relaxed"
             />
-            <div className="p-4 border-t border-slate-100 bg-white">
+            <div className="p-3 border-t border-slate-100 bg-white">
                 <button
                     onClick={handleGenerate}
                     disabled={loading || !userInput.trim()}
-                    className="w-full bg-gradient-to-r from-violet-600 to-indigo-600 text-white py-3 rounded-xl font-bold shadow-lg shadow-indigo-500/30 hover:shadow-indigo-500/40 hover:-translate-y-0.5 transition-all flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed disabled:shadow-none disabled:transform-none"
+                    className="w-full bg-gradient-to-r from-violet-600 to-indigo-600 text-white py-2.5 rounded-xl font-bold shadow-lg shadow-indigo-500/30 hover:shadow-indigo-500/40 hover:-translate-y-0.5 transition-all flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed disabled:shadow-none disabled:transform-none"
                 >
                     {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : <Sparkles className="w-5 h-5" />}
                     开始生成
@@ -90,7 +95,7 @@ const AiTitles: React.FC = () => {
             </div>
         </div>
 
-        {/* Output Panel */}
+        {/* Output Panel - Bottom (Takes remaining space) */}
         <div className="flex-1 flex flex-col bg-white rounded-3xl border border-slate-200 shadow-sm overflow-hidden">
             <div className="p-4 bg-slate-50 border-b border-slate-100 flex justify-between items-center">
                 <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">AI 生成结果</span>
