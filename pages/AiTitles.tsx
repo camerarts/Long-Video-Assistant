@@ -2,12 +2,18 @@
 import React, { useState, useEffect } from 'react';
 import * as storage from '../services/storageService';
 import * as gemini from '../services/geminiService';
-import { Sparkles, Loader2, Copy, Eraser, Type } from 'lucide-react';
+import { Sparkles, Loader2, Copy, Eraser, Type, Image as ImageIcon, ALargeSmall } from 'lucide-react';
 import { PromptTemplate } from '../types';
+
+interface AiTitlesResult {
+    titles: string[];
+    coverVisual: string;
+    coverText: string;
+}
 
 const AiTitles: React.FC = () => {
   const [userInput, setUserInput] = useState('');
-  const [generatedResult, setGeneratedResult] = useState('');
+  const [result, setResult] = useState<AiTitlesResult | null>(null);
   const [loading, setLoading] = useState(false);
   const [promptTemplate, setPromptTemplate] = useState<PromptTemplate | null>(null);
 
@@ -30,30 +36,40 @@ const AiTitles: React.FC = () => {
     }
 
     setLoading(true);
+    setResult(null);
+
     try {
       // Use the new system variable TITLE_DIRECTION
-      const prompt = promptTemplate.template.replace('{{TITLE_DIRECTION}}', userInput);
+      let prompt = promptTemplate.template.replace('{{TITLE_DIRECTION}}', userInput);
       // Fallback for older templates that might still use {{topic}}
-      const finalPrompt = prompt.replace('{{topic}}', userInput);
+      prompt = prompt.replace('{{topic}}', userInput);
       
-      const result = await gemini.generateText(finalPrompt);
-      setGeneratedResult(result);
+      const json = await gemini.generateJSON<AiTitlesResult>(prompt, {
+          type: "OBJECT",
+          properties: {
+              titles: { type: "ARRAY", items: { type: "STRING" } },
+              coverVisual: { type: "STRING" },
+              coverText: { type: "STRING" }
+          }
+      });
+      setResult(json);
     } catch (error: any) {
       alert(`生成失败: ${error.message}`);
+      console.error(error);
     } finally {
       setLoading(false);
     }
   };
 
-  const handleCopy = () => {
-    if (!generatedResult) return;
-    navigator.clipboard.writeText(generatedResult);
-    alert("已复制到剪贴板");
+  const handleCopyTitles = () => {
+    if (!result?.titles) return;
+    navigator.clipboard.writeText(result.titles.join('\n'));
+    alert("已复制标题列表");
   };
 
   const handleClear = () => {
     setUserInput('');
-    setGeneratedResult('');
+    setResult(null);
   };
 
   return (
@@ -64,14 +80,14 @@ const AiTitles: React.FC = () => {
             <Type className="w-6 h-6 md:w-8 md:h-8 text-violet-600" />
             AI 标题生成
           </h1>
-          <p className="text-xs md:text-base text-slate-500 font-medium">输入标题方向，AI 帮你从多个角度构思爆款标题。</p>
+          <p className="text-xs md:text-base text-slate-500 font-medium">输入标题方向，AI 帮你从多个角度构思爆款标题与封面方案。</p>
         </div>
       </div>
 
       <div className="flex-1 flex flex-col md:flex-row gap-6 overflow-hidden">
         {/* Input Panel - Left 1/4 */}
         <div className="w-full md:w-1/4 flex flex-col bg-white rounded-3xl border border-slate-200 shadow-sm overflow-hidden h-full">
-            <div className="p-4 bg-slate-50 border-b border-slate-100 flex justify-between items-center">
+            <div className="p-4 bg-slate-50 border-b border-slate-100 flex justify-between items-center flex-shrink-0">
                 <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">标题方向</span>
                 <button onClick={handleClear} className="text-slate-400 hover:text-slate-600 p-1 rounded-md hover:bg-slate-100 transition-colors" title="清空">
                     <Eraser className="w-4 h-4" />
@@ -83,7 +99,7 @@ const AiTitles: React.FC = () => {
                 placeholder="例如：\n1. 2024年人工智能行业发展趋势\n2. 适合新手的理财技巧\n3. 悬念感强的开箱视频..."
                 className="flex-1 w-full p-6 text-slate-700 placeholder:text-slate-300 resize-none outline-none focus:bg-slate-50/50 transition-colors text-base leading-relaxed"
             />
-            <div className="p-4 border-t border-slate-100 bg-white">
+            <div className="p-4 border-t border-slate-100 bg-white flex-shrink-0">
                 <button
                     onClick={handleGenerate}
                     disabled={loading || !userInput.trim()}
@@ -97,28 +113,88 @@ const AiTitles: React.FC = () => {
 
         {/* Output Panel - Right 3/4 */}
         <div className="w-full md:w-3/4 flex flex-col bg-white rounded-3xl border border-slate-200 shadow-sm overflow-hidden h-full">
-            <div className="p-4 bg-slate-50 border-b border-slate-100 flex justify-between items-center">
-                <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">AI 生成结果</span>
-                <button onClick={handleCopy} disabled={!generatedResult} className="text-slate-400 hover:text-violet-600 p-1 rounded-md hover:bg-violet-50 transition-colors disabled:opacity-30 disabled:hover:bg-transparent disabled:hover:text-slate-400" title="复制全部">
-                    <Copy className="w-4 h-4" />
-                </button>
+            {/* Top Section: Titles (75%) */}
+            <div className="flex-[3] flex flex-col min-h-0 border-b border-slate-200">
+                <div className="p-4 bg-slate-50 border-b border-slate-100 flex justify-between items-center flex-shrink-0">
+                    <span className="text-xs font-bold text-slate-500 uppercase tracking-wider flex items-center gap-1.5">
+                        <Type className="w-3.5 h-3.5" /> 标题结果
+                    </span>
+                    <button 
+                        onClick={handleCopyTitles} 
+                        disabled={!result?.titles?.length} 
+                        className="text-slate-400 hover:text-violet-600 p-1 rounded-md hover:bg-violet-50 transition-colors disabled:opacity-30" 
+                        title="复制所有标题"
+                    >
+                        <Copy className="w-4 h-4" />
+                    </button>
+                </div>
+                <div className="flex-1 overflow-y-auto p-6 bg-[#FAFAFA]">
+                    {loading ? (
+                        <div className="h-full flex flex-col items-center justify-center text-slate-400 gap-3">
+                            <Loader2 className="w-8 h-8 animate-spin text-violet-500" />
+                            <span className="text-sm font-medium animate-pulse">AI 正在构思标题与封面...</span>
+                        </div>
+                    ) : result?.titles ? (
+                        <div className="space-y-3">
+                            {result.titles.map((title, idx) => (
+                                <div key={idx} className="p-3 bg-white border border-slate-100 rounded-xl shadow-sm hover:shadow-md transition-shadow flex gap-3 items-start group">
+                                    <span className="text-xs font-bold text-slate-300 mt-1 w-6 text-center shrink-0">{idx + 1}</span>
+                                    <p className="text-slate-800 font-medium text-lg leading-relaxed">{title}</p>
+                                    <button 
+                                        className="ml-auto opacity-0 group-hover:opacity-100 text-slate-300 hover:text-violet-600 transition-all p-1"
+                                        onClick={() => {
+                                            navigator.clipboard.writeText(title);
+                                            alert(`标题 "${title}" 已复制`);
+                                        }}
+                                        title="复制此标题"
+                                    >
+                                        <Copy className="w-4 h-4" />
+                                    </button>
+                                </div>
+                            ))}
+                        </div>
+                    ) : (
+                        <div className="h-full flex flex-col items-center justify-center text-slate-300 gap-2 select-none">
+                            <Type className="w-12 h-12 opacity-20" />
+                            <span className="text-sm">生成的标题将显示在这里</span>
+                        </div>
+                    )}
+                </div>
             </div>
-            <div className="flex-1 p-6 overflow-y-auto bg-[#FAFAFA]">
-                {loading ? (
-                    <div className="h-full flex flex-col items-center justify-center text-slate-400 gap-3">
-                        <Loader2 className="w-8 h-8 animate-spin text-violet-500" />
-                        <span className="text-sm font-medium animate-pulse">AI 正在构思标题...</span>
+
+            {/* Bottom Section: Cover Details (25%) */}
+            <div className="flex-[1] flex flex-row min-h-0 bg-white">
+                {/* Bottom Left: Cover Elements */}
+                <div className="w-1/2 border-r border-slate-200 flex flex-col">
+                    <div className="p-3 bg-slate-50 border-b border-slate-100 flex-shrink-0">
+                        <span className="text-xs font-bold text-slate-500 uppercase tracking-wider flex items-center gap-1.5">
+                            <ImageIcon className="w-3.5 h-3.5" /> 封面元素
+                        </span>
                     </div>
-                ) : generatedResult ? (
-                    <div className="prose prose-slate max-w-none text-slate-700 whitespace-pre-wrap leading-loose font-medium">
-                        {generatedResult}
+                    <div className="flex-1 p-4 overflow-y-auto text-sm text-slate-600 leading-relaxed">
+                        {result?.coverVisual ? (
+                            result.coverVisual
+                        ) : (
+                             <span className="text-slate-300 text-xs italic">等待生成...</span>
+                        )}
                     </div>
-                ) : (
-                    <div className="h-full flex flex-col items-center justify-center text-slate-300 gap-2 select-none">
-                        <Type className="w-12 h-12 opacity-20" />
-                        <span className="text-sm">结果将显示在这里</span>
+                </div>
+
+                {/* Bottom Right: Cover Text */}
+                <div className="w-1/2 flex flex-col">
+                    <div className="p-3 bg-slate-50 border-b border-slate-100 flex-shrink-0">
+                         <span className="text-xs font-bold text-slate-500 uppercase tracking-wider flex items-center gap-1.5">
+                            <ALargeSmall className="w-3.5 h-3.5" /> 封面文字
+                        </span>
                     </div>
-                )}
+                    <div className="flex-1 p-4 overflow-y-auto text-sm text-slate-800 font-bold leading-relaxed whitespace-pre-wrap">
+                        {result?.coverText ? (
+                            result.coverText
+                        ) : (
+                            <span className="text-slate-300 text-xs italic font-normal">等待生成...</span>
+                        )}
+                    </div>
+                </div>
             </div>
         </div>
       </div>
