@@ -1,3 +1,4 @@
+
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ProjectData } from '../types';
@@ -86,7 +87,7 @@ const ImageWorkshopList: React.FC = () => {
                     <thead className="bg-slate-100 border-b border-slate-200 text-slate-600">
                         <tr>
                             <th className="py-4 px-6 text-xs font-bold uppercase tracking-wider w-20 text-center">序号</th>
-                            <th className="py-4 px-6 text-xs font-bold uppercase tracking-wider text-center">主题</th>
+                            <th className="py-4 px-6 text-xs font-bold uppercase tracking-wider text-center min-w-[300px]">主题</th>
                             <th className="py-4 px-6 text-xs font-bold uppercase tracking-wider w-36 md:w-48 text-center">生图进度</th>
                             <th className="py-4 px-6 text-xs font-bold uppercase tracking-wider w-40 text-center hidden md:table-cell">完成日期</th>
                             <th className="py-4 px-6 text-xs font-bold uppercase tracking-wider w-24 text-center">操作</th>
@@ -111,9 +112,9 @@ const ImageWorkshopList: React.FC = () => {
                                         {index + 1}
                                     </td>
                                     <td className="py-5 px-6">
-                                        <span className={`block font-bold text-base md:text-lg transition-colors whitespace-normal break-all leading-relaxed ${hasStoryboard ? 'text-slate-800 group-hover:text-fuchsia-700' : 'text-slate-500'}`}>
+                                        <div className={`font-bold text-base md:text-lg transition-colors whitespace-normal break-words leading-relaxed ${hasStoryboard ? 'text-slate-800 group-hover:text-fuchsia-700' : 'text-slate-500'}`}>
                                             {project.title || '未命名项目'}
-                                        </span>
+                                        </div>
                                     </td>
                                     <td className="py-5 px-6">
                                         {hasStoryboard ? (
