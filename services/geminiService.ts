@@ -1,10 +1,9 @@
 import { GoogleGenAI } from "@google/genai";
 
 // Helper to get the client instance safely at runtime
-const getClient = () => {
-  // strict adherence to guidelines: API key must be from process.env.API_KEY
-  // The build tool (Vite) replaces this with the actual string value
-  const apiKey = process.env.API_KEY;
+const getClient = (customApiKey?: string) => {
+  // strict adherence to guidelines: API key must be from process.env.API_KEY or custom override
+  const apiKey = customApiKey || process.env.API_KEY;
   
   if (!apiKey || apiKey === 'undefined' || apiKey === '') {
     console.error("API Key check failed. Value is:", apiKey);
@@ -71,9 +70,11 @@ export const generateJSON = async <T>(prompt: string, schema?: any): Promise<T> 
   return {} as T; // Should be unreachable
 };
 
-export const generateImage = async (prompt: string): Promise<string> => {
+export const generateImage = async (prompt: string, customApiKey?: string): Promise<string> => {
   try {
-    const ai = getClient();
+    // Pass customApiKey if provided, otherwise uses default from env
+    const ai = getClient(customApiKey);
+    
     // Using gemini-2.5-flash-image for generation as requested/standard
     const response = await ai.models.generateContent({
       model: 'gemini-2.5-flash-image',
