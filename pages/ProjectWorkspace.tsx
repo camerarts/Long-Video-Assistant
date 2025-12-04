@@ -8,7 +8,7 @@ import {
   ArrowLeft, Layout, FileText, Type, 
   List, PanelRightClose, Sparkles, Loader2, Copy, 
   Check, Images, ArrowRight, Palette, Film, Maximize2, Play,
-  ZoomIn, ZoomOut, Move, RefreshCw, Rocket
+  ZoomIn, ZoomOut, Move, RefreshCw, Rocket, AlertCircle
 } from 'lucide-react';
 
 // --- Sub-Components ---
@@ -149,6 +149,7 @@ const ProjectWorkspace: React.FC = () => {
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null); // Initialized to null for default collapsed state
   // Changed to Set to allow concurrent generation indicators
   const [generatingNodes, setGeneratingNodes] = useState<Set<string>>(new Set());
+  const [failedNodes, setFailedNodes] = useState<Set<string>>(new Set());
   const [prompts, setPrompts] = useState<Record<string, PromptTemplate>>({});
   
   // Canvas State
@@ -313,12 +314,18 @@ const ProjectWorkspace: React.FC = () => {
     }
 
     setGeneratingNodes(prev => new Set(prev).add(nodeId));
+    setFailedNodes(prev => {
+        const next = new Set(prev);
+        next.delete(nodeId);
+        return next;
+    });
 
     try {
         await generateNodeContent(nodeId);
     } catch (error: any) {
         alert(`生成失败: ${error.message}`);
         console.error(error);
+        setFailedNodes(prev => new Set(prev).add(nodeId));
     } finally {
         if (mountedRef.current) {
             setGeneratingNodes(prev => {
@@ -346,6 +353,13 @@ const ProjectWorkspace: React.FC = () => {
       });
 
       const processWithRetry = async (id: string) => {
+          // Clear any previous failure
+          setFailedNodes(prev => {
+              const next = new Set(prev);
+              next.delete(id);
+              return next;
+          });
+
           try {
               await generateNodeContent(id);
           } catch (error) {
@@ -356,6 +370,8 @@ const ProjectWorkspace: React.FC = () => {
                   await generateNodeContent(id);
               } catch (retryError: any) {
                   console.error(`模块 [${id}] 第二次生成失败`, retryError);
+                  // Mark as failed
+                  setFailedNodes(prev => new Set(prev).add(id));
               }
           } finally {
                if (mountedRef.current) {
@@ -482,6 +498,7 @@ const ProjectWorkspace: React.FC = () => {
                      const isActive = selectedNodeId === node.id;
                      // Check if this specific node is currently regenerating
                      const isGenerating = generatingNodes.has(node.id);
+                     const isFailed = failedNodes.has(node.id);
                      
                      // Determine status of data
                      let hasData = false;
@@ -496,6 +513,16 @@ const ProjectWorkspace: React.FC = () => {
                          hasData = generatedCount > 0;
                      }
 
+                     // Visual Feedback Logic for Titles, Storyboard, Summary
+                     let bgClass = 'bg-white';
+                     if (['titles', 'sb_text', 'summary'].includes(node.id)) {
+                        if (hasData) {
+                            bgClass = 'bg-emerald-50';
+                        } else if (isFailed) {
+                            bgClass = 'bg-rose-50';
+                        }
+                     }
+
                      return (
                          <div 
                             key={node.id}
@@ -505,7 +532,7 @@ const ProjectWorkspace: React.FC = () => {
                                 width: NODE_WIDTH,
                                 height: NODE_HEIGHT
                             }}
-                            className={`absolute bg-white rounded-2xl p-0 border-2 transition-all cursor-pointer group hover:-translate-y-1 hover:shadow-xl ${
+                            className={`absolute ${bgClass} rounded-2xl p-0 border-2 transition-all cursor-pointer group hover:-translate-y-1 hover:shadow-xl ${
                                 isActive 
                                 ? `border-${node.color}-500 shadow-xl shadow-${node.color}-500/10 scale-105 z-10` 
                                 : 'border-slate-100 shadow-lg shadow-slate-200/50 hover:border-slate-300'
@@ -525,6 +552,11 @@ const ProjectWorkspace: React.FC = () => {
                                     {hasData && (
                                         <div className="bg-emerald-100 text-emerald-600 p-1 rounded-full shadow-sm">
                                             <Check className="w-3.5 h-3.5" />
+                                        </div>
+                                    )}
+                                    {!hasData && isFailed && (
+                                         <div className="bg-rose-100 text-rose-600 p-1 rounded-full shadow-sm">
+                                            <AlertCircle className="w-3.5 h-3.5" />
                                         </div>
                                     )}
                                 </div>
@@ -555,8 +587,8 @@ const ProjectWorkspace: React.FC = () => {
                                                     : `bg-${node.color}-50 text-${node.color}-600 hover:bg-${node.color}-100 border border-${node.color}-100 hover:shadow-md`
                                                 }`}
                                             >
-                                                {isGenerating ? <Loader2 className="w-3 h-3 animate-spin" /> : (hasData ? <RefreshCw className="w-3 h-3" /> : <Sparkles className="w-3 h-3" />)}
-                                                {isGenerating ? '生成中...' : (hasData ? '重新生成' : '开始生成')}
+                                                {isGenerating ? <Loader2 className="w-3 h-3 animate-spin" /> : (hasData ? <RefreshCw className="w-3 h-3" /> : (isFailed ? <RefreshCw className="w-3 h-3" /> : <Sparkles className="w-3 h-3" />))}
+                                                {isGenerating ? '生成中...' : (hasData ? '重新生成' : (isFailed ? '重试生成' : '开始生成'))}
                                             </button>
                                         )}
                                      </div>
