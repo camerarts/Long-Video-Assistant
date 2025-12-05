@@ -245,13 +245,18 @@ export const DEFAULT_PROMPTS: Record<string, PromptTemplate> = {
 3. 封面文案要简短有力。
 
 请返回一个纯 JSON 对象（不要Markdown格式），**必须严格包含**以下三个字段：
-- "titles": 字符串数组，包含 10 个具有病毒传播潜力的标题。
+- "titles": 对象数组，包含 10 个具有病毒传播潜力的标题。每个对象包含：
+    - "title": 标题文本 (String)
+    - "score": 推荐指数 0-100 (Number)，分数越高代表点击率预估越高。
 - "coverVisual": 字符串，详细描述封面画面的视觉元素、构图、颜色和氛围。
 - "coverText": 字符串，封面上的大字文案（简短有力，建议2-4行）。
 
 示例 JSON 结构:
 {
-  "titles": ["标题1", "标题2", ...],
+  "titles": [
+      { "title": "标题1...", "score": 95 },
+      { "title": "标题2...", "score": 88 }
+  ],
   "coverVisual": "一个震惊的表情特写...",
   "coverText": "文字行1\\n文字行2"
 }
