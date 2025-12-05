@@ -569,7 +569,7 @@ const StoryboardImages: React.FC = () => {
                             </td>
                              <td className="py-4 px-4 border border-slate-200 align-top bg-slate-50/30">
                                 <div className="text-xs text-slate-600 leading-relaxed whitespace-pre-wrap max-h-[160px] overflow-y-auto">
-                                    {frame.description}
+                                    {frame.originalText}
                                 </div>
                             </td>
                             <td className="py-4 px-4 border border-slate-200 align-top">
