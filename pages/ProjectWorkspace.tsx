@@ -776,21 +776,45 @@ const ProjectWorkspace: React.FC = () => {
                  )}
                  
                  {selectedNodeId === 'image_gen' && (
-                     <div className="flex flex-col items-center justify-center h-full text-center p-8">
-                         <div className="w-16 h-16 bg-pink-100 text-pink-500 rounded-2xl flex items-center justify-center mb-4 shadow-lg shadow-pink-500/20">
-                             <Images className="w-8 h-8" />
-                         </div>
-                         <h3 className="text-lg font-bold text-slate-900 mb-2">图片生成工坊</h3>
-                         <p className="text-slate-500 text-sm mb-6 max-w-xs leading-relaxed">
-                             分镜脚本已就绪。请前往独立的工作台进行批量图片生成和管理。
-                         </p>
-                         <button
-                            onClick={() => navigate(`/project/${project.id}/images`)}
-                            className="bg-slate-900 text-white px-6 py-3 rounded-xl font-bold hover:bg-slate-800 transition-all flex items-center gap-2 shadow-xl shadow-slate-900/20"
-                         >
-                            前往工坊 <ArrowRight className="w-4 h-4" />
-                         </button>
-                     </div>
+                    <div className="flex flex-col h-full">
+                        {/* Top Section: CTA */}
+                        <div className="flex flex-col items-center text-center p-6 border-b border-slate-100 bg-slate-50/50">
+                            <div className="w-12 h-12 bg-pink-100 text-pink-500 rounded-xl flex items-center justify-center mb-3 shadow-lg shadow-pink-500/20">
+                                <Images className="w-6 h-6" />
+                            </div>
+                            <h3 className="text-base font-bold text-slate-900 mb-1">图片生成工坊</h3>
+                            <p className="text-slate-500 text-xs mb-4 max-w-xs leading-relaxed">
+                                前往独立工作台进行批量生成。下方为即将使用的分镜提示词预览。
+                            </p>
+                            <button
+                                onClick={() => navigate(`/project/${project.id}/images`)}
+                                className="bg-slate-900 text-white px-5 py-2.5 rounded-xl font-bold hover:bg-slate-800 transition-all flex items-center gap-2 shadow-xl shadow-slate-900/20 text-xs"
+                            >
+                                前往工坊 <ArrowRight className="w-4 h-4" />
+                            </button>
+                        </div>
+
+                        {/* Bottom Section: Table */}
+                        <div className="flex-1 overflow-y-auto p-4 bg-[#F8F9FC]">
+                            <TableResultBox
+                                headers={['序号', '原文', '中文提示词']}
+                                data={project.storyboard || []}
+                                renderRow={(item: StoryboardFrame, i: number) => (
+                                    <tr key={item.id} className="hover:bg-slate-50 group border-b border-slate-50 last:border-0">
+                                        <td className="py-3 px-3 text-center text-xs font-bold text-slate-400 align-top w-12">
+                                            {item.sceneNumber}
+                                        </td>
+                                        <td className="py-3 px-3 text-xs text-slate-500 leading-relaxed align-top w-[40%]">
+                                            {item.originalText}
+                                        </td>
+                                        <td className="py-3 px-3 text-xs text-slate-800 leading-relaxed align-top font-medium">
+                                            {item.description}
+                                        </td>
+                                    </tr>
+                                )}
+                            />
+                        </div>
+                    </div>
                  )}
             </div>
         </div>
