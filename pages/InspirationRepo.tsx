@@ -1,5 +1,4 @@
 
-
 import React, { useEffect, useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Inspiration, ProjectData, ProjectStatus } from '../types';
@@ -105,7 +104,16 @@ const InspirationRepo: React.FC = () => {
   };
 
   const handleApprove = async (item: Inspiration) => {
-    // Create a new project based on this inspiration
+    // 1. Automatically mark as processed if not already
+    if (!item.marked) {
+        const updatedInspiration = { ...item, marked: true };
+        // Optimistic UI update
+        setInspirations(prev => prev.map(i => i.id === item.id ? updatedInspiration : i));
+        // Save to storage
+        await storage.saveInspiration(updatedInspiration);
+    }
+
+    // 2. Create a new project based on this inspiration
     const newId = crypto.randomUUID();
     const titleSnippet = item.viralTitle.length > 20 ? item.viralTitle.substring(0, 20) + '...' : item.viralTitle;
     
