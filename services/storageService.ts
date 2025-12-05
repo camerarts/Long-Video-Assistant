@@ -332,12 +332,39 @@ export const saveProject = async (project: ProjectData): Promise<void> => {
   trackChange();
 };
 
+const checkProjectCompletion = (p: ProjectData): boolean => {
+  if (!p) return false;
+  // Criteria: Script, Titles, Storyboard (Text), Summary, Cover, and at least 1 generated Image
+  const hasScript = !!p.script && p.script.length > 0;
+  const hasTitles = !!p.titles && p.titles.length > 0;
+  const hasSbText = !!p.storyboard && p.storyboard.length > 0;
+  const hasSummary = !!p.summary && p.summary.length > 0;
+  const hasCover = !!p.coverOptions && p.coverOptions.length > 0;
+  const hasImages = p.storyboard?.some(f => !!f.imageUrl) || false;
+
+  return hasScript && hasTitles && hasSbText && hasSummary && hasCover && hasImages;
+};
+
 export const updateProject = async (id: string, updater: (current: ProjectData) => ProjectData): Promise<ProjectData | null> => {
   return projectMutex.lock(async () => {
       const current = await dbGet<ProjectData>(STORE_PROJECTS, id);
       if (!current) return null;
 
       const updated = updater(current);
+      
+      // Auto-status update based on content completeness
+      if (updated.status !== ProjectStatus.ARCHIVED) {
+          if (checkProjectCompletion(updated)) {
+              updated.status = ProjectStatus.COMPLETED;
+          } else if (updated.status === ProjectStatus.COMPLETED && !checkProjectCompletion(updated)) {
+              // Downgrade to IN_PROGRESS if data was removed
+              updated.status = ProjectStatus.IN_PROGRESS;
+          } else if (updated.script && updated.status === ProjectStatus.DRAFT) {
+              // Upgrade to IN_PROGRESS if script exists
+              updated.status = ProjectStatus.IN_PROGRESS;
+          }
+      }
+
       updated.updatedAt = Date.now();
       
       await dbPut(STORE_PROJECTS, updated);
