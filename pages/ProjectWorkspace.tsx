@@ -304,9 +304,10 @@ const ProjectWorkspace: React.FC = () => {
           await saveProjectUpdate(p => ({ ...p, coverOptions: data }));
       }
       else if (nodeId === 'sb_text') {
-          const data = await gemini.generateJSON<{description: string}[]>(prompt, {
+          const data = await gemini.generateJSON<{original: string, description: string}[]>(prompt, {
               type: "ARRAY", items: {
                   type: "OBJECT", properties: {
+                      original: {type: "STRING"},
                       description: {type: "STRING"}
                   }
               }
@@ -314,6 +315,7 @@ const ProjectWorkspace: React.FC = () => {
           const frames: StoryboardFrame[] = data.map((item, idx) => ({
               id: crypto.randomUUID(),
               sceneNumber: idx + 1,
+              originalText: item.original,
               description: item.description
           }));
           await saveProjectUpdate(p => ({ ...p, storyboard: frames }));
@@ -751,11 +753,12 @@ const ProjectWorkspace: React.FC = () => {
 
                  {selectedNodeId === 'sb_text' && (
                      <TableResultBox 
-                        headers={['#', '画面描述', '']}
+                        headers={['#', '原文', '画面描述', '']}
                         data={project.storyboard || []}
                         renderRow={(item: StoryboardFrame, i: number) => (
                             <tr key={item.id} className="hover:bg-slate-50 group">
                                 <td className="py-4 px-5 text-center text-xs font-bold text-slate-400 align-top">{item.sceneNumber}</td>
+                                <td className="py-4 px-5 text-xs text-slate-500 leading-relaxed align-top whitespace-pre-wrap max-w-[120px]">{item.originalText}</td>
                                 <td className="py-4 px-5 text-xs text-slate-700 leading-relaxed align-top">{item.description}</td>
                                 <td className="py-4 px-5 text-right align-top">
                                      <RowCopyButton text={item.description} />
