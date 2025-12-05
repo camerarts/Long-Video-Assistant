@@ -324,6 +324,21 @@ const StoryboardImages: React.FC = () => {
       handleBatchGenerate(failedFrames);
   };
 
+  const handleReloadImage = (frameId: string) => {
+      setProject(prev => {
+          if (!prev || !prev.storyboard) return prev;
+          const newSb = prev.storyboard.map(f => {
+              if (f.id === frameId && f.imageUrl) {
+                  // Cache busting with timestamp
+                  const [baseUrl] = f.imageUrl.split('?');
+                  return { ...f, imageUrl: `${baseUrl}?t=${Date.now()}` };
+              }
+              return f;
+          });
+          return { ...prev, storyboard: newSb };
+      });
+  };
+
   const handleUploadImages = async () => {
       if (!project || !project.storyboard) return;
       
@@ -653,6 +668,7 @@ const StoryboardImages: React.FC = () => {
                                                 <img 
                                                     src={frame.imageUrl} 
                                                     alt={`Scene ${frame.sceneNumber}`} 
+                                                    loading="lazy"
                                                     className="w-full h-full object-cover cursor-zoom-in hover:scale-105 transition-transform duration-500"
                                                     onClick={() => setSelectedImage(frame.imageUrl!)}
                                                 />
@@ -662,6 +678,23 @@ const StoryboardImages: React.FC = () => {
                                                         <Maximize2 className="w-3 h-3" />
                                                     </div>
                                                 </div>
+                                                
+                                                {/* Reload Button for Server Images */}
+                                                {!frame.imageUrl.startsWith('data:') && (
+                                                    <div className="absolute top-2 left-2 opacity-0 group-hover/image:opacity-100 transition-opacity z-10">
+                                                         <button 
+                                                            onClick={(e) => {
+                                                                e.stopPropagation();
+                                                                handleReloadImage(frame.id);
+                                                            }}
+                                                            className="p-1.5 bg-black/50 hover:bg-black/70 text-white rounded-lg backdrop-blur transition-colors"
+                                                            title="重新加载图片 (刷新缓存)"
+                                                         >
+                                                            <RefreshCw className="w-3.5 h-3.5" />
+                                                         </button>
+                                                    </div>
+                                                )}
+
                                                 {frame.imageUrl.startsWith('data:') && (
                                                     <div className="absolute bottom-2 left-2 pointer-events-none">
                                                         <span className="bg-amber-100 text-amber-700 text-[10px] font-bold px-2 py-0.5 rounded border border-amber-200 shadow-sm">
