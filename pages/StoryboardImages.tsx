@@ -444,6 +444,36 @@ const StoryboardImages: React.FC = () => {
 
   return (
     <div className="h-full flex flex-col bg-[#F8F9FC]">
+      
+      {/* Stats Bar (Moved to Top) */}
+      <div className="bg-slate-900 text-white px-6 py-3 flex items-center justify-between text-xs font-medium shadow-inner z-30 relative">
+          <div className="flex items-center gap-8 mx-auto">
+              <div className="flex items-center gap-2">
+                  <span className="text-slate-400">共</span>
+                  <span className="text-lg font-bold text-white">{totalFrames}</span>
+                  <span className="text-slate-400">个分镜</span>
+              </div>
+              <div className="w-px h-4 bg-slate-700"></div>
+              <div className="flex items-center gap-2">
+                  <span className="text-slate-400">已生图</span>
+                  <span className="text-lg font-bold text-emerald-400">{generatedCount}</span>
+                  <span className="text-slate-400">个</span>
+              </div>
+              <div className="w-px h-4 bg-slate-700"></div>
+              <div className="flex items-center gap-2">
+                  <span className="text-slate-400">未生图</span>
+                  <span className="text-lg font-bold text-amber-400">{notGeneratedCount}</span>
+                  <span className="text-slate-400">个</span>
+              </div>
+              <div className="w-px h-4 bg-slate-700"></div>
+              <div className="flex items-center gap-2">
+                  <span className="text-slate-400">已保存图片(云端)</span>
+                  <span className="text-lg font-bold text-blue-400">{uploadedCount}</span>
+                  <span className="text-slate-400">个</span>
+              </div>
+          </div>
+      </div>
+
       {/* Header */}
       <div className="bg-white border-b border-slate-200 px-6 py-4 flex flex-col gap-4 shadow-sm z-20">
         <div className="flex justify-between items-center">
@@ -527,35 +557,6 @@ const StoryboardImages: React.FC = () => {
         </div>
       </div>
 
-      {/* Stats Bar (Restored) */}
-      <div className="bg-slate-900 text-white px-6 py-3 flex items-center justify-between text-xs font-medium shadow-inner z-10">
-          <div className="flex items-center gap-8 mx-auto">
-              <div className="flex items-center gap-2">
-                  <span className="text-slate-400">共</span>
-                  <span className="text-lg font-bold text-white">{totalFrames}</span>
-                  <span className="text-slate-400">个分镜</span>
-              </div>
-              <div className="w-px h-4 bg-slate-700"></div>
-              <div className="flex items-center gap-2">
-                  <span className="text-slate-400">已生图</span>
-                  <span className="text-lg font-bold text-emerald-400">{generatedCount}</span>
-                  <span className="text-slate-400">个</span>
-              </div>
-              <div className="w-px h-4 bg-slate-700"></div>
-              <div className="flex items-center gap-2">
-                  <span className="text-slate-400">未生图</span>
-                  <span className="text-lg font-bold text-amber-400">{notGeneratedCount}</span>
-                  <span className="text-slate-400">个</span>
-              </div>
-              <div className="w-px h-4 bg-slate-700"></div>
-              <div className="flex items-center gap-2">
-                  <span className="text-slate-400">已保存图片(云端)</span>
-                  <span className="text-lg font-bold text-blue-400">{uploadedCount}</span>
-                  <span className="text-slate-400">个</span>
-              </div>
-          </div>
-      </div>
-
       {/* Main Content: Table */}
       <div className="flex-1 overflow-auto p-6 md:p-8">
         
@@ -575,7 +576,6 @@ const StoryboardImages: React.FC = () => {
                         <th className="py-4 px-4 text-xs font-bold uppercase tracking-wider w-1/4 min-w-[200px] border border-slate-200">原文</th>
                         <th className="py-4 px-4 text-xs font-bold uppercase tracking-wider min-w-[300px] border border-slate-200">AI 绘图提示词</th>
                         <th className="py-4 px-4 text-xs font-bold uppercase tracking-wider w-80 text-center border border-slate-200">缩略图 / 状态</th>
-                        <th className="py-4 px-4 text-xs font-bold uppercase tracking-wider w-24 text-center border border-slate-200">操作</th>
                     </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
@@ -602,9 +602,35 @@ const StoryboardImages: React.FC = () => {
                             </td>
                             <td className="py-4 px-4 border border-slate-200 align-top">
                                 <div className="w-full aspect-video bg-slate-100 rounded-xl border border-slate-200 flex items-center justify-center overflow-hidden relative group/img">
-                                    {/* Model Badge */}
+                                    
+                                    {/* Regenerate Button (Top Right) */}
+                                    <button 
+                                        onClick={(e) => { e.stopPropagation(); handleRegenerateSingle(frame); }}
+                                        disabled={currentGenIds.has(frame.id)}
+                                        className={`absolute top-2 right-2 p-2 rounded-lg backdrop-blur-md transition-all z-30 shadow-sm ${
+                                            frame.imageUrl 
+                                            ? 'bg-black/40 text-white hover:bg-fuchsia-600 hover:text-white opacity-0 group-hover/img:opacity-100' 
+                                            : 'bg-white text-slate-400 hover:text-fuchsia-600 hover:bg-fuchsia-50 border border-slate-200'
+                                        }`}
+                                        title="重新生成此分镜"
+                                    >
+                                         <RefreshCw className={`w-4 h-4 ${currentGenIds.has(frame.id) ? 'animate-spin' : ''}`} />
+                                    </button>
+
+                                    {/* Reload Button (Top Left) - Only for server images */}
+                                    {frame.imageUrl && !frame.imageUrl.startsWith('data:') && (
+                                        <button
+                                            onClick={(e) => { e.stopPropagation(); handleReloadImage(index); }}
+                                            className="absolute top-2 left-2 p-2 bg-black/40 text-white rounded-lg hover:bg-blue-600 transition-all z-30 opacity-0 group-hover/img:opacity-100 backdrop-blur-md shadow-sm"
+                                            title="刷新图片缓存"
+                                        >
+                                            <RotateCcw className="w-4 h-4" />
+                                        </button>
+                                    )}
+
+                                    {/* Model Badge - Bottom */}
                                     {frame.imageUrl && frame.imageModel && (
-                                        <div className="absolute top-0 left-0 right-0 bg-black/60 backdrop-blur-sm px-2 py-1 text-[9px] font-mono text-white/80 text-center z-10">
+                                        <div className="absolute bottom-0 left-0 right-0 bg-black/60 backdrop-blur-sm px-2 py-1 text-[9px] font-mono text-white/90 text-center z-20 pointer-events-none">
                                             {frame.imageModel}
                                         </div>
                                     )}
@@ -619,21 +645,10 @@ const StoryboardImages: React.FC = () => {
                                             />
                                             <button 
                                                 onClick={() => setSelectedImage(frame.imageUrl!)}
-                                                className="absolute inset-0 bg-black/0 group-hover/img:bg-black/10 transition-colors flex items-center justify-center opacity-0 group-hover/img:opacity-100"
+                                                className="absolute inset-0 bg-black/0 group-hover/img:bg-black/10 transition-colors flex items-center justify-center opacity-0 group-hover/img:opacity-100 z-10"
                                             >
                                                 <Maximize2 className="w-8 h-8 text-white drop-shadow-md" />
                                             </button>
-                                            
-                                            {/* Reload Button for Server Images */}
-                                            {!frame.imageUrl.startsWith('data:') && (
-                                                <button
-                                                    onClick={() => handleReloadImage(index)}
-                                                    className="absolute top-8 left-2 p-1.5 bg-black/50 text-white rounded-md hover:bg-black/70 transition-colors z-20 opacity-0 group-hover/img:opacity-100"
-                                                    title="重新加载图片 (刷新缓存)"
-                                                >
-                                                    <RefreshCw className="w-3 h-3" />
-                                                </button>
-                                            )}
                                         </>
                                     ) : (
                                         <div className="text-center p-4">
@@ -648,16 +663,6 @@ const StoryboardImages: React.FC = () => {
                                         </div>
                                     )}
                                 </div>
-                            </td>
-                            <td className="py-4 px-4 text-center border border-slate-200 align-middle">
-                                <button 
-                                    onClick={() => handleRegenerateSingle(frame)}
-                                    disabled={currentGenIds.has(frame.id)}
-                                    className="p-2 text-slate-400 hover:text-fuchsia-600 hover:bg-fuchsia-50 rounded-lg transition-all"
-                                    title="重新生成这张"
-                                >
-                                    <RefreshCw className={`w-4 h-4 ${currentGenIds.has(frame.id) ? 'animate-spin' : ''}`} />
-                                </button>
                             </td>
                         </tr>
                     ))}
