@@ -710,9 +710,11 @@ const ProjectWorkspace: React.FC = () => {
                                             <p className="text-xs text-slate-600 leading-relaxed">{opt.visual}</p>
                                         </div>
                                         <div className="bg-slate-50 rounded-lg p-3 border border-slate-100 relative group">
-                                            <p className="text-sm font-bold text-slate-800 whitespace-pre-line leading-relaxed text-center font-serif">{opt.copy}</p>
+                                            <p className="text-sm font-bold text-slate-800 whitespace-pre-line leading-relaxed text-center font-serif">
+                                                {(opt.copy || '').replace(/\|/g, '\n')}
+                                            </p>
                                             <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                                                <RowCopyButton text={opt.copy} />
+                                                <RowCopyButton text={(opt.copy || '').replace(/\|/g, '\n')} />
                                             </div>
                                         </div>
                                     </div>
