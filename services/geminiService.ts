@@ -22,6 +22,16 @@ const handleApiError = (error: any, defaultMsg: string): never => {
   if (msg.includes('429') || msg.includes('RESOURCE_EXHAUSTED') || msg.includes('Quota exceeded')) {
       throw new Error("API 调用频率过高 (429)。请稍休息 1 分钟等待配额恢复后重试。");
   }
+
+  // Check for Bad Request (400) - often invalid parameters
+  if (msg.includes('400') || msg.includes('INVALID_ARGUMENT')) {
+      throw new Error("请求参数无效 (400)。可能是该模型不支持当前的配置（如宽高比或分辨率），或者提示词包含非法内容。");
+  }
+
+  // Check for Not Found (404) - Model not found or no access
+  if (msg.includes('404') || msg.includes('NOT_FOUND')) {
+      throw new Error("模型未找到或无权访问 (404)。请检查您的 API Key 是否支持该模型 (gemini-3-pro)，或该区域未开放。");
+  }
   
   // Check for Safety Filters (if not caught earlier)
   if (msg.includes('SAFETY') || msg.includes('blocked')) {
@@ -75,18 +85,24 @@ export const generateImage = async (prompt: string, customApiKey?: string, model
     // Pass customApiKey if provided, otherwise uses default from env
     const ai = getClient(customApiKey);
     
+    const config: any = {
+      imageConfig: {
+        aspectRatio: "16:9"
+      }
+    };
+
+    // Special handling for Pro model: requires imageSize
+    if (modelName === 'gemini-3-pro-image-preview') {
+       config.imageConfig.imageSize = '1K';
+    }
+
     // Using provided modelName or default
     const response = await ai.models.generateContent({
       model: modelName,
       contents: {
         parts: [{ text: prompt }]
       },
-      // Explicitly configure aspect ratio to 16:9 to match the UI and download expectations
-      config: {
-        imageConfig: {
-          aspectRatio: "16:9"
-        }
-      }
+      config: config
     });
 
     const candidate = response.candidates?.[0];
