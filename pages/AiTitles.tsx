@@ -1,12 +1,18 @@
 
+
 import React, { useState, useEffect, useRef } from 'react';
 import * as storage from '../services/storageService';
 import * as gemini from '../services/geminiService';
 import { Sparkles, Loader2, Copy, Eraser, Type, Image as ImageIcon, ALargeSmall, Save, Clock, Cloud, CloudCheck, CheckCircle2, Circle, Wand2, Maximize2, X, Download } from 'lucide-react';
 import { PromptTemplate } from '../types';
 
+interface AiTitleItem {
+    title: string;
+    score: number;
+}
+
 interface AiTitlesResult {
-    titles: string[];
+    titles: AiTitleItem[];
     coverVisual: string;
     coverText: string;
 }
@@ -112,7 +118,18 @@ const AiTitles: React.FC = () => {
 
       if (currentData) {
           setUserInput(currentData.input || '');
-          setResult(currentData.result || null);
+          // BACKWARD COMPATIBILITY CHECK
+          // If titles is an array of strings (old version), map it to objects
+          if (currentData.result && currentData.result.titles && typeof currentData.result.titles[0] === 'string') {
+               const oldTitles = currentData.result.titles as any as string[];
+               setResult({
+                   ...currentData.result,
+                   titles: oldTitles.map(t => ({ title: t, score: 0 }))
+               });
+          } else {
+               setResult(currentData.result || null);
+          }
+          
           setSelectedTitleIndex(currentData.selectedTitleIndex !== undefined ? currentData.selectedTitleIndex : null);
           setGeneratedCover(currentData.generatedCover || null);
 
@@ -142,19 +159,32 @@ const AiTitles: React.FC = () => {
       const json = await gemini.generateJSON<AiTitlesResult>(prompt, {
           type: "OBJECT",
           properties: {
-              titles: { type: "ARRAY", items: { type: "STRING" } },
+              titles: { 
+                  type: "ARRAY", 
+                  items: { 
+                      type: "OBJECT",
+                      properties: {
+                          title: { type: "STRING" },
+                          score: { type: "NUMBER" }
+                      },
+                      required: ["title", "score"]
+                  } 
+              },
               coverVisual: { type: "STRING" },
               coverText: { type: "STRING" }
           },
           required: ["titles", "coverVisual", "coverText"]
       });
       
+      // Sort titles by score descending
+      if (json.titles) {
+          json.titles.sort((a, b) => (b.score || 0) - (a.score || 0));
+      }
+
       setResult(json);
-      // Reset selection and image on new text generation? 
-      // User might want to keep image, but usually new text means new context. 
-      // Let's reset for consistency.
+      // Reset selection and image on new text generation
       setSelectedTitleIndex(null);
-      // setGeneratedCover(null); // Optional: keep old cover until new one generated? Let's keep it.
+      // setGeneratedCover(null); 
       
       const now = Date.now();
       setLastAutoSave(new Date(now).toLocaleTimeString());
@@ -178,7 +208,7 @@ const AiTitles: React.FC = () => {
       setSyncStatus('saving');
 
       try {
-          const selectedTitle = result.titles[selectedTitleIndex];
+          const selectedTitle = result.titles[selectedTitleIndex].title;
           // Updated prompt to strictly request no text
           const prompt = `Youtube Video Thumbnail. High quality, cinematic lighting, 8k resolution. 
           Visual Description: ${result.coverVisual}. 
@@ -198,7 +228,7 @@ const AiTitles: React.FC = () => {
   const handleDownloadCover = () => {
       if (!generatedCover || !result || selectedTitleIndex === null) return;
       
-      const title = result.titles[selectedTitleIndex];
+      const title = result.titles[selectedTitleIndex].title;
       // Create a temporary link to download
       const link = document.createElement("a");
       link.href = generatedCover;
@@ -210,7 +240,7 @@ const AiTitles: React.FC = () => {
 
   const handleCopyTitles = () => {
     if (!result?.titles) return;
-    navigator.clipboard.writeText(result.titles.join('\n'));
+    navigator.clipboard.writeText(result.titles.map(t => t.title).join('\n'));
     alert("已复制标题列表");
   };
 
@@ -231,7 +261,7 @@ const AiTitles: React.FC = () => {
   const handleTitleChange = (index: number, newVal: string) => {
     if (!result) return;
     const newTitles = [...result.titles];
-    newTitles[index] = newVal;
+    newTitles[index] = { ...newTitles[index], title: newVal };
     setResult({ ...result, titles: newTitles });
   };
 
@@ -340,7 +370,7 @@ const AiTitles: React.FC = () => {
                             </div>
                         ) : result?.titles ? (
                             <div className="space-y-2">
-                                {result.titles.map((title, idx) => (
+                                {result.titles.map((item, idx) => (
                                     <div key={idx} className={`py-2 px-3 border rounded-lg shadow-sm hover:shadow-md transition-all flex gap-3 items-center group ${selectedTitleIndex === idx ? 'bg-violet-50 border-violet-200' : 'bg-white border-slate-100 hover:border-violet-100'}`}>
                                         
                                         {/* Radio Selection */}
@@ -357,16 +387,25 @@ const AiTitles: React.FC = () => {
 
                                         <span className="text-[10px] font-bold text-slate-300 w-4 text-center shrink-0">{idx + 1}</span>
                                         
+                                        {/* Score Badge */}
+                                        <div className={`shrink-0 text-[10px] font-bold px-1.5 py-0.5 rounded border ${
+                                            (item.score || 0) >= 90 ? 'bg-emerald-50 text-emerald-600 border-emerald-100' :
+                                            (item.score || 0) >= 80 ? 'bg-orange-50 text-orange-600 border-orange-100' :
+                                            'bg-slate-50 text-slate-500 border-slate-100'
+                                        }`}>
+                                            {item.score || 0}分
+                                        </div>
+
                                         <input 
                                             type="text"
-                                            value={title}
+                                            value={item.title}
                                             onChange={(e) => handleTitleChange(idx, e.target.value)}
                                             className="flex-1 text-slate-800 font-medium text-sm leading-snug bg-transparent border-none focus:ring-0 outline-none w-full"
                                         />
                                         
                                         <button 
                                             className="ml-auto opacity-0 group-hover:opacity-100 text-slate-300 hover:text-violet-600 transition-all p-1"
-                                            onClick={() => navigator.clipboard.writeText(title)}
+                                            onClick={() => navigator.clipboard.writeText(item.title)}
                                             title="复制此标题"
                                         >
                                             <Copy className="w-3.5 h-3.5" />
