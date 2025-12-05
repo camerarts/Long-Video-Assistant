@@ -13,6 +13,7 @@ export interface StoryboardFrame {
   description: string;
   imageUrl?: string; // Base64 or URL
   imagePrompt?: string;
+  imageModel?: string; // Model used for generation
 }
 
 export interface TitleItem {
