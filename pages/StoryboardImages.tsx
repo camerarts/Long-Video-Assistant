@@ -18,7 +18,7 @@ const CopyButton = ({ text }: { text: string }) => {
   return (
     <button 
         onClick={handleCopy} 
-        className={`p-1.5 rounded-lg border transition-all shadow-sm flex-shrink-0 backdrop-blur-sm ${copied ? 'bg-emerald-50 border-emerald-200 text-emerald-600' : 'bg-white/80 border-slate-200 text-slate-400 hover:text-fuchsia-600 hover:border-fuchsia-200 hover:bg-fuchsia-50'}`}
+        className={`p-1.5 rounded-lg border transition-all shadow-sm flex-shrink-0 backdrop-blur-sm relative top-2 right-2 z-20 ${copied ? 'bg-emerald-50 border-emerald-200 text-emerald-600' : 'bg-white/80 border-slate-200 text-slate-400 hover:text-fuchsia-600 hover:border-fuchsia-200 hover:bg-fuchsia-50'}`}
         title="复制提示词"
     >
       {copied ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
@@ -148,14 +148,15 @@ const StoryboardImages: React.FC = () => {
 
   const handleReimportPrompts = async () => {
     if (!project || !project.storyboard) return;
-    if (!window.confirm(`确定要基于“${style_mode === 'IMAGE_GEN_A' ? '方案A' : '方案B'}”重新生成所有图片的提示词吗？\n这将同时清理“原文”中的多余修饰词。`)) return;
+    if (!window.confirm(`确定要基于“${style_mode === 'IMAGE_GEN_A' ? '方案A' : '方案B'}”重新生成所有图片的提示词吗？`)) return;
 
     // Use the selected style template
     const templateKey = style_mode; // IMAGE_GEN_A or IMAGE_GEN_B
     const template = prompts[templateKey]?.template || '';
 
     const updatedStoryboard = project.storyboard.map(frame => {
-        // 1. Clean the original description (Remove extra style keywords)
+        // 1. Clean the original description for PROMPT GENERATION ONLY
+        // We do NOT overwrite the 'description' field, preserving the original text.
         const cleanedDesc = cleanDescription(frame.description);
         
         // 2. Construct prompt using the template and cleaned description
@@ -163,10 +164,9 @@ const StoryboardImages: React.FC = () => {
             description: cleanedDesc
         });
         
-        // Update both description (cleaned) and imagePrompt (newly generated)
+        // Update ONLY imagePrompt
         return { 
             ...frame, 
-            description: cleanedDesc,
             imagePrompt: prompt 
         };
     });
@@ -175,7 +175,7 @@ const StoryboardImages: React.FC = () => {
     setProject(updatedProject);
     await storage.saveProject(updatedProject);
     
-    setMessage("提示词已重新导入，原文已清洗！");
+    setMessage("提示词已重新导入！");
     setMessageType('success');
     setTimeout(() => setMessage(null), 3000);
   };
@@ -242,25 +242,11 @@ const StoryboardImages: React.FC = () => {
   const handleBatchGenerate = async () => {
     if (!project?.storyboard) return;
     
-    // Find frames that need generation (no image url)
-    // OR generate ALL if we want (currently let's just do missing ones to be safe, or user can clear first)
-    // Actually typically "Start Generation" means generate everything or missing? 
-    // Let's assume generate ALL for now as per "Batch" usually implies running the whole set, 
-    // BUT to save money/time let's only do the ones without images OR we can add a "Force All" later.
-    // For now: Generate ALL to ensure style consistency? No, let's respect existing images.
-    // User can manually delete image content if they want to regenerate.
-    // WAIT: The prompt implies "Generate" button. Let's filter for ones without images for safety,
-    // or allow user to "Regenerate All". Let's stick to "Generate Missing/All" logic.
-    // For this implementation: Generate items that don't have images OR if the user explicitly clicked "Batch Generate", maybe they want all?
-    // Let's go with: Generate ALL frames in the list.
-    
     setGenerating(true);
     setBatchProgress({ planned: project.storyboard.length, completed: 0, failed: 0 });
     
     const framesToGen = [...project.storyboard];
     // We process sequentially or with limited concurrency to avoid Rate Limits (429)
-    // Free Tier: 2 RPM. Paid Tier: 60 RPM.
-    // To be safe: 
     // Turbo Mode (Pro): Concurrency 3, Delay 500ms
     // Default (Free): Concurrency 1, Delay 3000ms + Smart 429 Retry
     
@@ -288,8 +274,6 @@ const StoryboardImages: React.FC = () => {
                 try {
                     finalImage = await generateSingleImage(frame);
                     success = true;
-                    // Reset delay on success (ramp up speed slightly if we were slowed down?)
-                    // Keep it steady for stability.
                 } catch (err: any) {
                     if (err.message === 'RATE_LIMIT') {
                         retries++;
@@ -444,31 +428,31 @@ const StoryboardImages: React.FC = () => {
   return (
     <div className="h-full flex flex-col bg-[#F8F9FC]">
       
-      {/* Stats Bar (Moved to Top) */}
-      <div className="bg-slate-900 text-white px-6 py-3 flex items-center justify-between text-xs font-medium shadow-inner z-30 relative">
-          <div className="flex items-center gap-8 mx-auto">
-              <div className="flex items-center gap-2">
-                  <span className="text-slate-400">共</span>
-                  <span className="text-lg font-bold text-white">{totalFrames}</span>
-                  <span className="text-slate-400">个分镜</span>
+      {/* Stats Bar (Top) - Enhanced Visibility */}
+      <div className="bg-slate-900 text-white px-8 py-5 flex items-center justify-between text-sm font-medium shadow-xl z-30 relative border-b border-slate-800">
+          <div className="flex items-center gap-10 mx-auto">
+              <div className="flex items-center gap-3">
+                  <span className="text-slate-400 font-bold">共</span>
+                  <span className="text-3xl font-black text-white tracking-tight leading-none">{totalFrames}</span>
+                  <span className="text-slate-400 font-bold">个分镜</span>
               </div>
-              <div className="w-px h-4 bg-slate-700"></div>
-              <div className="flex items-center gap-2">
-                  <span className="text-slate-400">已生图</span>
-                  <span className="text-lg font-bold text-emerald-400">{generatedCount}</span>
-                  <span className="text-slate-400">个</span>
+              <div className="w-px h-8 bg-slate-700/80"></div>
+              <div className="flex items-center gap-3">
+                  <span className="text-slate-400 font-bold">已生图</span>
+                  <span className="text-3xl font-black text-emerald-400 tracking-tight leading-none">{generatedCount}</span>
+                  <span className="text-slate-400 font-bold">个</span>
               </div>
-              <div className="w-px h-4 bg-slate-700"></div>
-              <div className="flex items-center gap-2">
-                  <span className="text-slate-400">未生图</span>
-                  <span className="text-lg font-bold text-amber-400">{notGeneratedCount}</span>
-                  <span className="text-slate-400">个</span>
+              <div className="w-px h-8 bg-slate-700/80"></div>
+              <div className="flex items-center gap-3">
+                  <span className="text-slate-400 font-bold">未生图</span>
+                  <span className="text-3xl font-black text-amber-400 tracking-tight leading-none">{notGeneratedCount}</span>
+                  <span className="text-slate-400 font-bold">个</span>
               </div>
-              <div className="w-px h-4 bg-slate-700"></div>
-              <div className="flex items-center gap-2">
-                  <span className="text-slate-400">已保存图片(云端)</span>
-                  <span className="text-lg font-bold text-blue-400">{uploadedCount}</span>
-                  <span className="text-slate-400">个</span>
+              <div className="w-px h-8 bg-slate-700/80"></div>
+              <div className="flex items-center gap-3">
+                  <span className="text-slate-400 font-bold">已保存(云端)</span>
+                  <span className="text-3xl font-black text-blue-400 tracking-tight leading-none">{uploadedCount}</span>
+                  <span className="text-slate-400 font-bold">个</span>
               </div>
           </div>
       </div>
