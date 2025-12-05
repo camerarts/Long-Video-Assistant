@@ -652,9 +652,12 @@ const ProjectWorkspace: React.FC = () => {
                  {/* Dynamic Content Based on Node */}
                  {selectedNodeId === 'input' && (
                      <div className="space-y-4 h-full">
-                         <div className="bg-white p-5 rounded-xl border border-slate-200 shadow-sm">
+                         <div className="bg-white p-5 rounded-xl border border-slate-200 shadow-sm relative group">
                              <label className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2 block">项目主题</label>
-                             <p className="text-base font-bold text-slate-800">{project.inputs.topic}</p>
+                             <p className="text-base font-bold text-slate-800 pr-8">{project.inputs.topic}</p>
+                             <div className="absolute top-4 right-4 opacity-0 group-hover:opacity-100 transition-opacity">
+                                 <RowCopyButton text={project.inputs.topic} />
+                             </div>
                          </div>
                      </div>
                  )}
