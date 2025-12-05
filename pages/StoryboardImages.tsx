@@ -5,7 +5,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { ProjectData, StoryboardFrame, PromptTemplate } from '../types';
 import * as storage from '../services/storageService';
 import * as gemini from '../services/geminiService';
-import { ArrowLeft, Download, Loader2, Sparkles, Image as ImageIcon, RefreshCw, X, Maximize2, CloudUpload, FileSpreadsheet, Palette, RotateCcw, CheckCircle2, AlertCircle, Settings2, Key } from 'lucide-react';
+import { ArrowLeft, Download, Loader2, Sparkles, Image as ImageIcon, RefreshCw, X, Maximize2, CloudUpload, FileSpreadsheet, Palette, RotateCcw, CheckCircle2, AlertCircle, Settings2, Key, Zap } from 'lucide-react';
 import JSZip from 'jszip';
 
 const StoryboardImages: React.FC = () => {
@@ -21,10 +21,11 @@ const StoryboardImages: React.FC = () => {
   // State for Style Selection (Configuration Template Key)
   const [style_mode, setStyleMode] = useState<string>('IMAGE_GEN_A');
 
-  // State for API Configuration (Key + Model)
+  // State for API Configuration (Key + Model + Turbo)
   const [showConfigModal, setShowConfigModal] = useState(false);
   const [customKey, setCustomKey] = useState('');
   const [imageModel, setImageModel] = useState<string>('gemini-2.5-flash-image');
+  const [isTurboMode, setIsTurboMode] = useState(false);
 
   // State for Batch Progress (Internal)
   const [batchProgress, setBatchProgress] = useState({ planned: 0, completed: 0, failed: 0 });
@@ -59,22 +60,27 @@ const StoryboardImages: React.FC = () => {
         const loadedPrompts = await storage.getPrompts();
         if (mountedRef.current) setPrompts(loadedPrompts);
 
-        // Load Custom Key & Model
+        // Load Custom Key & Model & Turbo
         const savedKey = localStorage.getItem('lva_custom_gemini_key');
         if (savedKey && mountedRef.current) setCustomKey(savedKey);
         
         const savedModel = localStorage.getItem('lva_image_model');
         if (savedModel && mountedRef.current) setImageModel(savedModel);
+
+        const savedTurbo = localStorage.getItem('lva_image_turbo');
+        if (savedTurbo && mountedRef.current) setIsTurboMode(savedTurbo === 'true');
     };
     init();
   }, [id, navigate]);
 
-  const handleSaveConfig = (keyVal: string, modelVal: string) => {
+  const handleSaveConfig = (keyVal: string, modelVal: string, turboVal: boolean) => {
     setCustomKey(keyVal);
     setImageModel(modelVal);
+    setIsTurboMode(turboVal);
     
     localStorage.setItem('lva_custom_gemini_key', keyVal);
     localStorage.setItem('lva_image_model', modelVal);
+    localStorage.setItem('lva_image_turbo', String(turboVal));
     
     setShowConfigModal(false);
     setMessageType('success');
@@ -85,9 +91,11 @@ const StoryboardImages: React.FC = () => {
   const handleClearConfig = () => {
     setCustomKey('');
     setImageModel('gemini-2.5-flash-image'); // Reset to default
+    setIsTurboMode(false);
     
     localStorage.removeItem('lva_custom_gemini_key');
     localStorage.removeItem('lva_image_model');
+    localStorage.removeItem('lva_image_turbo');
     
     setShowConfigModal(false);
     setMessageType('success');
@@ -173,8 +181,12 @@ const StoryboardImages: React.FC = () => {
     setGenerating(true);
     setBatchProgress({ planned: framesToGenerate.length, completed: 0, failed: 0 });
 
-    const CONCURRENCY_LIMIT = 3; // Prevent freezing by limiting parallel requests
-    let activeCount = 0;
+    // SETTINGS FOR RATE LIMITING
+    // Turbo Mode (Pro): 3 Concurrent, 200ms Delay
+    // Safe Mode (Free): 1 Concurrent, 3500ms Delay
+    const CONCURRENCY_LIMIT = isTurboMode ? 3 : 1;
+    const REQUEST_DELAY = isTurboMode ? 200 : 3500;
+
     let index = 0;
     const results: Promise<void>[] = [];
 
@@ -217,9 +229,7 @@ const StoryboardImages: React.FC = () => {
                 
                 // Show Error Toast
                 setMessageType('error');
-                // No truncation, show full error
                 setMessage(`场景 ${frame.sceneNumber} 失败: ${e.message}`);
-                // Clear message after 6s so user has time to read
                 setTimeout(() => setMessage(null), 6000);
             }
         } finally {
@@ -242,6 +252,9 @@ const StoryboardImages: React.FC = () => {
                 (async () => {
                     while (index < framesToGenerate.length) {
                         await processNext();
+                        if (index < framesToGenerate.length) {
+                             await new Promise(r => setTimeout(r, REQUEST_DELAY));
+                        }
                     }
                 })()
             );
@@ -756,6 +769,30 @@ const StoryboardImages: React.FC = () => {
                             <option value="gemini-3-pro-image-preview">gemini-3-pro-image-preview (High Quality)</option>
                         </select>
                     </div>
+
+                    {/* Turbo Mode Toggle */}
+                    <div className={`p-3 rounded-xl border transition-all ${isTurboMode ? 'bg-indigo-50 border-indigo-200' : 'bg-slate-50 border-slate-100'}`}>
+                        <label className="flex items-center gap-3 cursor-pointer">
+                            <div className="relative">
+                                <input 
+                                    type="checkbox" 
+                                    checked={isTurboMode}
+                                    onChange={(e) => setIsTurboMode(e.target.checked)}
+                                    className="sr-only peer"
+                                />
+                                <div className="w-10 h-6 bg-slate-200 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-indigo-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-indigo-600"></div>
+                            </div>
+                            <div className="flex-1">
+                                <span className={`block text-xs font-bold ${isTurboMode ? 'text-indigo-700' : 'text-slate-600'}`}>
+                                    开启极速并发模式 (Turbo)
+                                </span>
+                                <span className="block text-[10px] text-slate-400 leading-tight mt-0.5">
+                                    仅限 Pro 账户。可大幅提升生图速度，但免费 Key 会频繁失败 (429)。
+                                </span>
+                            </div>
+                            <Zap className={`w-4 h-4 ${isTurboMode ? 'text-indigo-500 fill-indigo-100' : 'text-slate-300'}`} />
+                        </label>
+                    </div>
                 </div>
 
                 <div className="flex gap-2">
@@ -766,7 +803,7 @@ const StoryboardImages: React.FC = () => {
                         恢复默认
                     </button>
                     <button 
-                        onClick={() => handleSaveConfig(customKey, imageModel)}
+                        onClick={() => handleSaveConfig(customKey, imageModel, isTurboMode)}
                         className="flex-1 py-2.5 bg-indigo-600 text-white rounded-xl font-bold text-xs shadow-lg shadow-indigo-500/30 hover:bg-indigo-500 transition-colors"
                     >
                         保存配置
@@ -781,4 +818,3 @@ const StoryboardImages: React.FC = () => {
 };
 
 export default StoryboardImages;
-
