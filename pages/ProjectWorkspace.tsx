@@ -135,15 +135,15 @@ const NODE_HEIGHT = 180;
 
 // Workflow Layout Definition
 const NODES_CONFIG = [
-  { id: 'input', label: '项目输入', icon: Layout, color: 'blue', description: '选题与基本信息', x: 50, y: 300 },
-  { id: 'script', label: '视频脚本', icon: FileText, color: 'violet', promptKey: 'SCRIPT', description: '生成分章节的详细脚本', x: 450, y: 300 },
+  { id: 'input', label: '项目输入', panelTitle: '项目基础信息', icon: Layout, color: 'blue', description: '选题与基本信息', x: 50, y: 300 },
+  { id: 'script', label: '视频脚本', panelTitle: '视频文案脚本编辑器', icon: FileText, color: 'violet', promptKey: 'SCRIPT', description: '生成分章节的详细脚本', x: 450, y: 300 },
   // Column 2: Outputs from Script
-  { id: 'titles', label: '爆款标题', icon: Type, color: 'amber', promptKey: 'TITLES', description: '生成高点击率标题', x: 850, y: 100 },
-  { id: 'sb_text', label: '分镜文案', icon: Film, color: 'fuchsia', promptKey: 'STORYBOARD_TEXT', description: '拆解为可视化画面描述', x: 850, y: 300 },
-  { id: 'summary', label: '简介与标签', icon: List, color: 'emerald', promptKey: 'SUMMARY', description: '生成简介和Hashtags', x: 850, y: 500 },
-  { id: 'cover', label: '封面策划', icon: Palette, color: 'rose', promptKey: 'COVER_GEN', description: '策划封面视觉与文案', x: 850, y: 700 },
+  { id: 'titles', label: '爆款标题', panelTitle: '爆款标题方案', icon: Type, color: 'amber', promptKey: 'TITLES', description: '生成高点击率标题', x: 850, y: 100 },
+  { id: 'sb_text', label: '分镜文案', panelTitle: '分镜画面描述', icon: Film, color: 'fuchsia', promptKey: 'STORYBOARD_TEXT', description: '拆解为可视化画面描述', x: 850, y: 300 },
+  { id: 'summary', label: '简介与标签', panelTitle: '视频简介与标签', icon: List, color: 'emerald', promptKey: 'SUMMARY', description: '生成简介和Hashtags', x: 850, y: 500 },
+  { id: 'cover', label: '封面策划', panelTitle: '封面视觉与文案策划', icon: Palette, color: 'rose', promptKey: 'COVER_GEN', description: '策划封面视觉与文案', x: 850, y: 700 },
   // Column 3: Image Generation
-  { id: 'image_gen', label: '图片工坊', icon: Images, color: 'pink', description: '前往生图页面', x: 1250, y: 300 },
+  { id: 'image_gen', label: '图片工坊', panelTitle: 'AI 图片生成工坊', icon: Images, color: 'pink', description: '前往生图页面', x: 1250, y: 300 },
 ];
 
 const CONNECTIONS = [
@@ -629,30 +629,37 @@ const ProjectWorkspace: React.FC = () => {
             className={`absolute top-0 right-0 bottom-0 bg-white/95 backdrop-blur-xl border-l border-slate-200 shadow-[-4px_0_24px_rgba(0,0,0,0.05)] transform transition-all duration-300 z-30 flex flex-col w-[480px] ${selectedNodeId ? 'translate-x-0' : 'translate-x-full'}`}
             onMouseDown={(e) => e.stopPropagation()}
         >
-            <div className="p-5 border-b border-slate-100 flex items-center bg-white/50 gap-4">
-                <button onClick={() => setSelectedNodeId(null)} className="p-2 hover:bg-slate-100 rounded-lg text-slate-400 transition-colors">
-                    <PanelRightClose className="w-5 h-5 text-slate-600" />
-                </button>
-                <div className="flex items-center gap-3 flex-1 justify-end">
-                     {selectedNodeId && (() => {
-                         const node = NODES_CONFIG.find(n => n.id === selectedNodeId);
-                         return (
-                            <>
+            {/* Right Panel Header */}
+            <div className="p-5 border-b border-slate-100 flex items-center justify-between bg-white/50 sticky top-0 z-20 backdrop-blur-md">
+                <div className="flex items-center gap-3">
+                    <button onClick={() => setSelectedNodeId(null)} className="p-2 hover:bg-slate-100 rounded-lg text-slate-400 transition-colors">
+                        <PanelRightClose className="w-5 h-5 text-slate-600" />
+                    </button>
+                    {selectedNodeId && (() => {
+                        const node = NODES_CONFIG.find(n => n.id === selectedNodeId);
+                        return (
+                            <div className="flex items-center gap-3 animate-in slide-in-from-left-2 duration-200">
                                 <div className={`w-8 h-8 rounded-lg bg-${node?.color}-100 text-${node?.color}-600 flex items-center justify-center`}>
                                     {node?.icon && <node.icon className="w-4 h-4" />}
                                 </div>
-                                <div className="mr-2">
-                                    <h3 className="font-bold text-slate-800 text-sm">{node?.label}</h3>
-                                </div>
-                                {node?.id !== 'input' && node?.id !== 'image_gen' && (
-                                    <button 
-                                        onClick={() => handleGenerate(selectedNodeId!)}
-                                        className={`px-3 py-1.5 rounded-lg text-[10px] font-bold flex items-center gap-1.5 transition-all bg-${node?.color}-50 text-${node?.color}-600 hover:bg-${node?.color}-100`}
-                                    >
-                                        <Sparkles className="w-3 h-3" /> 重新生成
-                                    </button>
-                                )}
-                            </>
+                                <h3 className="font-bold text-slate-800 text-base">{node?.panelTitle}</h3>
+                            </div>
+                        );
+                    })()}
+                </div>
+                
+                <div>
+                     {selectedNodeId && (() => {
+                         const node = NODES_CONFIG.find(n => n.id === selectedNodeId);
+                         return (
+                            node?.id !== 'input' && node?.id !== 'image_gen' && (
+                                <button 
+                                    onClick={() => handleGenerate(selectedNodeId!)}
+                                    className={`px-3 py-1.5 rounded-lg text-[10px] font-bold flex items-center gap-1.5 transition-all bg-${node?.color}-50 text-${node?.color}-600 hover:bg-${node?.color}-100 shadow-sm border border-${node?.color}-100`}
+                                >
+                                    <Sparkles className="w-3 h-3" /> 重新生成
+                                </button>
+                            )
                          );
                      })()}
                 </div>
