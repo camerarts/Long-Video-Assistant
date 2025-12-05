@@ -140,6 +140,7 @@ const StoryboardImages: React.FC = () => {
     const template = prompts[templateKey] ? prompts[templateKey].template : '';
 
     const updatedStoryboard = project.storyboard.map(frame => {
+         // Only clean description for generating prompt, do NOT overwrite original description
          const cleanedDesc = cleanDescription(frame.description);
          const newPrompt = template.replace(/\{\{description\}\}/g, cleanedDesc);
          return {
@@ -206,12 +207,10 @@ const StoryboardImages: React.FC = () => {
         return;
     }
 
-    if (!window.confirm(`即将为 ${pendingFrames.length} 个未生图的分镜进行生成。确定继续吗？`)) return;
-
+    // Direct execution, no confirmation dialog
     setGenerating(true);
     setBatchProgress({ planned: pendingFrames.length, completed: 0, failed: 0 });
     
-    // Use a fixed concurrency limit
     const CONCURRENCY_LIMIT = 3;
     const queue = [...pendingFrames];
     const activePromises: Promise<void>[] = [];
@@ -260,25 +259,23 @@ const StoryboardImages: React.FC = () => {
     const localImages = project.storyboard.filter(f => f.imageUrl && f.imageUrl.startsWith('data:'));
     
     if (localImages.length === 0) {
-        if (window.confirm("所有图片均已同步到云端。是否仅同步项目数据？")) {
-             setUploading(true);
-             try {
-                 await storage.uploadProjects();
-                 setMessage("项目数据同步成功");
-                 setMessageType('success');
-             } catch(e: any) {
-                 setMessage(`同步失败: ${e.message}`);
-                 setMessageType('error');
-             } finally {
-                 setUploading(false);
-                 setTimeout(() => setMessage(null), 3000);
-             }
+        // Direct execution for metadata sync
+        setUploading(true);
+        try {
+             await storage.uploadProjects();
+             setMessage("项目数据同步成功");
+             setMessageType('success');
+        } catch(e: any) {
+             setMessage(`同步失败: ${e.message}`);
+             setMessageType('error');
+        } finally {
+             setUploading(false);
+             setTimeout(() => setMessage(null), 3000);
         }
         return;
     }
 
-    if (!window.confirm(`发现 ${localImages.length} 张本地图片尚未上传。是否上传到云端？`)) return;
-
+    // Direct execution for image upload
     setUploading(true);
     setUploadProgress({ total: localImages.length, current: 0 });
 
@@ -295,7 +292,6 @@ const StoryboardImages: React.FC = () => {
                 const updatedStoryboard = prev.storyboard?.map(f => 
                     f.id === frame.id ? { ...f, imageUrl: cloudUrl } : f
                 );
-                // Also update the localImages reference implicitly by updating project
                 return { ...prev, storyboard: updatedStoryboard };
              });
 
@@ -303,15 +299,6 @@ const StoryboardImages: React.FC = () => {
         }
         
         // Final Save & Sync
-        // (Note: project state is already updated in loop, but we need to persist to DB)
-        // We get the latest project from state inside the setter to ensure consistency is tricky in async loop,
-        // but since we updated state incrementally, we can save the final state here or rely on the loop updates.
-        // Best practice: Update DB with current state at end of loop or update DB in loop.
-        // Let's grab current state ref or just save what we have.
-        
-        // Actually, inside the loop we updated the React state. We should also persist to DB to be safe.
-        // But doing `storage.saveProject` in loop is fine.
-        // Let's do a final save using the functional update to be sure we catch the latest.
         setProject(currentFinal => {
             if (currentFinal) {
                 storage.saveProject(currentFinal).then(() => storage.uploadProjects());
@@ -587,6 +574,10 @@ const StoryboardImages: React.FC = () => {
                                                 placeholder="输入提示词..."
                                             />
                                             <CopyButton text={frame.imagePrompt || ''} />
+                                            {/* Absolute positioned copy button to top right of textarea */}
+                                            <div className="absolute top-2 right-2">
+                                                {/* Already handled by CopyButton component styling */}
+                                            </div>
                                         </div>
                                     </td>
                                     <td className="py-4 px-4 align-top text-center">
