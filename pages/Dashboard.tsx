@@ -37,6 +37,22 @@ const Dashboard: React.FC = () => {
     }
   };
 
+  const isProjectFullyComplete = (p: ProjectData) => {
+      const hasScript = !!p.script && p.script.length > 0;
+      const hasTitles = !!p.titles && p.titles.length > 0;
+      const hasSbText = !!p.storyboard && p.storyboard.length > 0;
+      const hasSummary = !!p.summary && p.summary.length > 0;
+      const hasCover = !!p.coverOptions && p.coverOptions.length > 0;
+      const hasImages = p.storyboard?.some(f => !!f.imageUrl) || false;
+      return hasScript && hasTitles && hasSbText && hasSummary && hasCover && hasImages;
+  };
+
+  const getEffectiveStatus = (p: ProjectData): ProjectStatus => {
+      if (p.status === ProjectStatus.ARCHIVED) return ProjectStatus.ARCHIVED;
+      if (isProjectFullyComplete(p)) return ProjectStatus.COMPLETED;
+      return p.status;
+  };
+
   const getStatusStyle = (status: ProjectStatus) => {
     switch (status) {
       case ProjectStatus.COMPLETED: return 'bg-emerald-100 text-emerald-700 ring-1 ring-emerald-200';
@@ -105,42 +121,45 @@ const Dashboard: React.FC = () => {
                         </tr>
                     </thead>
                     <tbody>
-                        {projects.map((project, index) => (
-                            <tr 
-                                key={project.id} 
-                                onClick={() => navigate(`/project/${project.id}`)}
-                                className="group hover:bg-violet-50/30 transition-colors cursor-pointer"
-                            >
-                                <td className="py-2.5 px-3 text-center text-sm font-bold text-slate-400 border border-slate-200 align-middle">
-                                    {index + 1}
-                                </td>
-                                <td className="py-2.5 px-3 border border-slate-200 align-middle">
-                                    <div className="font-bold text-slate-800 text-sm md:text-base group-hover:text-violet-700 transition-colors whitespace-normal break-all block h-auto leading-normal">
-                                        {project.title || '未命名项目'}
-                                    </div>
-                                </td>
-                                <td className="py-2.5 px-3 text-center border border-slate-200 align-middle">
-                                    <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold tracking-wide uppercase ${getStatusStyle(project.status)}`}>
-                                        {getStatusText(project.status)}
-                                    </span>
-                                </td>
-                                <td className="py-2.5 px-3 hidden md:table-cell border border-slate-200 align-middle">
-                                    <div className="flex items-center justify-center gap-1.5 text-xs font-medium text-slate-500">
-                                        <Calendar className="w-3.5 h-3.5 text-slate-300" />
-                                        {new Date(project.createdAt).toLocaleDateString('zh-CN')}
-                                    </div>
-                                </td>
-                                <td className="py-2.5 px-3 text-center border border-slate-200 align-middle">
-                                    <button 
-                                        onClick={(e) => handleDelete(e, project.id)}
-                                        className="p-1.5 text-slate-300 hover:text-rose-500 hover:bg-rose-50 rounded-md transition-all"
-                                        title="删除项目"
-                                    >
-                                        <Trash2 className="w-4 h-4" />
-                                    </button>
-                                </td>
-                            </tr>
-                        ))}
+                        {projects.map((project, index) => {
+                            const status = getEffectiveStatus(project);
+                            return (
+                                <tr 
+                                    key={project.id} 
+                                    onClick={() => navigate(`/project/${project.id}`)}
+                                    className="group hover:bg-violet-50/30 transition-colors cursor-pointer"
+                                >
+                                    <td className="py-2.5 px-3 text-center text-sm font-bold text-slate-400 border border-slate-200 align-middle">
+                                        {index + 1}
+                                    </td>
+                                    <td className="py-2.5 px-3 border border-slate-200 align-middle">
+                                        <div className="font-bold text-slate-800 text-sm md:text-base group-hover:text-violet-700 transition-colors whitespace-normal break-all block h-auto leading-normal">
+                                            {project.title || '未命名项目'}
+                                        </div>
+                                    </td>
+                                    <td className="py-2.5 px-3 text-center border border-slate-200 align-middle">
+                                        <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold tracking-wide uppercase ${getStatusStyle(status)}`}>
+                                            {getStatusText(status)}
+                                        </span>
+                                    </td>
+                                    <td className="py-2.5 px-3 hidden md:table-cell border border-slate-200 align-middle">
+                                        <div className="flex items-center justify-center gap-1.5 text-xs font-medium text-slate-500">
+                                            <Calendar className="w-3.5 h-3.5 text-slate-300" />
+                                            {new Date(project.createdAt).toLocaleDateString('zh-CN')}
+                                        </div>
+                                    </td>
+                                    <td className="py-2.5 px-3 text-center border border-slate-200 align-middle">
+                                        <button 
+                                            onClick={(e) => handleDelete(e, project.id)}
+                                            className="p-1.5 text-slate-300 hover:text-rose-500 hover:bg-rose-50 rounded-md transition-all"
+                                            title="删除项目"
+                                        >
+                                            <Trash2 className="w-4 h-4" />
+                                        </button>
+                                    </td>
+                                </tr>
+                            );
+                        })}
                     </tbody>
                 </table>
             </div>
