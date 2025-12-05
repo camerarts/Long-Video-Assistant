@@ -5,8 +5,27 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { ProjectData, StoryboardFrame, PromptTemplate } from '../types';
 import * as storage from '../services/storageService';
 import * as gemini from '../services/geminiService';
-import { ArrowLeft, Download, Loader2, Sparkles, Image as ImageIcon, RefreshCw, X, Maximize2, CloudUpload, FileSpreadsheet, Palette, RotateCcw, CheckCircle2, AlertCircle, Settings2, Key, Zap, Clock } from 'lucide-react';
+import { ArrowLeft, Download, Loader2, Sparkles, Image as ImageIcon, RefreshCw, X, Maximize2, CloudUpload, FileSpreadsheet, Palette, RotateCcw, CheckCircle2, AlertCircle, Settings2, Key, Zap, Clock, Copy, Check } from 'lucide-react';
 import JSZip from 'jszip';
+
+const CopyButton = ({ text }: { text: string }) => {
+  const [copied, setCopied] = useState(false);
+  const handleCopy = () => {
+    if (!text) return;
+    navigator.clipboard.writeText(text);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
+  return (
+    <button 
+        onClick={handleCopy} 
+        className={`p-2 rounded-lg border transition-all h-fit mt-1 shadow-sm ${copied ? 'bg-emerald-50 border-emerald-200 text-emerald-600' : 'bg-white border-slate-200 text-slate-400 hover:text-fuchsia-600 hover:border-fuchsia-200 hover:bg-fuchsia-50'}`}
+        title="复制提示词"
+    >
+      {copied ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
+    </button>
+  );
+};
 
 const StoryboardImages: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -607,13 +626,16 @@ const StoryboardImages: React.FC = () => {
                                     {frame.sceneNumber}
                                 </td>
                                 <td className="py-6 px-6 align-top">
-                                    <div className="space-y-2">
-                                        <textarea
-                                            value={frame.imagePrompt || interpolatePrompt(prompts[style_mode]?.template || '', { description: frame.description })}
-                                            onChange={(e) => handlePromptChange(frame.id, e.target.value)}
-                                            className="w-full h-32 bg-slate-50 border border-slate-200 rounded-xl p-4 text-sm text-slate-700 resize-none outline-none focus:ring-2 focus:ring-fuchsia-500/20 focus:border-fuchsia-300 transition-all font-mono leading-relaxed"
-                                            placeholder="输入提示词..."
-                                        />
+                                    <div className="flex gap-3">
+                                        <CopyButton text={frame.imagePrompt || interpolatePrompt(prompts[style_mode]?.template || '', { description: frame.description })} />
+                                        <div className="space-y-2 flex-1">
+                                            <textarea
+                                                value={frame.imagePrompt || interpolatePrompt(prompts[style_mode]?.template || '', { description: frame.description })}
+                                                onChange={(e) => handlePromptChange(frame.id, e.target.value)}
+                                                className="w-full h-32 bg-slate-50 border border-slate-200 rounded-xl p-4 text-sm text-slate-700 resize-none outline-none focus:ring-2 focus:ring-fuchsia-500/20 focus:border-fuchsia-300 transition-all font-mono leading-relaxed"
+                                                placeholder="输入提示词..."
+                                            />
+                                        </div>
                                     </div>
                                 </td>
                                 <td className="py-6 px-6 align-top">
@@ -814,6 +836,11 @@ const StoryboardImages: React.FC = () => {
                             </div>
                             <Zap className={`w-4 h-4 ${isTurboMode ? 'text-indigo-500 fill-indigo-100' : 'text-slate-300'}`} />
                         </label>
+                    </div>
+                    
+                    <div className="bg-slate-50 p-3 rounded-xl border border-slate-100 text-[10px] text-slate-500 leading-relaxed">
+                        <strong className="block text-slate-700 mb-1">注意：Gemini Advanced 会员 ≠ API Pro 权限</strong>
+                        如果您只有每月 $20 的个人订阅会员，您仍然只能使用默认模型。Pro 模型需要开通 Google Cloud 结算账号 (Pay-as-you-go)。
                     </div>
                 </div>
 
