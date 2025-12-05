@@ -1,4 +1,5 @@
 
+
 import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { ProjectData, TitleItem, StoryboardFrame, CoverOption, PromptTemplate, ProjectStatus } from '../types';
@@ -251,7 +252,7 @@ const ProjectWorkspace: React.FC = () => {
       const prompt = interpolate(template, contextData);
 
       if (nodeId === 'script') {
-          const text = await gemini.generateText(prompt, 'gemini-3-pro-preview'); 
+          const text = await gemini.generateText(prompt, 'gemini-2.5-flash-preview-09-2025'); 
           await saveProjectUpdate(p => ({ 
               ...p, 
               script: text, 
@@ -701,9 +702,12 @@ const ProjectWorkspace: React.FC = () => {
                             <div className="space-y-4">
                                 {project.coverOptions.map((opt, i) => (
                                     <div key={i} className="bg-white border border-slate-200 rounded-xl p-5 shadow-sm hover:shadow-md transition-shadow">
-                                        <div className="flex justify-between items-start mb-3">
-                                            <span className="bg-rose-50 text-rose-600 text-[10px] font-bold px-2 py-1 rounded border border-rose-100">方案 {i+1}</span>
-                                            <span className="text-xs font-bold text-slate-400">推荐指数: {opt.score}</span>
+                                        <div className="flex justify-between items-center mb-4 border-b border-slate-50 pb-3">
+                                            <span className="bg-rose-50 text-rose-600 text-xs font-bold px-2.5 py-1 rounded-lg border border-rose-100">方案 {i+1}</span>
+                                            <div className="flex items-baseline gap-1">
+                                                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">推荐指数</span>
+                                                <span className="text-3xl font-black text-transparent bg-clip-text bg-gradient-to-r from-rose-600 to-orange-600 italic tracking-tighter">{opt.score}</span>
+                                            </div>
                                         </div>
                                         <div className="mb-4">
                                             <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">画面描述</p>
