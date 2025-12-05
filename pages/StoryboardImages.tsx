@@ -572,11 +572,6 @@ const StoryboardImages: React.FC = () => {
                                             className="w-full h-32 bg-slate-50 border border-slate-200 rounded-xl p-4 text-sm text-slate-700 resize-none outline-none focus:ring-2 focus:ring-fuchsia-500/20 focus:border-fuchsia-300 transition-all font-mono leading-relaxed"
                                             placeholder="输入提示词..."
                                         />
-                                        <div className="flex justify-end">
-                                             <span className="text-[10px] text-slate-400 font-medium bg-white px-2 py-1 rounded border border-slate-100">
-                                                场景描述: {frame.description.substring(0, 30)}...
-                                             </span>
-                                        </div>
                                     </div>
                                 </td>
                                 <td className="py-6 px-6 align-top">
