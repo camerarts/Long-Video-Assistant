@@ -315,8 +315,8 @@ const ProjectWorkspace: React.FC = () => {
           const frames: StoryboardFrame[] = data.map((item, idx) => ({
               id: crypto.randomUUID(),
               sceneNumber: idx + 1,
-              originalText: item.original,
-              description: item.description
+              originalText: item.description, // Swapped field mapping based on user request (content was reversed)
+              description: item.original      // Swapped field mapping based on user request (content was reversed)
           }));
           await saveProjectUpdate(p => ({ ...p, storyboard: frames }));
       }
