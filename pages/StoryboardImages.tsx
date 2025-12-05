@@ -1,3 +1,4 @@
+
 import React, { useEffect, useState, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { ProjectData, StoryboardFrame, PromptTemplate } from '../types';
@@ -475,7 +476,7 @@ const StoryboardImages: React.FC = () => {
 
                 <button
                     onClick={handleReimportPrompts}
-                    className="flex items-center gap-1.5 px-2 h-6 bg-white border border-slate-200 text-slate-600 rounded-md font-bold hover:bg-slate-50 hover:text-indigo-600 hover:border-indigo-200 transition-all shadow-sm text-[9px]"
+                    className="flex-1 px-2 h-6 bg-white border border-slate-200 text-slate-600 rounded-md font-bold hover:bg-slate-50 hover:text-indigo-600 hover:border-indigo-200 transition-all shadow-sm text-[9px] flex items-center justify-center gap-1.5"
                     title="使用当前选择的配置模板，覆盖所有分镜的提示词"
                 >
                     <RotateCcw className="w-3 h-3" />
@@ -536,6 +537,17 @@ const StoryboardImages: React.FC = () => {
 
         {/* Table Content */}
         <div className="flex-1 overflow-y-auto p-8">
+            
+            {/* Project Title Header */}
+            <div className="mb-6">
+                <h2 className="text-3xl md:text-4xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-slate-900 to-slate-600 tracking-tight leading-tight">
+                    {project.title}
+                </h2>
+                {project.inputs.topic && project.inputs.topic !== project.title && (
+                     <p className="text-slate-500 font-medium mt-1 text-sm">{project.inputs.topic}</p>
+                )}
+            </div>
+
             <div className="bg-white rounded-3xl border border-slate-200 shadow-sm overflow-hidden">
                 <table className="w-full text-left border-collapse">
                     <thead>
