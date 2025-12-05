@@ -18,7 +18,7 @@ const CopyButton = ({ text }: { text: string }) => {
   return (
     <button 
         onClick={handleCopy} 
-        className={`p-1.5 rounded-lg border transition-all shadow-sm flex-shrink-0 backdrop-blur-sm relative top-2 right-2 z-20 ${copied ? 'bg-emerald-50 border-emerald-200 text-emerald-600' : 'bg-white/80 border-slate-200 text-slate-400 hover:text-fuchsia-600 hover:border-fuchsia-200 hover:bg-fuchsia-50'}`}
+        className={`absolute top-2 right-2 z-20 p-1.5 rounded-lg border transition-all shadow-sm flex-shrink-0 backdrop-blur-sm ${copied ? 'bg-emerald-50 border-emerald-200 text-emerald-600' : 'bg-white/80 border-slate-200 text-slate-400 hover:text-fuchsia-600 hover:border-fuchsia-200 hover:bg-fuchsia-50'}`}
         title="复制提示词"
     >
       {copied ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
@@ -64,11 +64,10 @@ const StoryboardImages: React.FC = () => {
   // State for Style Selection (Configuration Template Key)
   const [style_mode, setStyleMode] = useState<string>('IMAGE_GEN_A');
 
-  // State for API Configuration (Key + Model + Turbo)
+  // State for API Configuration (Key + Model)
   const [showConfigModal, setShowConfigModal] = useState(false);
   const [customKey, setCustomKey] = useState('');
   const [imageModel, setImageModel] = useState<string>('gemini-2.5-flash-image');
-  const [isTurboMode, setIsTurboMode] = useState(false);
 
   // State for Batch Progress (Internal)
   const [batchProgress, setBatchProgress] = useState({ planned: 0, completed: 0, failed: 0 });
@@ -109,9 +108,6 @@ const StoryboardImages: React.FC = () => {
         
         const storedModel = localStorage.getItem('lva_image_model');
         if (storedModel) setImageModel(storedModel);
-
-        const storedTurbo = localStorage.getItem('lva_turbo_mode');
-        if (storedTurbo) setIsTurboMode(storedTurbo === 'true');
     };
     init();
   }, [id, navigate]);
@@ -119,7 +115,6 @@ const StoryboardImages: React.FC = () => {
   const saveSettings = () => {
       localStorage.setItem('lva_custom_api_key', customKey);
       localStorage.setItem('lva_image_model', imageModel);
-      localStorage.setItem('lva_turbo_mode', String(isTurboMode));
       setShowConfigModal(false);
       setMessage("API 配置已保存");
       setMessageType('success');
@@ -151,637 +146,642 @@ const StoryboardImages: React.FC = () => {
     if (!window.confirm(`确定要基于“${style_mode === 'IMAGE_GEN_A' ? '方案A' : '方案B'}”重新生成所有图片的提示词吗？`)) return;
 
     // Use the selected style template
-    const templateKey = style_mode; // IMAGE_GEN_A or IMAGE_GEN_B
-    const template = prompts[templateKey]?.template || '';
+    const templateKey = style_mode; 
+    const template = prompts[templateKey] ? prompts[templateKey].template : '';
 
     const updatedStoryboard = project.storyboard.map(frame => {
-        // 1. Clean the original description for PROMPT GENERATION ONLY
-        // We do NOT overwrite the 'description' field, preserving the original text.
-        const cleanedDesc = cleanDescription(frame.description);
-        
-        // 2. Construct prompt using the template and cleaned description
-        const prompt = interpolate(template, {
-            description: cleanedDesc
-        });
-        
-        // Update ONLY imagePrompt
-        return { 
-            ...frame, 
-            imagePrompt: prompt 
-        };
+         // Clean the original description to get pure visual elements
+         const cleanedDesc = cleanDescription(frame.description);
+         
+         // Interpolate strictly into the template
+         // Note: We use 'description' variable in template for the visual description
+         const newPrompt = template.replace(/\{\{description\}\}/g, cleanedDesc);
+         
+         return {
+             ...frame,
+             // Update the prompt
+             imagePrompt: newPrompt,
+             // IMPORTANT: We do NOT overwrite frame.description or frame.originalText here
+         };
     });
 
     const updatedProject = { ...project, storyboard: updatedStoryboard };
     setProject(updatedProject);
     await storage.saveProject(updatedProject);
     
-    setMessage("提示词已重新导入！");
+    setMessage("提示词已重新导入成功！");
     setMessageType('success');
     setTimeout(() => setMessage(null), 3000);
   };
 
-  // Generate Single Image with Retry & Rate Limit Handling Logic (Internal Helper)
-  const generateSingleImage = async (frame: StoryboardFrame, retryCount = 0): Promise<string> => {
-    if (!frame.imagePrompt) throw new Error("Prompt is empty");
-    
-    try {
-        return await gemini.generateImage(frame.imagePrompt, customKey, imageModel);
-    } catch (error: any) {
-        // Handle 429 Rate Limit - Smart Retry
-        if (error.message.includes('429') || error.message.includes('频率') || error.message.includes('Quota')) {
-            if (retryCount < 3) {
-                 // Wait logic is handled by caller or here? 
-                 // We'll throw a specific error to let the caller manage the delay loop
-                 throw new Error("RATE_LIMIT");
-            }
-        }
-        throw error;
-    }
-  };
-
-  const handleReloadImage = (frameIndex: number) => {
-      // Force reload by appending timestamp to URL
-      if (!project || !project.storyboard) return;
-      const frame = project.storyboard[frameIndex];
-      if (!frame.imageUrl || frame.imageUrl.startsWith('data:')) return;
-
-      // Remove existing timestamp if any
-      const baseUrl = frame.imageUrl.split('?')[0];
-      const newUrl = `${baseUrl}?t=${Date.now()}`;
-      
-      const newStoryboard = [...project.storyboard];
-      newStoryboard[frameIndex] = { ...frame, imageUrl: newUrl };
-      setProject({ ...project, storyboard: newStoryboard });
-  };
-
-  const handleRegenerateSingle = async (frame: StoryboardFrame) => {
-      if (!project) return;
-      setCurrentGenIds(prev => new Set(prev).add(frame.id));
+  const generateSingleImage = async (frame: StoryboardFrame, showToast = true) => {
+      if (!frame.imagePrompt) return;
       
       try {
-          const base64 = await generateSingleImage(frame);
+          const base64Data = await gemini.generateImage(frame.imagePrompt, customKey, imageModel);
           
-          const updatedStoryboard = project.storyboard?.map(f => 
-            f.id === frame.id ? { ...f, imageUrl: base64, imageModel: imageModel } : f
-          );
-          const updatedProject = { ...project, storyboard: updatedStoryboard };
-          setProject(updatedProject);
-          await storage.saveProject(updatedProject);
-          
-      } catch (error: any) {
-          alert(`生成失败: ${error.message}`);
-      } finally {
-          setCurrentGenIds(prev => {
-              const next = new Set(prev);
-              next.delete(frame.id);
-              return next;
+          // Upload to R2 immediately
+          const cloudUrl = await storage.uploadImage(base64Data, project?.id);
+
+          setProject(prev => {
+              if (!prev) return null;
+              const updated = {
+                  ...prev,
+                  storyboard: prev.storyboard?.map(f => 
+                    f.id === frame.id ? { ...f, imageUrl: cloudUrl, imageModel: imageModel } : f
+                  )
+              };
+              storage.saveProject(updated); // Background save
+              return updated;
           });
+
+          if (showToast) {
+            setMessage("图片生成成功！");
+            setMessageType('success');
+            setTimeout(() => setMessage(null), 3000);
+          }
+      } catch (error: any) {
+          console.error(error);
+          if (showToast) {
+             setMessage(`生成失败: ${error.message}`);
+             setMessageType('error');
+             setTimeout(() => setMessage(null), 5000);
+          }
+          throw error; // Re-throw for batch handling
       }
   };
 
   const handleBatchGenerate = async () => {
-    if (!project?.storyboard) return;
+    if (!project || !project.storyboard) return;
     
+    // Filter only frames that NEED generation (skipping existing images)
+    const pendingFrames = project.storyboard.filter(f => !f.imageUrl);
+
+    if (pendingFrames.length === 0) {
+        setMessage("所有分镜图片已生成完成，无需重复生成。");
+        setMessageType('success');
+        setTimeout(() => setMessage(null), 3000);
+        return;
+    }
+
+    if (!window.confirm(`发现 ${pendingFrames.length} 个未生成的分镜。确定要开始批量生成吗？`)) return;
+
     setGenerating(true);
-    setBatchProgress({ planned: project.storyboard.length, completed: 0, failed: 0 });
+    setBatchProgress({ planned: pendingFrames.length, completed: 0, failed: 0 });
     
-    const framesToGen = [...project.storyboard];
-    // We process sequentially or with limited concurrency to avoid Rate Limits (429)
-    // Turbo Mode (Pro): Concurrency 3, Delay 500ms
-    // Default (Free): Concurrency 1, Delay 3000ms + Smart 429 Retry
-    
-    const CONCURRENCY_LIMIT = isTurboMode ? 3 : 1; 
-    let activeWorkers = 0;
-    let index = 0;
-    let currentDelay = isTurboMode ? 500 : 3500; // Start with safe delay
+    // Concurrency Control (Default 3)
+    const CONCURRENCY_LIMIT = 3;
+    const queue = [...pendingFrames];
+    const activePromises: Promise<void>[] = [];
 
-    const results = [...framesToGen]; // Clone to update as we go
-
+    // Worker function
     const processNext = async () => {
-        if (index >= framesToGen.length) return;
-        
-        const currentIndex = index++;
-        const frame = framesToGen[currentIndex];
-        setCurrentGenIds(prev => new Set(prev).add(frame.id));
+        if (queue.length === 0) return;
+        const frame = queue.shift();
+        if (!frame) return;
 
         try {
-            // Retry Loop for Rate Limiting
-            let retries = 0;
-            let success = false;
-            let finalImage = '';
-
-            while (!success && retries < 4) {
-                try {
-                    finalImage = await generateSingleImage(frame);
-                    success = true;
-                } catch (err: any) {
-                    if (err.message === 'RATE_LIMIT') {
-                        retries++;
-                        const waitTime = 15000 * retries; // 15s, 30s, 45s
-                        setMessage(`API 限流中... 暂停 ${waitTime/1000} 秒后重试 (进度: ${currentIndex + 1}/${framesToGen.length})`);
-                        setMessageType('warning');
-                        // Increase global delay for future requests
-                        currentDelay = Math.min(currentDelay + 2000, 10000); 
-                        await new Promise(resolve => setTimeout(resolve, waitTime));
-                    } else {
-                        throw err; // Real error
-                    }
-                }
-            }
-
-            if (success) {
-                results[currentIndex] = { ...frame, imageUrl: finalImage, imageModel: imageModel };
-                setBatchProgress(prev => ({ ...prev, completed: prev.completed + 1 }));
-            } else {
-                 throw new Error("Max retries exceeded");
-            }
-
-        } catch (error: any) {
+            setCurrentGenIds(prev => new Set(prev).add(frame.id));
+            await generateSingleImage(frame, false); // false = don't show individual success toasts
+            setBatchProgress(prev => ({ ...prev, completed: prev.completed + 1 }));
+        } catch (error) {
             console.error(error);
             setBatchProgress(prev => ({ ...prev, failed: prev.failed + 1 }));
-            // We don't stop the whole batch, just mark this one failed
-            setMessage(`第 ${frame.sceneNumber} 帧生成失败: ${error.message}`);
-            setMessageType('error');
         } finally {
-            setCurrentGenIds(prev => {
-                const next = new Set(prev);
-                next.delete(frame.id);
-                return next;
-            });
-            
-            // Save intermediate progress
-            const updatedProject = { ...project, storyboard: results };
-            setProject(updatedProject);
-            await storage.saveProject(updatedProject);
-
-            // Delay before releasing worker slot
-            if (index < framesToGen.length) {
-                await new Promise(resolve => setTimeout(resolve, currentDelay));
-                processNext();
-            } else {
-                activeWorkers--;
-                if (activeWorkers === 0) {
-                    setGenerating(false);
-                    setMessage("批量生成完成！");
-                    setMessageType('success');
-                    setTimeout(() => setMessage(null), 3000);
-                }
+            if (mountedRef.current) {
+                setCurrentGenIds(prev => {
+                    const next = new Set(prev);
+                    next.delete(frame.id);
+                    return next;
+                });
             }
+            // Continue processing
+            await processNext();
         }
     };
 
-    // Start Workers
-    for (let i = 0; i < CONCURRENCY_LIMIT && i < framesToGen.length; i++) {
-        activeWorkers++;
-        processNext();
+    // Start initial batch
+    for (let i = 0; i < CONCURRENCY_LIMIT; i++) {
+        activePromises.push(processNext());
+    }
+
+    await Promise.all(activePromises);
+
+    setGenerating(false);
+    setMessage(`批量生成完成。成功: ${pendingFrames.length - batchProgress.failed}, 失败: ${batchProgress.failed}`);
+    setMessageType(batchProgress.failed > 0 ? 'warning' : 'success');
+    setTimeout(() => setMessage(null), 5000);
+  };
+
+  const handleCloudSync = async () => {
+    if (!project || !project.storyboard) return;
+
+    // Check for images that are not R2 URLs (i.e. Base64 data URIs)
+    const localImages = project.storyboard.filter(f => f.imageUrl && f.imageUrl.startsWith('data:'));
+    
+    if (localImages.length === 0) {
+        // If all images are already on cloud, just confirm sync of metadata
+        if (window.confirm("所有图片均已是云端链接。是否同步项目数据到云端数据库？")) {
+             setUploading(true);
+             try {
+                 await storage.uploadProjects();
+                 setMessage("项目同步成功");
+                 setMessageType('success');
+             } catch(e: any) {
+                 setMessage(`同步失败: ${e.message}`);
+                 setMessageType('error');
+             } finally {
+                 setUploading(false);
+                 setTimeout(() => setMessage(null), 3000);
+             }
+        }
+        return;
+    }
+
+    if (!window.confirm(`发现 ${localImages.length} 张本地图片尚未上传。是否上传到云端？`)) return;
+
+    setUploading(true);
+    setUploadProgress({ total: localImages.length, current: 0 });
+
+    try {
+        let updatedStoryboard = [...project.storyboard];
+        
+        for (const frame of localImages) {
+             if (!frame.imageUrl) continue;
+             
+             // Upload
+             const cloudUrl = await storage.uploadImage(frame.imageUrl, project.id);
+             
+             // Update
+             updatedStoryboard = updatedStoryboard.map(f => f.id === frame.id ? { ...f, imageUrl: cloudUrl } : f);
+             
+             setUploadProgress(prev => ({ ...prev, current: prev.current + 1 }));
+        }
+        
+        const updatedProject = { ...project, storyboard: updatedStoryboard };
+        setProject(updatedProject);
+        await storage.saveProject(updatedProject);
+        await storage.uploadProjects();
+
+        setMessage("图片上传并同步成功！");
+        setMessageType('success');
+    } catch (e: any) {
+        console.error(e);
+        setMessage(`上传失败: ${e.message}`);
+        setMessageType('error');
+    } finally {
+        setUploading(false);
+        setTimeout(() => setMessage(null), 3000);
     }
   };
 
   const handleDownloadAll = async () => {
-      if (!project?.storyboard) return;
-      setDownloading(true);
-      
-      const zip = new JSZip();
-      const folder = zip.folder(`project-${project.title}-images`);
-      
-      let count = 0;
-      for (const frame of project.storyboard) {
-          if (frame.imageUrl) {
-              const filename = `scene-${String(frame.sceneNumber).padStart(3, '0')}.png`;
-              try {
-                if (frame.imageUrl.startsWith('data:')) {
-                    const data = frame.imageUrl.split(',')[1];
-                    folder?.file(filename, data, { base64: true });
-                    count++;
-                } else {
-                    // Fetch from URL
-                    const resp = await fetch(frame.imageUrl);
-                    const blob = await resp.blob();
-                    folder?.file(filename, blob);
-                    count++;
-                }
-              } catch (e) {
-                  console.error("Failed to add image to zip", e);
-              }
-          }
-      }
-
-      if (count > 0) {
-          const content = await zip.generateAsync({ type: "blob" });
-          const url = URL.createObjectURL(content);
-          const link = document.createElement('a');
-          link.href = url;
-          link.download = `${project.title}-storyboard.zip`;
-          link.click();
-          URL.revokeObjectURL(url);
-      } else {
-          alert("没有可下载的图片");
-      }
-      setDownloading(false);
-  };
-
-  const handleUploadImages = async () => {
     if (!project?.storyboard) return;
-    setUploading(true);
+    setDownloading(true);
     
-    // Filter base64 images
-    const imagesToUpload = project.storyboard.filter(f => f.imageUrl && f.imageUrl.startsWith('data:'));
-    setUploadProgress({ total: imagesToUpload.length, current: 0 });
-
-    const newStoryboard = [...project.storyboard];
-    
-    for (const frame of imagesToUpload) {
-        try {
+    try {
+        const zip = new JSZip();
+        const folder = zip.folder(`storyboard_${project.title}`);
+        
+        let count = 0;
+        for (const frame of project.storyboard) {
             if (frame.imageUrl) {
-                const cloudUrl = await storage.uploadImage(frame.imageUrl, project.id);
-                // Update local reference
-                const idx = newStoryboard.findIndex(f => f.id === frame.id);
-                if (idx !== -1) {
-                    newStoryboard[idx] = { ...newStoryboard[idx], imageUrl: cloudUrl };
+                try {
+                    // Fetch image data
+                    const response = await fetch(frame.imageUrl);
+                    const blob = await response.blob();
+                    const ext = frame.imageUrl.includes('.png') ? 'png' : 'jpg';
+                    folder?.file(`scene_${frame.sceneNumber}.${ext}`, blob);
+                    count++;
+                } catch (e) {
+                    console.error("Failed to download image", frame.imageUrl);
                 }
             }
-        } catch (e) {
-            console.error("Upload failed for frame", frame.id, e);
         }
-        setUploadProgress(prev => ({ ...prev, current: prev.current + 1 }));
-    }
 
-    const updatedProject = { ...project, storyboard: newStoryboard };
-    setProject(updatedProject);
-    await storage.saveProject(updatedProject);
-    
-    setUploading(false);
-    setMessage("所有图片已上传至云端存储");
-    setMessageType('success');
-    setTimeout(() => setMessage(null), 3000);
+        if (count === 0) {
+            alert("没有可下载的图片");
+            return;
+        }
+
+        const content = await zip.generateAsync({ type: "blob" });
+        const link = document.createElement("a");
+        link.href = URL.createObjectURL(content);
+        link.download = `${project.title}_storyboard.zip`;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+
+    } catch (e) {
+        console.error(e);
+        alert("打包下载失败");
+    } finally {
+        setDownloading(false);
+    }
+  };
+
+  const handleReloadImage = (frame: StoryboardFrame) => {
+      if (!frame.imageUrl || frame.imageUrl.startsWith('data:')) return;
+      
+      const urlObj = new URL(frame.imageUrl, window.location.origin);
+      urlObj.searchParams.set('t', Date.now().toString());
+      const newUrl = urlObj.toString();
+
+      setProject(prev => {
+          if (!prev) return null;
+          return {
+              ...prev,
+              storyboard: prev.storyboard?.map(f => 
+                f.id === frame.id ? { ...f, imageUrl: newUrl } : f
+              )
+          };
+      });
   };
 
   if (!project) return <div className="flex justify-center py-20"><Loader2 className="w-10 h-10 animate-spin text-fuchsia-500" /></div>;
 
-  const totalFrames = project.storyboard?.length || 0;
-  const generatedCount = project.storyboard?.filter(f => !!f.imageUrl).length || 0;
-  const notGeneratedCount = totalFrames - generatedCount;
-  // Count images that are URLs (not data URI)
-  const uploadedCount = project.storyboard?.filter(f => f.imageUrl && !f.imageUrl.startsWith('data:')).length || 0;
-  const hasBase64 = project.storyboard?.some(f => f.imageUrl?.startsWith('data:')) || false;
+  const stats = {
+      total: project.storyboard?.length || 0,
+      generated: project.storyboard?.filter(f => !!f.imageUrl).length || 0,
+      pending: (project.storyboard?.length || 0) - (project.storyboard?.filter(f => !!f.imageUrl).length || 0),
+      uploaded: project.storyboard?.filter(f => f.imageUrl && !f.imageUrl.startsWith('data:')).length || 0
+  };
+
+  const progressPercent = stats.total > 0 ? (stats.generated / stats.total) * 100 : 0;
 
   return (
-    <div className="h-full flex flex-col bg-[#F8F9FC]">
+    <div className="flex flex-col h-full bg-[#F8F9FC]">
       
-      {/* Stats Bar (Top) - Enhanced Visibility */}
-      <div className="bg-slate-900 text-white px-8 py-5 flex items-center justify-between text-sm font-medium shadow-xl z-30 relative border-b border-slate-800">
-          <div className="flex items-center gap-10 mx-auto">
-              <div className="flex items-center gap-3">
-                  <span className="text-slate-400 font-bold">共</span>
-                  <span className="text-3xl font-black text-white tracking-tight leading-none">{totalFrames}</span>
-                  <span className="text-slate-400 font-bold">个分镜</span>
-              </div>
-              <div className="w-px h-8 bg-slate-700/80"></div>
-              <div className="flex items-center gap-3">
-                  <span className="text-slate-400 font-bold">已生图</span>
-                  <span className="text-3xl font-black text-emerald-400 tracking-tight leading-none">{generatedCount}</span>
-                  <span className="text-slate-400 font-bold">个</span>
-              </div>
-              <div className="w-px h-8 bg-slate-700/80"></div>
-              <div className="flex items-center gap-3">
-                  <span className="text-slate-400 font-bold">未生图</span>
-                  <span className="text-3xl font-black text-amber-400 tracking-tight leading-none">{notGeneratedCount}</span>
-                  <span className="text-slate-400 font-bold">个</span>
-              </div>
-              <div className="w-px h-8 bg-slate-700/80"></div>
-              <div className="flex items-center gap-3">
-                  <span className="text-slate-400 font-bold">已保存(云端)</span>
-                  <span className="text-3xl font-black text-blue-400 tracking-tight leading-none">{uploadedCount}</span>
-                  <span className="text-slate-400 font-bold">个</span>
-              </div>
+      {/* 1. Statistics Bar - Top Level */}
+      <div className="bg-slate-900 text-white px-8 py-5 flex items-center justify-center gap-12 md:gap-24 shadow-md z-20">
+          <div className="flex flex-col items-center">
+              <span className="text-3xl font-black text-white">{stats.total}</span>
+              <span className="text-sm font-medium text-slate-400 uppercase tracking-wider mt-1">共分镜</span>
+          </div>
+          <div className="w-px h-10 bg-slate-700/50"></div>
+          <div className="flex flex-col items-center">
+              <span className="text-3xl font-black text-emerald-400">{stats.generated}</span>
+              <span className="text-sm font-medium text-slate-400 uppercase tracking-wider mt-1">已生图</span>
+          </div>
+          <div className="w-px h-10 bg-slate-700/50"></div>
+          <div className="flex flex-col items-center">
+              <span className="text-3xl font-black text-amber-400">{stats.pending}</span>
+              <span className="text-sm font-medium text-slate-400 uppercase tracking-wider mt-1">未生图</span>
+          </div>
+          <div className="w-px h-10 bg-slate-700/50"></div>
+          <div className="flex flex-col items-center">
+              <span className="text-3xl font-black text-blue-400">{stats.uploaded}</span>
+              <span className="text-sm font-medium text-slate-400 uppercase tracking-wider mt-1">已保存云端</span>
           </div>
       </div>
 
-      {/* Header */}
-      <div className="bg-white border-b border-slate-200 px-6 py-4 flex flex-col gap-4 shadow-sm z-20">
-        <div className="flex justify-between items-center">
-             <div className="flex items-center gap-4">
-                <button onClick={() => navigate(`/project/${id}`)} className="p-2 hover:bg-slate-100 rounded-full transition-colors text-slate-500">
+      {/* 2. Main Content Container */}
+      <div className="flex-1 overflow-hidden flex flex-col p-3">
+        
+        {/* Header Toolbar */}
+        <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between mb-4 px-2">
+            <div className="flex items-center gap-4">
+                <button onClick={() => navigate(`/project/${project.id}`)} className="p-2 hover:bg-slate-200 rounded-full transition-colors text-slate-500">
                     <ArrowLeft className="w-5 h-5" />
                 </button>
                 <div>
-                    <h1 className="text-xl font-extrabold text-slate-900 flex items-center gap-2">
-                        <ImageIcon className="w-5 h-5 text-fuchsia-600" /> 分镜图片工坊
+                    <h1 className="text-xl md:text-2xl font-extrabold text-slate-900 flex items-center gap-2">
+                        <ImageIcon className="w-6 h-6 text-fuchsia-600" />
+                        分镜图片工坊
                     </h1>
-                     <p className="text-xs text-slate-500 font-medium">批量生成与管理项目分镜画面</p>
                 </div>
             </div>
-            
+
             <div className="flex items-center gap-3">
-                 <button 
-                    onClick={() => setShowConfigModal(true)}
-                    className="flex items-center gap-2 px-3 py-2 bg-slate-100 text-slate-600 rounded-lg hover:bg-slate-200 hover:text-slate-900 transition-colors text-xs font-bold border border-slate-200"
-                >
-                    <Settings2 className="w-4 h-4" /> 
-                    API 配置
-                </button>
-
-                 <div className="h-8 w-px bg-slate-200 mx-1"></div>
-
-                 <button 
-                    onClick={handleUploadImages}
-                    disabled={uploading || !hasBase64}
-                    className="flex items-center gap-2 px-4 py-2 bg-blue-50 text-blue-600 rounded-xl font-bold hover:bg-blue-100 transition-all disabled:opacity-50 disabled:bg-slate-50 disabled:text-slate-300 text-xs"
-                    title="将本地生成的图片上传到云端存储"
-                 >
-                    {uploading ? <Loader2 className="w-4 h-4 animate-spin" /> : <CloudUpload className="w-4 h-4" />}
-                    {uploading ? `上传中 ${uploadProgress.current}/${uploadProgress.total}` : '上传云端'}
-                 </button>
-
-                 <button 
-                    onClick={handleDownloadAll}
-                    disabled={downloading || generatedCount === 0}
-                    className="flex items-center gap-2 px-4 py-2 bg-slate-100 text-slate-700 rounded-xl font-bold hover:bg-slate-200 transition-all disabled:opacity-50 text-xs"
-                 >
-                    {downloading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
-                    打包下载
-                 </button>
-            </div>
-        </div>
-
-        {/* Toolbar */}
-        <div className="flex items-center justify-between bg-slate-50 p-3 rounded-xl border border-slate-100">
-            <div className="flex items-center gap-4">
-                <div className="flex items-center gap-2 px-3 py-1.5 bg-white rounded-lg border border-slate-200 shadow-sm">
-                    <Palette className="w-4 h-4 text-slate-400" />
+                {/* Style Selection, Reimport, Batch Generate moved to left of API Config */}
+                <div className="flex items-center bg-white border border-slate-200 rounded-xl p-1 shadow-sm h-10">
                     <select 
                         value={style_mode}
                         onChange={(e) => setStyleMode(e.target.value)}
-                        className="text-xs font-bold text-slate-700 bg-transparent outline-none cursor-pointer"
+                        className="bg-transparent text-xs font-bold text-slate-700 px-3 outline-none border-r border-slate-100 h-full cursor-pointer hover:bg-slate-50 rounded-l-lg"
+                        title="选择提示词方案模板"
                     >
                         <option value="IMAGE_GEN_A">方案 A: 电影质感 (写实)</option>
-                        <option value="IMAGE_GEN_B">方案 B: 漫画风格 (手绘)</option>
+                        <option value="IMAGE_GEN_B">方案 B: 漫画风格</option>
                     </select>
+                    <button 
+                        onClick={handleReimportPrompts}
+                        className="px-3 h-full flex items-center gap-1.5 text-slate-500 hover:text-fuchsia-600 hover:bg-fuchsia-50 transition-colors text-xs font-bold border-r border-slate-100"
+                        title="基于当前选择的方案重新生成提示词"
+                    >
+                        <RotateCcw className="w-3.5 h-3.5" /> 重新导入
+                    </button>
+                    <button 
+                        onClick={handleBatchGenerate}
+                        disabled={generating}
+                        className="px-4 h-full flex items-center gap-1.5 text-fuchsia-600 hover:bg-fuchsia-50 transition-colors text-xs font-bold rounded-r-lg disabled:opacity-50"
+                        title="仅为尚未有图片的分镜生成图片"
+                    >
+                        {generating ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Zap className="w-3.5 h-3.5 fill-fuchsia-600" />}
+                        批量生图
+                    </button>
                 </div>
-                <button 
-                    onClick={handleReimportPrompts}
-                    className="text-xs font-bold text-slate-500 hover:text-fuchsia-600 flex items-center gap-1 px-2 py-1 hover:bg-white rounded-lg transition-all"
-                    title="根据选定的风格方案，重新生成所有图片的提示词"
+
+                {/* API Config Button */}
+                <button
+                    onClick={() => setShowConfigModal(true)}
+                    className={`h-10 px-4 rounded-xl font-bold text-xs flex items-center gap-2 transition-all shadow-sm border ${customKey ? 'bg-indigo-50 text-indigo-600 border-indigo-200' : 'bg-white text-slate-600 border-slate-200 hover:border-slate-300'}`}
                 >
-                    <RotateCcw className="w-3.5 h-3.5" /> 重新导入提示词
+                    <Settings2 className="w-4 h-4" />
+                    API 配置
+                </button>
+                
+                {/* Cloud Sync Button */}
+                <button
+                    onClick={handleCloudSync}
+                    disabled={uploading}
+                    className="h-10 px-4 bg-emerald-50 text-emerald-600 border border-emerald-200 rounded-xl font-bold text-xs flex items-center gap-2 hover:bg-emerald-100 transition-all shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
+                    title="将本地图片上传至云端并同步数据"
+                >
+                    {uploading ? <Loader2 className="w-4 h-4 animate-spin" /> : <CloudUpload className="w-4 h-4" />}
+                    上传云端
+                </button>
+
+                {/* Download Button */}
+                <button
+                    onClick={handleDownloadAll}
+                    disabled={downloading || stats.generated === 0}
+                    className="h-10 px-4 bg-slate-900 text-white rounded-xl font-bold text-xs flex items-center gap-2 hover:bg-slate-800 transition-all shadow-lg shadow-slate-900/20 disabled:opacity-50 disabled:shadow-none"
+                >
+                    {downloading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
+                    打包下载
                 </button>
             </div>
+        </div>
 
-            <div className="flex items-center gap-4">
-                 <button 
-                    onClick={handleBatchGenerate}
-                    disabled={generating}
-                    className="bg-fuchsia-600 hover:bg-fuchsia-700 disabled:opacity-50 text-white px-6 py-2 rounded-lg font-bold shadow-lg shadow-fuchsia-500/30 hover:shadow-fuchsia-500/40 hover:-translate-y-0.5 transition-all flex items-center gap-2 text-xs"
-                 >
-                    {generating ? <Loader2 className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4" />}
-                    {generating ? `生成中 (${batchProgress.completed}/${batchProgress.planned})` : '批量生图'}
-                 </button>
+        {/* Progress Bar (if generating) */}
+        {generating && (
+            <div className="mb-4 mx-2 bg-white rounded-xl border border-slate-200 p-3 shadow-sm flex items-center gap-4 animate-in fade-in slide-in-from-top-2">
+                <div className="flex items-center gap-2 text-xs font-bold text-slate-500 whitespace-nowrap">
+                    <Loader2 className="w-4 h-4 animate-spin text-fuchsia-600" />
+                    正在生成 ({batchProgress.completed}/{batchProgress.planned})...
+                </div>
+                <div className="flex-1 h-2 bg-slate-100 rounded-full overflow-hidden">
+                    <div 
+                        className="h-full bg-gradient-to-r from-fuchsia-500 to-pink-500 transition-all duration-300 rounded-full"
+                        style={{ width: `${(batchProgress.completed / batchProgress.planned) * 100}%` }}
+                    />
+                </div>
+                {batchProgress.failed > 0 && (
+                    <span className="text-xs font-bold text-rose-500 bg-rose-50 px-2 py-0.5 rounded">
+                        失败: {batchProgress.failed}
+                    </span>
+                )}
             </div>
-        </div>
-      </div>
+        )}
 
-      {/* Main Content: Table */}
-      <div className="flex-1 overflow-auto p-3">
-        
-        {/* Project Title Header */}
-        <div className="mb-6">
-            <h2 className="text-3xl font-black text-transparent bg-clip-text bg-gradient-to-r from-slate-800 to-slate-500 mb-2">
-                {project.title}
-            </h2>
-            <div className="h-1 w-20 bg-fuchsia-500 rounded-full"></div>
-        </div>
+        {/* Upload Progress Bar (if uploading) */}
+        {uploading && (
+            <div className="mb-4 mx-2 bg-white rounded-xl border border-emerald-200 p-3 shadow-sm flex items-center gap-4 animate-in fade-in slide-in-from-top-2">
+                <div className="flex items-center gap-2 text-xs font-bold text-emerald-600 whitespace-nowrap">
+                    <CloudUpload className="w-4 h-4 animate-bounce" />
+                    正在上传 ({uploadProgress.current}/{uploadProgress.total})...
+                </div>
+                <div className="flex-1 h-2 bg-emerald-50 rounded-full overflow-hidden">
+                    <div 
+                        className="h-full bg-emerald-500 transition-all duration-300 rounded-full"
+                        style={{ width: uploadProgress.total > 0 ? `${(uploadProgress.current / uploadProgress.total) * 100}%` : '0%' }}
+                    />
+                </div>
+            </div>
+        )}
 
-        <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
-            <table className="w-full text-left border-collapse border border-slate-200">
-                <thead className="bg-slate-50 text-slate-600">
-                    <tr>
-                        <th className="py-4 px-4 text-xs font-bold uppercase tracking-wider w-16 text-center border border-slate-200">序号</th>
-                        <th className="py-4 px-4 text-xs font-bold uppercase tracking-wider w-1/4 min-w-[200px] border border-slate-200">原文</th>
-                        <th className="py-4 px-4 text-xs font-bold uppercase tracking-wider min-w-[300px] border border-slate-200">AI 绘图提示词</th>
-                        <th className="py-4 px-4 text-xs font-bold uppercase tracking-wider w-80 text-center border border-slate-200">缩略图 / 状态</th>
-                    </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-100">
-                    {project.storyboard?.map((frame, index) => (
-                        <tr key={frame.id} className="group hover:bg-slate-50 transition-colors">
-                            <td className="py-4 px-4 text-center text-sm font-bold text-slate-400 border border-slate-200 align-top">
-                                {frame.sceneNumber}
-                            </td>
-                             <td className="py-4 px-4 border border-slate-200 align-top bg-slate-50/30">
-                                <div className="text-xs text-slate-600 leading-relaxed whitespace-pre-wrap max-h-[160px] overflow-y-auto">
-                                    {frame.originalText}
-                                </div>
-                            </td>
-                            <td className="py-4 px-4 border border-slate-200 align-top">
-                                <div className="relative h-full">
-                                    <div className="absolute top-2 right-2 z-10">
-                                        <CopyButton text={frame.imagePrompt || ''} />
-                                    </div>
-                                    <textarea 
-                                        className="w-full h-32 md:h-40 p-3 pr-12 text-xs md:text-sm text-slate-700 border border-slate-200 rounded-xl focus:ring-2 focus:ring-fuchsia-500/20 focus:border-fuchsia-400 outline-none transition-all resize-none leading-relaxed"
-                                        value={frame.imagePrompt || ''}
-                                        onChange={(e) => handleSavePrompt(frame.id, e.target.value)}
-                                        placeholder="在此编辑 AI 提示词..."
-                                    />
-                                </div>
-                            </td>
-                            <td className="py-4 px-4 border border-slate-200 align-top">
-                                <div className="w-full aspect-video bg-slate-100 rounded-xl border border-slate-200 flex items-center justify-center overflow-hidden relative group/img">
-                                    
-                                    {/* Regenerate Button (Top Right) */}
-                                    <button 
-                                        onClick={(e) => { e.stopPropagation(); handleRegenerateSingle(frame); }}
-                                        disabled={currentGenIds.has(frame.id)}
-                                        className={`absolute top-2 right-2 p-2 rounded-lg backdrop-blur-md transition-all z-30 shadow-sm ${
-                                            frame.imageUrl 
-                                            ? 'bg-black/40 text-white hover:bg-fuchsia-600 hover:text-white opacity-0 group-hover/img:opacity-100' 
-                                            : 'bg-white text-slate-400 hover:text-fuchsia-600 hover:bg-fuchsia-50 border border-slate-200'
-                                        }`}
-                                        title="重新生成此分镜"
-                                    >
-                                         <RefreshCw className={`w-4 h-4 ${currentGenIds.has(frame.id) ? 'animate-spin' : ''}`} />
-                                    </button>
+        {/* Table Area */}
+        <div className="flex-1 bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden flex flex-col">
+            {/* Project Title Header */}
+            <div className="px-6 py-4 border-b border-slate-100 bg-slate-50/50">
+                 <h2 className="text-xl font-black text-transparent bg-clip-text bg-gradient-to-r from-slate-800 to-slate-600">
+                    {project.title || '未命名项目'}
+                 </h2>
+            </div>
 
-                                    {/* Reload Button (Top Left) - Only for server images */}
-                                    {frame.imageUrl && !frame.imageUrl.startsWith('data:') && (
-                                        <button
-                                            onClick={(e) => { e.stopPropagation(); handleReloadImage(index); }}
-                                            className="absolute top-2 left-2 p-2 bg-black/40 text-white rounded-lg hover:bg-blue-600 transition-all z-30 opacity-0 group-hover/img:opacity-100 backdrop-blur-md shadow-sm"
-                                            title="刷新图片缓存"
-                                        >
-                                            <RotateCcw className="w-4 h-4" />
-                                        </button>
-                                    )}
-
-                                    {/* Model Badge - Bottom */}
-                                    {frame.imageUrl && frame.imageModel && (
-                                        <div className="absolute bottom-0 left-0 right-0 bg-black/60 backdrop-blur-sm px-2 py-1 text-[9px] font-mono text-white/90 text-center z-20 pointer-events-none">
-                                            {frame.imageModel}
-                                        </div>
-                                    )}
-
-                                    {frame.imageUrl ? (
-                                        <>
-                                            <img 
-                                                src={frame.imageUrl} 
-                                                alt={`Scene ${frame.sceneNumber}`} 
-                                                loading="lazy"
-                                                className="w-full h-full object-cover"
-                                            />
-                                            <button 
-                                                onClick={() => setSelectedImage(frame.imageUrl!)}
-                                                className="absolute inset-0 bg-black/0 group-hover/img:bg-black/10 transition-colors flex items-center justify-center opacity-0 group-hover/img:opacity-100 z-10"
-                                            >
-                                                <Maximize2 className="w-8 h-8 text-white drop-shadow-md" />
-                                            </button>
-                                        </>
-                                    ) : (
-                                        <div className="text-center p-4">
-                                            {currentGenIds.has(frame.id) ? (
-                                                <Loader2 className="w-6 h-6 animate-spin text-fuchsia-500 mx-auto mb-2" />
-                                            ) : (
-                                                <ImageIcon className="w-6 h-6 text-slate-300 mx-auto mb-2" />
-                                            )}
-                                            <span className="text-[10px] text-slate-400 block">
-                                                {currentGenIds.has(frame.id) ? '正在生成...' : '等待生成'}
-                                            </span>
-                                        </div>
-                                    )}
-                                </div>
-                            </td>
+            <div className="flex-1 overflow-auto">
+                <table className="w-full text-left border-collapse">
+                    <thead className="bg-slate-50 text-slate-500 sticky top-0 z-10 shadow-sm">
+                        <tr>
+                            <th className="py-3 px-4 text-xs font-bold uppercase tracking-wider w-16 text-center border-b border-slate-200">序号</th>
+                            <th className="py-3 px-4 text-xs font-bold uppercase tracking-wider w-1/5 border-b border-slate-200">原文</th>
+                            <th className="py-3 px-4 text-xs font-bold uppercase tracking-wider border-b border-slate-200">AI 绘图提示词 (中文)</th>
+                            <th className="py-3 px-4 text-xs font-bold uppercase tracking-wider w-[360px] text-center border-b border-slate-200">画面预览</th>
                         </tr>
-                    ))}
-                </tbody>
-            </table>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100">
+                        {project.storyboard?.map((frame, index) => {
+                            const isGeneratingThis = currentGenIds.has(frame.id);
+                            return (
+                                <tr key={frame.id} className="group hover:bg-slate-50/50 transition-colors">
+                                    <td className="py-4 px-4 text-center text-slate-400 font-bold text-sm align-top pt-6">
+                                        {frame.sceneNumber}
+                                    </td>
+                                    <td className="py-4 px-4 align-top pt-4">
+                                        <div className="bg-slate-50 rounded-lg p-3 border border-slate-100 text-xs text-slate-700 leading-relaxed font-medium">
+                                            {frame.originalText || <span className="text-slate-300 italic">无原文内容</span>}
+                                        </div>
+                                    </td>
+                                    <td className="py-4 px-4 align-top pt-4">
+                                        <div className="relative h-full min-h-[120px]">
+                                            <textarea
+                                                className="w-full h-32 bg-white border border-slate-200 rounded-xl p-3 pr-10 text-xs text-slate-600 leading-relaxed focus:ring-2 focus:ring-fuchsia-500/20 focus:border-fuchsia-500 outline-none resize-none transition-all shadow-sm"
+                                                value={frame.imagePrompt || ''}
+                                                onChange={(e) => handleSavePrompt(frame.id, e.target.value)}
+                                                placeholder="输入提示词..."
+                                            />
+                                            <CopyButton text={frame.imagePrompt || ''} />
+                                        </div>
+                                    </td>
+                                    <td className="py-4 px-4 align-top text-center">
+                                        <div className="relative w-full aspect-video bg-slate-100 rounded-xl overflow-hidden border border-slate-200 shadow-sm group/preview">
+                                            {frame.imageUrl ? (
+                                                <>
+                                                    <img 
+                                                        src={frame.imageUrl} 
+                                                        loading="lazy"
+                                                        alt={`Scene ${frame.sceneNumber}`} 
+                                                        className="w-full h-full object-cover cursor-zoom-in hover:scale-105 transition-transform duration-500"
+                                                        onClick={() => setSelectedImage(frame.imageUrl || null)}
+                                                    />
+                                                    {/* Reload Button (Top-Left) - Only for remote images */}
+                                                    {!frame.imageUrl.startsWith('data:') && (
+                                                        <button 
+                                                            onClick={() => handleReloadImage(frame)}
+                                                            className="absolute top-2 left-2 p-1.5 bg-black/50 hover:bg-black/70 text-white rounded-lg opacity-0 group-hover/preview:opacity-100 transition-opacity backdrop-blur-sm"
+                                                            title="强制刷新图片"
+                                                        >
+                                                            <RefreshCw className="w-3.5 h-3.5" />
+                                                        </button>
+                                                    )}
+                                                    
+                                                    {/* Regenerate Button (Top-Right) - Hidden by default, show on hover */}
+                                                    <button 
+                                                        onClick={() => generateSingleImage(frame)}
+                                                        disabled={isGeneratingThis}
+                                                        className="absolute top-2 right-2 p-1.5 bg-black/50 hover:bg-fuchsia-600 text-white rounded-lg opacity-0 group-hover/preview:opacity-100 transition-all backdrop-blur-sm shadow-sm"
+                                                        title="重新生成这张"
+                                                    >
+                                                        {isGeneratingThis ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <RefreshCw className="w-3.5 h-3.5" />}
+                                                    </button>
+                                                    
+                                                    {/* Model Label (Bottom) */}
+                                                    {frame.imageModel && (
+                                                        <div className="absolute bottom-0 left-0 right-0 bg-black/60 backdrop-blur-[2px] py-1 px-2 text-[10px] text-white/80 font-mono text-center">
+                                                            {frame.imageModel}
+                                                        </div>
+                                                    )}
+                                                </>
+                                            ) : (
+                                                <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 text-slate-300">
+                                                    {isGeneratingThis ? (
+                                                        <>
+                                                            <Loader2 className="w-8 h-8 animate-spin text-fuchsia-500" />
+                                                            <span className="text-xs font-bold text-fuchsia-500 animate-pulse">正在绘制...</span>
+                                                        </>
+                                                    ) : (
+                                                        <>
+                                                            <ImageIcon className="w-8 h-8 opacity-20" />
+                                                            {/* Regenerate Button (Top-Right) - Visible for empty state */}
+                                                            <button 
+                                                                onClick={() => generateSingleImage(frame)}
+                                                                className="absolute top-2 right-2 p-1.5 bg-white border border-slate-200 text-slate-400 hover:text-fuchsia-600 hover:border-fuchsia-200 rounded-lg shadow-sm transition-all"
+                                                                title="立即生成"
+                                                            >
+                                                                <Zap className="w-3.5 h-3.5" />
+                                                            </button>
+                                                        </>
+                                                    )}
+                                                </div>
+                                            )}
+                                        </div>
+                                    </td>
+                                </tr>
+                            );
+                        })}
+                    </tbody>
+                </table>
+            </div>
         </div>
       </div>
 
-      {/* Full Screen Image Preview */}
+      {/* Image Lightbox */}
       {selectedImage && (
-        <div className="fixed inset-0 z-50 bg-black/90 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in duration-200" onClick={() => setSelectedImage(null)}>
-            <div className="relative max-w-[90vw] max-h-[90vh]">
-                <img src={selectedImage} alt="Full Preview" className="max-w-full max-h-[90vh] rounded-lg shadow-2xl" />
-                <button 
-                    onClick={() => setSelectedImage(null)}
-                    className="absolute -top-12 right-0 text-white/70 hover:text-white transition-colors"
-                >
-                    <X className="w-8 h-8" />
-                </button>
-            </div>
+        <div className="fixed inset-0 z-50 bg-black/95 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in duration-200" onClick={() => setSelectedImage(null)}>
+            <img src={selectedImage} alt="Fullscreen" className="max-w-full max-h-full rounded-lg shadow-2xl" />
+            <button className="absolute top-6 right-6 text-white/50 hover:text-white transition-colors">
+                <X className="w-8 h-8" />
+            </button>
         </div>
       )}
 
       {/* Toast Message */}
       {message && (
-        <div className={`fixed bottom-8 right-8 text-white px-6 py-4 rounded-xl shadow-2xl animate-in slide-in-from-bottom-5 z-[60] font-bold flex items-start gap-3 max-w-lg break-words ${
-            messageType === 'error' ? 'bg-rose-600' : 
-            messageType === 'warning' ? 'bg-amber-500' : 
-            'bg-emerald-500'
+        <div className={`fixed bottom-8 right-8 px-6 py-4 rounded-xl shadow-2xl animate-in slide-in-from-bottom-5 fade-in duration-300 z-[100] flex items-start gap-3 max-w-lg break-words ${
+            messageType === 'success' ? 'bg-emerald-500 text-white' : 
+            messageType === 'warning' ? 'bg-amber-500 text-white' :
+            'bg-rose-500 text-white'
         }`}>
-          {messageType === 'error' ? <AlertCircle className="w-5 h-5 mt-0.5 flex-shrink-0" /> : 
-           messageType === 'warning' ? <Clock className="w-5 h-5 mt-0.5 flex-shrink-0" /> :
-           <CheckCircle2 className="w-5 h-5 mt-0.5 flex-shrink-0" />}
-          <span className="leading-snug">{message}</span>
+            <div className="mt-0.5 shrink-0">
+                {messageType === 'success' ? <CheckCircle2 className="w-5 h-5" /> : <AlertCircle className="w-5 h-5" />}
+            </div>
+            <div className="font-bold text-sm leading-snug">{message}</div>
         </div>
       )}
 
-      {/* API Configuration Modal */}
+      {/* API Config Modal */}
       {showConfigModal && (
-        <div className="fixed inset-0 z-[70] bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in duration-200">
-            <div className="bg-white rounded-3xl shadow-2xl w-full max-w-md p-8 animate-in zoom-in-95 duration-200 relative">
-                <button onClick={() => setShowConfigModal(false)} className="absolute top-4 right-4 text-slate-400 hover:text-slate-600 p-2 rounded-full hover:bg-slate-50 transition-colors">
-                    <X className="w-5 h-5" />
-                </button>
+          <div className="fixed inset-0 z-[60] bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in duration-200">
+              <div className="bg-white rounded-3xl shadow-2xl w-full max-w-md overflow-hidden animate-in zoom-in-95 duration-200">
+                  <div className="px-8 py-6 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
+                      <h3 className="text-xl font-extrabold text-slate-800 flex items-center gap-2">
+                          <Settings2 className="w-6 h-6 text-indigo-600" />
+                          API 配置
+                      </h3>
+                      <button onClick={() => setShowConfigModal(false)} className="text-slate-400 hover:text-slate-600 transition-colors">
+                          <X className="w-6 h-6" />
+                      </button>
+                  </div>
+                  
+                  <div className="p-8 space-y-6">
+                      {/* Model Selection */}
+                      <div className="space-y-3">
+                          <label className="text-sm font-bold text-slate-700 block">AI 模型选择</label>
+                          <div className="grid grid-cols-1 gap-3">
+                              <label className={`flex items-start gap-3 p-4 rounded-xl border-2 cursor-pointer transition-all ${imageModel === 'gemini-2.5-flash-image' ? 'border-fuchsia-500 bg-fuchsia-50' : 'border-slate-100 hover:border-slate-200'}`}>
+                                  <input 
+                                    type="radio" 
+                                    name="model" 
+                                    value="gemini-2.5-flash-image"
+                                    checked={imageModel === 'gemini-2.5-flash-image'}
+                                    onChange={(e) => setImageModel(e.target.value)}
+                                    className="mt-1"
+                                  />
+                                  <div>
+                                      <div className="font-bold text-slate-800 text-sm">Gemini 2.5 Flash Image</div>
+                                      <div className="text-xs text-slate-500 mt-1">速度快，免费额度高，适合快速预览。</div>
+                                  </div>
+                              </label>
 
-                <div className="flex flex-col items-center mb-6">
-                    <div className="w-12 h-12 bg-fuchsia-50 text-fuchsia-600 rounded-2xl flex items-center justify-center mb-3">
-                        <Settings2 className="w-6 h-6" />
-                    </div>
-                    <h3 className="text-xl font-extrabold text-slate-900">API 高级配置</h3>
-                    <p className="text-xs text-slate-500 text-center mt-1">仅对当前页面生效，用于优化生图体验</p>
-                </div>
+                              <label className={`flex items-start gap-3 p-4 rounded-xl border-2 cursor-pointer transition-all ${imageModel === 'gemini-3-pro-image-preview' ? 'border-indigo-500 bg-indigo-50' : 'border-slate-100 hover:border-slate-200'}`}>
+                                  <input 
+                                    type="radio" 
+                                    name="model" 
+                                    value="gemini-3-pro-image-preview"
+                                    checked={imageModel === 'gemini-3-pro-image-preview'}
+                                    onChange={(e) => setImageModel(e.target.value)}
+                                    className="mt-1"
+                                  />
+                                  <div>
+                                      <div className="font-bold text-slate-800 text-sm">Gemini 3 Pro Image (High Quality)</div>
+                                      <div className="text-xs text-slate-500 mt-1">画质更佳，支持文字渲染。需 Google Cloud 结算账号 (Pay-as-you-go)。</div>
+                                  </div>
+                              </label>
+                          </div>
+                          <div className="text-[10px] text-slate-400 px-1">
+                              注意：Pro 模型不包含在 Gemini Advanced 个人订阅中，需要开通 Google Cloud Vertex AI/AI Studio 并绑定信用卡结算。
+                          </div>
+                      </div>
 
-                <div className="space-y-6">
-                    {/* API Key Input */}
-                    <div>
-                        <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2 flex justify-between">
-                            <span>独立 API Key</span>
-                            {customKey && <span className="text-emerald-500">{getMaskedKey(customKey)}</span>}
-                        </label>
-                        <div className="relative">
-                            <input
-                                type="password"
-                                value={customKey}
-                                onChange={(e) => setCustomKey(e.target.value)}
-                                placeholder="sk-..."
-                                className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 pl-10 text-sm font-bold text-slate-800 focus:ring-2 focus:ring-fuchsia-500/20 focus:border-fuchsia-500 outline-none transition-all"
-                            />
-                            <Key className="w-4 h-4 text-slate-400 absolute left-3 top-3.5" />
-                            {customKey && (
-                                <button 
-                                    onClick={() => setCustomKey('')}
-                                    className="absolute right-3 top-3.5 text-slate-400 hover:text-rose-500 text-xs font-bold"
-                                >
-                                    清除
-                                </button>
-                            )}
-                        </div>
-                         <p className="text-[10px] text-slate-400 mt-2 leading-relaxed">
-                            输入您的 Gemini API Key 以使用独立配额。留空则使用系统默认 Key。
-                        </p>
-                    </div>
+                      {/* API Key Input */}
+                      <div>
+                          <label className="text-sm font-bold text-slate-700 mb-2 flex items-center justify-between">
+                              <span>自定义 API Key (可选)</span>
+                              {customKey && <span className="text-[10px] bg-emerald-100 text-emerald-600 px-1.5 py-0.5 rounded font-mono">{getMaskedKey(customKey)}</span>}
+                          </label>
+                          <div className="relative">
+                              <Key className="absolute left-3 top-3 w-5 h-5 text-slate-400" />
+                              <input 
+                                  type="password"
+                                  value={customKey}
+                                  onChange={(e) => setCustomKey(e.target.value)}
+                                  placeholder="sk-..."
+                                  className="w-full bg-slate-50 border border-slate-200 rounded-xl pl-10 pr-4 py-3 text-sm focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none transition-all"
+                              />
+                          </div>
+                          <p className="text-xs text-slate-400 mt-2">
+                              如果不填，将使用系统默认的环境变量 Key。填入后仅在此页面生效，保存在本地浏览器中。
+                          </p>
+                      </div>
+                  </div>
 
-                    {/* Model Selection */}
-                    <div>
-                        <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">
-                            AI 模型选择
-                        </label>
-                        <select
-                            value={imageModel}
-                            onChange={(e) => setImageModel(e.target.value)}
-                            className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm font-bold text-slate-800 focus:ring-2 focus:ring-fuchsia-500/20 focus:border-fuchsia-500 outline-none transition-all cursor-pointer"
-                        >
-                            <option value="gemini-2.5-flash-image">Gemini 2.5 Flash Image (Default)</option>
-                            <option value="gemini-3-pro-image-preview">Gemini 3 Pro Image (High Quality)</option>
-                        </select>
-                        <p className="text-[10px] text-amber-600 mt-2 leading-relaxed bg-amber-50 p-2 rounded-lg border border-amber-100">
-                             <strong>注意：</strong> Pro 模型需要 Google Cloud 结算账号（Pay-as-you-go），仅开通 Gemini Advanced 个人订阅无法使用 API。如果报错 403/404，请切换回 Flash 模型。
-                        </p>
-                    </div>
-
-                    {/* Turbo Mode Toggle */}
-                    <div className="flex items-center justify-between bg-slate-50 p-3 rounded-xl border border-slate-200">
-                        <div>
-                             <h4 className="text-sm font-bold text-slate-800 flex items-center gap-1.5">
-                                <Zap className="w-4 h-4 text-amber-500 fill-amber-500" /> 极速并发模式
-                             </h4>
-                             <p className="text-[10px] text-slate-500">
-                                提高并发数 (3x)，减少等待间隔。
-                             </p>
-                        </div>
-                        <label className="relative inline-flex items-center cursor-pointer">
-                            <input 
-                                type="checkbox" 
-                                className="sr-only peer"
-                                checked={isTurboMode}
-                                onChange={(e) => setIsTurboMode(e.target.checked)}
-                            />
-                            <div className="w-11 h-6 bg-slate-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-fuchsia-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-fuchsia-600"></div>
-                        </label>
-                    </div>
-                     <p className="text-[10px] text-slate-400">
-                        仅建议 Pro 付费 Key 开启。免费 Key 开启极速模式会导致 429 报错。
-                    </p>
-
-                    <button
-                        onClick={saveSettings}
-                        className="w-full py-3 bg-slate-900 text-white rounded-xl font-bold hover:bg-slate-800 transition-all shadow-lg shadow-slate-900/20"
-                    >
-                        保存配置
-                    </button>
-                </div>
-            </div>
-        </div>
+                  <div className="px-8 py-5 border-t border-slate-100 bg-slate-50/50 flex justify-end gap-3">
+                      <button 
+                          onClick={() => { setCustomKey(''); setImageModel('gemini-2.5-flash-image'); }}
+                          className="px-4 py-2 text-slate-500 font-bold text-sm hover:text-rose-600 transition-colors"
+                      >
+                          恢复默认
+                      </button>
+                      <button 
+                          onClick={saveSettings}
+                          className="bg-slate-900 text-white px-6 py-2.5 rounded-xl font-bold shadow-lg hover:bg-slate-800 transition-all text-sm"
+                      >
+                          保存配置
+                      </button>
+                  </div>
+              </div>
+          </div>
       )}
 
     </div>
