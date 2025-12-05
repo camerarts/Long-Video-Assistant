@@ -1,4 +1,5 @@
 
+
 import React, { useEffect, useState, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { ProjectData, StoryboardFrame, PromptTemplate } from '../types';
@@ -24,6 +25,31 @@ const CopyButton = ({ text }: { text: string }) => {
       {copied ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
     </button>
   );
+};
+
+// Helper function to clean descriptions of style keywords
+const cleanDescription = (text: string): string => {
+    if (!text) return '';
+    
+    // Keywords to remove (English and Chinese style terms)
+    // Be careful not to remove content words.
+    const keywords = [
+        '8k', '4k', '16:9', 'ar 16:9', '--ar', 'high quality', 'best quality', 'masterpiece', 
+        'ultra detailed', 'photorealistic', 'cinematic lighting', 'cinematic', 'resolution', 'style',
+        '高清', '画质', '分辨率', '大师级', '构图', '细节', '照片级', '真实', '电影感', '宽画幅', '风格'
+    ];
+
+    let cleaned = text;
+    keywords.forEach(kw => {
+        // Case insensitive replacement
+        const regex = new RegExp(`[,，\\s]*${kw}[,，\\s]*`, 'gi');
+        cleaned = cleaned.replace(regex, '');
+    });
+    
+    // Cleanup leading/trailing punctuation or spaces
+    cleaned = cleaned.replace(/^[,，\.\s]+|[,，\.\s]+$/g, '');
+    
+    return cleaned;
 };
 
 const StoryboardImages: React.FC = () => {
@@ -123,25 +149,34 @@ const StoryboardImages: React.FC = () => {
 
   const handleReimportPrompts = async () => {
     if (!project || !project.storyboard) return;
-    if (!window.confirm(`确定要基于“${style_mode === 'IMAGE_GEN_A' ? '方案A' : '方案B'}”重新生成所有图片的提示词吗？这将覆盖您当前手动修改的内容。`)) return;
+    if (!window.confirm(`确定要基于“${style_mode === 'IMAGE_GEN_A' ? '方案A' : '方案B'}”重新生成所有图片的提示词吗？\n这将同时清理“原文”中的多余修饰词。`)) return;
 
     // Use the selected style template
     const templateKey = style_mode; // IMAGE_GEN_A or IMAGE_GEN_B
     const template = prompts[templateKey]?.template || '';
 
     const updatedStoryboard = project.storyboard.map(frame => {
-        // Construct prompt using the template
+        // 1. Clean the original description (Remove extra style keywords)
+        const cleanedDesc = cleanDescription(frame.description);
+        
+        // 2. Construct prompt using the template and cleaned description
         const prompt = interpolate(template, {
-            description: frame.description
+            description: cleanedDesc
         });
-        return { ...frame, imagePrompt: prompt };
+        
+        // Update both description (cleaned) and imagePrompt (newly generated)
+        return { 
+            ...frame, 
+            description: cleanedDesc,
+            imagePrompt: prompt 
+        };
     });
 
     const updatedProject = { ...project, storyboard: updatedStoryboard };
     setProject(updatedProject);
     await storage.saveProject(updatedProject);
     
-    setMessage("提示词已重新导入成功！");
+    setMessage("提示词已重新导入，原文已清洗！");
     setMessageType('success');
     setTimeout(() => setMessage(null), 3000);
   };
