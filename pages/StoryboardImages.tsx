@@ -437,6 +437,9 @@ const StoryboardImages: React.FC = () => {
 
   const totalFrames = project.storyboard?.length || 0;
   const generatedCount = project.storyboard?.filter(f => !!f.imageUrl).length || 0;
+  const notGeneratedCount = totalFrames - generatedCount;
+  // Count images that are URLs (not data URI)
+  const uploadedCount = project.storyboard?.filter(f => f.imageUrl && !f.imageUrl.startsWith('data:')).length || 0;
   const hasBase64 = project.storyboard?.some(f => f.imageUrl?.startsWith('data:')) || false;
 
   return (
@@ -512,9 +515,6 @@ const StoryboardImages: React.FC = () => {
             </div>
 
             <div className="flex items-center gap-4">
-                 <div className="text-xs font-bold text-slate-400">
-                    进度: <span className="text-slate-800">{generatedCount} / {totalFrames}</span>
-                 </div>
                  <button 
                     onClick={handleBatchGenerate}
                     disabled={generating}
@@ -525,6 +525,35 @@ const StoryboardImages: React.FC = () => {
                  </button>
             </div>
         </div>
+      </div>
+
+      {/* Stats Bar (Restored) */}
+      <div className="bg-slate-900 text-white px-6 py-3 flex items-center justify-between text-xs font-medium shadow-inner z-10">
+          <div className="flex items-center gap-8 mx-auto">
+              <div className="flex items-center gap-2">
+                  <span className="text-slate-400">共</span>
+                  <span className="text-lg font-bold text-white">{totalFrames}</span>
+                  <span className="text-slate-400">个分镜</span>
+              </div>
+              <div className="w-px h-4 bg-slate-700"></div>
+              <div className="flex items-center gap-2">
+                  <span className="text-slate-400">已生图</span>
+                  <span className="text-lg font-bold text-emerald-400">{generatedCount}</span>
+                  <span className="text-slate-400">个</span>
+              </div>
+              <div className="w-px h-4 bg-slate-700"></div>
+              <div className="flex items-center gap-2">
+                  <span className="text-slate-400">未生图</span>
+                  <span className="text-lg font-bold text-amber-400">{notGeneratedCount}</span>
+                  <span className="text-slate-400">个</span>
+              </div>
+              <div className="w-px h-4 bg-slate-700"></div>
+              <div className="flex items-center gap-2">
+                  <span className="text-slate-400">已保存图片(云端)</span>
+                  <span className="text-lg font-bold text-blue-400">{uploadedCount}</span>
+                  <span className="text-slate-400">个</span>
+              </div>
+          </div>
       </div>
 
       {/* Main Content: Table */}
