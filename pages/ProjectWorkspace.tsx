@@ -343,7 +343,7 @@ const ProjectWorkspace: React.FC = () => {
           return;
       }
 
-      const targets = ['titles', 'sb_text', 'summary'];
+      const targets = ['titles', 'sb_text', 'summary', 'cover'];
       
       // Mark all as generating
       setGeneratingNodes(prev => {
@@ -427,9 +427,9 @@ const ProjectWorkspace: React.FC = () => {
                     onClick={handleOneClickStart}
                     disabled={generatingNodes.size > 0 || !project.script}
                     className="flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-violet-600 to-indigo-600 text-white rounded-xl font-bold shadow-lg shadow-violet-500/20 hover:shadow-violet-500/40 hover:-translate-y-0.5 transition-all disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none disabled:shadow-none"
-                    title={!project.script ? "请先生成视频脚本" : "一键生成标题、分镜与简介 (自动失败重试)"}
+                    title={!project.script ? "请先生成视频脚本" : "一键生成标题、分镜、简介与封面 (自动失败重试)"}
                  >
-                    {generatingNodes.size > 0 && ['titles', 'sb_text', 'summary'].some(id => generatingNodes.has(id)) ? <Loader2 className="w-4 h-4 animate-spin" /> : <Rocket className="w-4 h-4" />}
+                    {generatingNodes.size > 0 && ['titles', 'sb_text', 'summary', 'cover'].some(id => generatingNodes.has(id)) ? <Loader2 className="w-4 h-4 animate-spin" /> : <Rocket className="w-4 h-4" />}
                     一键启动
                  </button>
 
