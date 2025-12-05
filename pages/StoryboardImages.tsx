@@ -31,7 +31,6 @@ const cleanDescription = (text: string): string => {
     if (!text) return '';
     
     // Keywords to remove (English and Chinese style terms)
-    // Be careful not to remove content words.
     const keywords = [
         '8k', '4k', '16:9', 'ar 16:9', '--ar', 'high quality', 'best quality', 'masterpiece', 
         'ultra detailed', 'photorealistic', 'cinematic lighting', 'cinematic', 'resolution', 'style',
@@ -40,12 +39,10 @@ const cleanDescription = (text: string): string => {
 
     let cleaned = text;
     keywords.forEach(kw => {
-        // Case insensitive replacement
         const regex = new RegExp(`[,，\\s]*${kw}[,，\\s]*`, 'gi');
         cleaned = cleaned.replace(regex, '');
     });
     
-    // Cleanup leading/trailing punctuation or spaces
     cleaned = cleaned.replace(/^[,，\.\s]+|[,，\.\s]+$/g, '');
     
     return cleaned;
@@ -61,15 +58,15 @@ const StoryboardImages: React.FC = () => {
   const [generating, setGenerating] = useState(false);
   const [currentGenIds, setCurrentGenIds] = useState<Set<string>>(new Set());
   
-  // State for Style Selection (Configuration Template Key)
+  // State for Style Selection
   const [style_mode, setStyleMode] = useState<string>('IMAGE_GEN_A');
 
-  // State for API Configuration (Key + Model)
+  // State for API Configuration
   const [showConfigModal, setShowConfigModal] = useState(false);
   const [customKey, setCustomKey] = useState('');
   const [imageModel, setImageModel] = useState<string>('gemini-2.5-flash-image');
 
-  // State for Batch Progress (Internal)
+  // State for Batch Progress
   const [batchProgress, setBatchProgress] = useState({ planned: 0, completed: 0, failed: 0 });
   
   // State for Cloud Upload
@@ -102,7 +99,6 @@ const StoryboardImages: React.FC = () => {
         const loadedPrompts = await storage.getPrompts();
         if (mountedRef.current) setPrompts(loadedPrompts);
         
-        // Load Custom API Key & Settings from LocalStorage
         const storedKey = localStorage.getItem('lva_custom_api_key');
         if (storedKey) setCustomKey(storedKey);
         
@@ -126,11 +122,6 @@ const StoryboardImages: React.FC = () => {
       return `${key.substring(0, 4)}...${key.substring(key.length - 4)}`;
   };
 
-  // Helper Interpolation
-  const interpolate = (template: string, data: Record<string, string>) => {
-    return template.replace(/\{\{(\w+)\}\}/g, (_, key) => data[key] || '');
-  };
-
   const handleSavePrompt = async (frameId: string, newPrompt: string) => {
     if (!project) return;
     const updatedStoryboard = project.storyboard?.map(f => 
@@ -145,23 +136,15 @@ const StoryboardImages: React.FC = () => {
     if (!project || !project.storyboard) return;
     if (!window.confirm(`确定要基于“${style_mode === 'IMAGE_GEN_A' ? '方案A' : '方案B'}”重新生成所有图片的提示词吗？`)) return;
 
-    // Use the selected style template
     const templateKey = style_mode; 
     const template = prompts[templateKey] ? prompts[templateKey].template : '';
 
     const updatedStoryboard = project.storyboard.map(frame => {
-         // Clean the original description to get pure visual elements
          const cleanedDesc = cleanDescription(frame.description);
-         
-         // Interpolate strictly into the template
-         // Note: We use 'description' variable in template for the visual description
          const newPrompt = template.replace(/\{\{description\}\}/g, cleanedDesc);
-         
          return {
              ...frame,
-             // Update the prompt
              imagePrompt: newPrompt,
-             // IMPORTANT: We do NOT overwrite frame.description or frame.originalText here
          };
     });
 
@@ -179,10 +162,9 @@ const StoryboardImages: React.FC = () => {
       
       try {
           const base64Data = await gemini.generateImage(frame.imagePrompt, customKey, imageModel);
-          
-          // Upload to R2 immediately
           const cloudUrl = await storage.uploadImage(base64Data, project?.id);
 
+          // Update state to trigger re-render and stats update
           setProject(prev => {
               if (!prev) return null;
               const updated = {
@@ -191,7 +173,7 @@ const StoryboardImages: React.FC = () => {
                     f.id === frame.id ? { ...f, imageUrl: cloudUrl, imageModel: imageModel } : f
                   )
               };
-              storage.saveProject(updated); // Background save
+              storage.saveProject(updated); // Save to DB in background
               return updated;
           });
 
@@ -207,34 +189,33 @@ const StoryboardImages: React.FC = () => {
              setMessageType('error');
              setTimeout(() => setMessage(null), 5000);
           }
-          throw error; // Re-throw for batch handling
+          throw error;
       }
   };
 
   const handleBatchGenerate = async () => {
     if (!project || !project.storyboard) return;
     
-    // Filter only frames that NEED generation (skipping existing images)
+    // STRICT FILTER: Only frames that do NOT have an imageUrl
     const pendingFrames = project.storyboard.filter(f => !f.imageUrl);
 
     if (pendingFrames.length === 0) {
-        setMessage("所有分镜图片已生成完成，无需重复生成。");
+        setMessage("所有分镜已包含图片，无需生成。");
         setMessageType('success');
         setTimeout(() => setMessage(null), 3000);
         return;
     }
 
-    if (!window.confirm(`发现 ${pendingFrames.length} 个未生成的分镜。确定要开始批量生成吗？`)) return;
+    if (!window.confirm(`即将为 ${pendingFrames.length} 个未生图的分镜进行生成。确定继续吗？`)) return;
 
     setGenerating(true);
     setBatchProgress({ planned: pendingFrames.length, completed: 0, failed: 0 });
     
-    // Concurrency Control (Default 3)
+    // Use a fixed concurrency limit
     const CONCURRENCY_LIMIT = 3;
     const queue = [...pendingFrames];
     const activePromises: Promise<void>[] = [];
 
-    // Worker function
     const processNext = async () => {
         if (queue.length === 0) return;
         const frame = queue.shift();
@@ -242,7 +223,7 @@ const StoryboardImages: React.FC = () => {
 
         try {
             setCurrentGenIds(prev => new Set(prev).add(frame.id));
-            await generateSingleImage(frame, false); // false = don't show individual success toasts
+            await generateSingleImage(frame, false);
             setBatchProgress(prev => ({ ...prev, completed: prev.completed + 1 }));
         } catch (error) {
             console.error(error);
@@ -255,12 +236,10 @@ const StoryboardImages: React.FC = () => {
                     return next;
                 });
             }
-            // Continue processing
             await processNext();
         }
     };
 
-    // Start initial batch
     for (let i = 0; i < CONCURRENCY_LIMIT; i++) {
         activePromises.push(processNext());
     }
@@ -268,7 +247,7 @@ const StoryboardImages: React.FC = () => {
     await Promise.all(activePromises);
 
     setGenerating(false);
-    setMessage(`批量生成完成。成功: ${pendingFrames.length - batchProgress.failed}, 失败: ${batchProgress.failed}`);
+    setMessage(`批量生成结束。成功: ${pendingFrames.length - batchProgress.failed}, 失败: ${batchProgress.failed}`);
     setMessageType(batchProgress.failed > 0 ? 'warning' : 'success');
     setTimeout(() => setMessage(null), 5000);
   };
@@ -276,16 +255,16 @@ const StoryboardImages: React.FC = () => {
   const handleCloudSync = async () => {
     if (!project || !project.storyboard) return;
 
-    // Check for images that are not R2 URLs (i.e. Base64 data URIs)
+    // STRICT FILTER: Only images starting with 'data:' (local base64)
+    // Ignore already uploaded URLs (starting with /api/ or http)
     const localImages = project.storyboard.filter(f => f.imageUrl && f.imageUrl.startsWith('data:'));
     
     if (localImages.length === 0) {
-        // If all images are already on cloud, just confirm sync of metadata
-        if (window.confirm("所有图片均已是云端链接。是否同步项目数据到云端数据库？")) {
+        if (window.confirm("所有图片均已同步到云端。是否仅同步项目数据？")) {
              setUploading(true);
              try {
                  await storage.uploadProjects();
-                 setMessage("项目同步成功");
+                 setMessage("项目数据同步成功");
                  setMessageType('success');
              } catch(e: any) {
                  setMessage(`同步失败: ${e.message}`);
@@ -304,24 +283,41 @@ const StoryboardImages: React.FC = () => {
     setUploadProgress({ total: localImages.length, current: 0 });
 
     try {
-        let updatedStoryboard = [...project.storyboard];
-        
         for (const frame of localImages) {
              if (!frame.imageUrl) continue;
              
-             // Upload
+             // Upload logic
              const cloudUrl = await storage.uploadImage(frame.imageUrl, project.id);
              
-             // Update
-             updatedStoryboard = updatedStoryboard.map(f => f.id === frame.id ? { ...f, imageUrl: cloudUrl } : f);
-             
+             // Update State IMMEDIATELY to reflect progress in Status Bar
+             setProject(prev => {
+                if (!prev) return null;
+                const updatedStoryboard = prev.storyboard?.map(f => 
+                    f.id === frame.id ? { ...f, imageUrl: cloudUrl } : f
+                );
+                // Also update the localImages reference implicitly by updating project
+                return { ...prev, storyboard: updatedStoryboard };
+             });
+
              setUploadProgress(prev => ({ ...prev, current: prev.current + 1 }));
         }
         
-        const updatedProject = { ...project, storyboard: updatedStoryboard };
-        setProject(updatedProject);
-        await storage.saveProject(updatedProject);
-        await storage.uploadProjects();
+        // Final Save & Sync
+        // (Note: project state is already updated in loop, but we need to persist to DB)
+        // We get the latest project from state inside the setter to ensure consistency is tricky in async loop,
+        // but since we updated state incrementally, we can save the final state here or rely on the loop updates.
+        // Best practice: Update DB with current state at end of loop or update DB in loop.
+        // Let's grab current state ref or just save what we have.
+        
+        // Actually, inside the loop we updated the React state. We should also persist to DB to be safe.
+        // But doing `storage.saveProject` in loop is fine.
+        // Let's do a final save using the functional update to be sure we catch the latest.
+        setProject(currentFinal => {
+            if (currentFinal) {
+                storage.saveProject(currentFinal).then(() => storage.uploadProjects());
+            }
+            return currentFinal;
+        });
 
         setMessage("图片上传并同步成功！");
         setMessageType('success');
@@ -347,7 +343,6 @@ const StoryboardImages: React.FC = () => {
         for (const frame of project.storyboard) {
             if (frame.imageUrl) {
                 try {
-                    // Fetch image data
                     const response = await fetch(frame.imageUrl);
                     const blob = await response.blob();
                     const ext = frame.imageUrl.includes('.png') ? 'png' : 'jpg';
@@ -400,14 +395,14 @@ const StoryboardImages: React.FC = () => {
 
   if (!project) return <div className="flex justify-center py-20"><Loader2 className="w-10 h-10 animate-spin text-fuchsia-500" /></div>;
 
+  // Real-time Stats Calculation based on current project state
   const stats = {
       total: project.storyboard?.length || 0,
       generated: project.storyboard?.filter(f => !!f.imageUrl).length || 0,
       pending: (project.storyboard?.length || 0) - (project.storyboard?.filter(f => !!f.imageUrl).length || 0),
+      // Uploaded check: exists AND does not start with data:
       uploaded: project.storyboard?.filter(f => f.imageUrl && !f.imageUrl.startsWith('data:')).length || 0
   };
-
-  const progressPercent = stats.total > 0 ? (stats.generated / stats.total) * 100 : 0;
 
   return (
     <div className="flex flex-col h-full bg-[#F8F9FC]">
