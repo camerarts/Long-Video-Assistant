@@ -1,4 +1,5 @@
 
+
 import React, { useEffect, useState, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { ProjectData, StoryboardFrame, PromptTemplate } from '../types';
@@ -194,7 +195,7 @@ const StoryboardImages: React.FC = () => {
                  // Save locally to IndexedDB
                  const updated = await storage.updateProject(id!, (latest) => {
                      const newSb = latest.storyboard?.map(f => 
-                        f.id === frame.id ? { ...f, imageUrl: base64 } : f
+                        f.id === frame.id ? { ...f, imageUrl: base64, imageModel: imageModel } : f
                      );
                      return { ...latest, storyboard: newSb };
                  });
@@ -579,6 +580,14 @@ const StoryboardImages: React.FC = () => {
                                     </div>
                                 </td>
                                 <td className="py-6 px-6 align-top">
+                                    {frame.imageUrl && frame.imageModel && (
+                                        <div className="mb-2 text-[10px] text-slate-400 font-mono tracking-tight flex items-center gap-1">
+                                            <span className="bg-slate-50 border border-slate-100 px-1.5 py-0.5 rounded">
+                                                Model: {frame.imageModel}
+                                            </span>
+                                        </div>
+                                    )}
+
                                     <div className="relative aspect-video bg-slate-100 rounded-xl overflow-hidden border border-slate-200 shadow-sm w-full max-w-md group/image">
                                         {frame.imageUrl ? (
                                             <>
@@ -628,7 +637,7 @@ const StoryboardImages: React.FC = () => {
                                                             if (base64) {
                                                                 // Local Save
                                                                  await storage.updateProject(id!, (latest) => {
-                                                                    const newSb = latest.storyboard?.map(f => f.id === frame.id ? { ...f, imageUrl: base64 } : f);
+                                                                    const newSb = latest.storyboard?.map(f => f.id === frame.id ? { ...f, imageUrl: base64, imageModel: imageModel } : f);
                                                                     return { ...latest, storyboard: newSb };
                                                                  });
                                                                  const updated = await storage.getProject(id!);
