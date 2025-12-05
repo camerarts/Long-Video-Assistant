@@ -10,6 +10,7 @@ export enum ProjectStatus {
 export interface StoryboardFrame {
   id: string;
   sceneNumber: number;
+  originalText?: string; // New field for source script text
   description: string;
   imageUrl?: string; // Base64 or URL
   imagePrompt?: string;
@@ -97,21 +98,31 @@ export const DEFAULT_PROMPTS: Record<string, PromptTemplate> = {
     id: 'sb_text',
     name: '分镜文案提取',
     description: '将脚本拆解为可视化的分镜描述',
-    template: `作为一个专业的分镜师，请将以下脚本转化为一系列视觉画面描述。
+    template: `作为一个专业的分镜师，请将以下脚本拆解为一系列视觉画面。
     
 **严格要求：**
-1. 每个场景必须是具体的、可拍摄的画面。
-2. **只描述画面内容**（人物、动作、环境、光线）。
-3. **严禁**包含任何画质修饰词或提示词工程术语（如：8k, 4k, HD, 电影感, 大师级, 风格, --ar, high quality等）。
+1. 提取脚本中的每一句或每一段对应的【原文】。
+2. 为每一段原文设计具体的、可拍摄的【画面描述】（人物、动作、环境、光线）。
+3. **严禁**在画面描述中包含任何画质修饰词或提示词工程术语（如：8k, 4k, HD, 电影感, 大师级, 风格, --ar, high quality等）。
 4. 必须使用**纯中文**描述。
 
 脚本内容:
 {{script}}
 
-请仅返回一个纯 JSON 对象数组（不要Markdown格式）。每个对象必须包含 "description" 字段。
+请仅返回一个纯 JSON 对象数组（不要Markdown格式）。每个对象包含两个字段：
+- "original": 对应的原始脚本文字。
+- "description": 具体的画面描述（纯中文，无修饰词）。
+
+示例：
 [
-  {"description": "一名年轻男子坐在充满科技感的房间里，面前是发光的全息屏幕，侧面特写，蓝色冷调光"},
-  {"description": "繁忙的涩谷十字路口，人流穿梭，俯拍视角"}
+  {
+    "original": "2025年的东京街头，霓虹灯闪烁。",
+    "description": "繁忙的涩谷十字路口，人流穿梭，俯拍视角，蓝紫色霓虹灯光"
+  },
+  {
+    "original": "男主角看着手中的全息屏幕陷入沉思。",
+    "description": "一名年轻男子坐在充满科技感的房间里，面前是发光的全息屏幕，侧面特写"
+  }
 ]
 `
   },
