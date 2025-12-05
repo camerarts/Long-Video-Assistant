@@ -1,5 +1,5 @@
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ProjectData } from '../types';
 import * as storage from '../services/storageService';
@@ -23,6 +23,29 @@ const ImageWorkshopList: React.FC = () => {
     setRefreshTime(`刷新数据时间：${storage.getLastUploadTime()}`);
     setLoading(false);
   };
+
+  // Generate Serial Numbers based on creation date
+  const serialMap = useMemo(() => {
+    const map = new Map<string, string>();
+    // Sort by creation time ascending to assign numbers chronologically
+    const sorted = [...projects].sort((a, b) => a.createdAt - b.createdAt);
+    const dailyCounts: Record<string, number> = {};
+
+    sorted.forEach(p => {
+        const date = new Date(p.createdAt);
+        const y = date.getFullYear();
+        const m = String(date.getMonth() + 1).padStart(2, '0');
+        const d = String(date.getDate()).padStart(2, '0');
+        const dateKey = `${y}-${m}-${d}`;
+
+        if (!dailyCounts[dateKey]) dailyCounts[dateKey] = 0;
+        dailyCounts[dateKey]++;
+
+        const seq = String(dailyCounts[dateKey]).padStart(3, '0');
+        map.set(p.id, `[${dateKey}-${seq}]`);
+    });
+    return map;
+  }, [projects]);
 
   const handleDelete = async (e: React.MouseEvent, id: string) => {
     e.stopPropagation();
@@ -87,6 +110,7 @@ const ImageWorkshopList: React.FC = () => {
                     <thead className="bg-slate-50 text-slate-600">
                         <tr>
                             <th className="py-2 px-3 text-xs font-bold uppercase tracking-wider w-16 text-center border border-slate-200">序号</th>
+                            <th className="py-2 px-3 text-xs font-bold uppercase tracking-wider w-40 text-center border border-slate-200">序列号</th>
                             <th className="py-2 px-3 text-xs font-bold uppercase tracking-wider text-center border border-slate-200 min-w-[300px]">主题</th>
                             <th className="py-2 px-3 text-xs font-bold uppercase tracking-wider w-36 md:w-48 text-center border border-slate-200">生图进度</th>
                             <th className="py-2 px-3 text-xs font-bold uppercase tracking-wider w-40 text-center hidden md:table-cell border border-slate-200">完成日期</th>
@@ -97,6 +121,7 @@ const ImageWorkshopList: React.FC = () => {
                         {projects.map((project, index) => {
                             const progress = getImageProgress(project);
                             const hasStoryboard = !!progress;
+                            const serial = serialMap.get(project.id) || '-';
                             
                             return (
                                 <tr 
@@ -110,6 +135,11 @@ const ImageWorkshopList: React.FC = () => {
                                 >
                                     <td className="py-2.5 px-3 text-center text-sm font-bold text-slate-400 border border-slate-200 align-middle">
                                         {index + 1}
+                                    </td>
+                                    <td className="py-2.5 px-3 text-center border border-slate-200 align-middle">
+                                        <span className="text-xs font-mono text-slate-500 bg-slate-50 px-2 py-1 rounded border border-slate-100 whitespace-nowrap">
+                                            {serial}
+                                        </span>
                                     </td>
                                     <td className="py-2.5 px-3 border border-slate-200 align-middle">
                                         <div className="font-bold text-sm md:text-base text-slate-800 group-hover:text-fuchsia-700 transition-colors whitespace-normal break-all block h-auto leading-normal">
