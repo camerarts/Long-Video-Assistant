@@ -1,5 +1,4 @@
 
-
 import React, { useEffect, useState, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { ProjectData, StoryboardFrame, PromptTemplate } from '../types';
@@ -19,10 +18,10 @@ const CopyButton = ({ text }: { text: string }) => {
   return (
     <button 
         onClick={handleCopy} 
-        className={`p-2 rounded-lg border transition-all h-fit mt-1 shadow-sm flex-shrink-0 ${copied ? 'bg-emerald-50 border-emerald-200 text-emerald-600' : 'bg-white border-slate-200 text-slate-400 hover:text-fuchsia-600 hover:border-fuchsia-200 hover:bg-fuchsia-50'}`}
+        className={`p-1.5 rounded-lg border transition-all shadow-sm flex-shrink-0 backdrop-blur-sm ${copied ? 'bg-emerald-50 border-emerald-200 text-emerald-600' : 'bg-white/80 border-slate-200 text-slate-400 hover:text-fuchsia-600 hover:border-fuchsia-200 hover:bg-fuchsia-50'}`}
         title="复制提示词"
     >
-      {copied ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
+      {copied ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
     </button>
   );
 };
@@ -558,7 +557,7 @@ const StoryboardImages: React.FC = () => {
       </div>
 
       {/* Main Content: Table */}
-      <div className="flex-1 overflow-auto p-6 md:p-8">
+      <div className="flex-1 overflow-auto p-3">
         
         {/* Project Title Header */}
         <div className="mb-6">
@@ -590,10 +589,12 @@ const StoryboardImages: React.FC = () => {
                                 </div>
                             </td>
                             <td className="py-4 px-4 border border-slate-200 align-top">
-                                <div className="flex gap-2 items-start h-full">
-                                    <CopyButton text={frame.imagePrompt || ''} />
+                                <div className="relative h-full">
+                                    <div className="absolute top-2 right-2 z-10">
+                                        <CopyButton text={frame.imagePrompt || ''} />
+                                    </div>
                                     <textarea 
-                                        className="w-full h-32 md:h-40 p-3 text-xs md:text-sm text-slate-700 border border-slate-200 rounded-xl focus:ring-2 focus:ring-fuchsia-500/20 focus:border-fuchsia-400 outline-none transition-all resize-none leading-relaxed"
+                                        className="w-full h-32 md:h-40 p-3 pr-12 text-xs md:text-sm text-slate-700 border border-slate-200 rounded-xl focus:ring-2 focus:ring-fuchsia-500/20 focus:border-fuchsia-400 outline-none transition-all resize-none leading-relaxed"
                                         value={frame.imagePrompt || ''}
                                         onChange={(e) => handleSavePrompt(frame.id, e.target.value)}
                                         placeholder="在此编辑 AI 提示词..."
