@@ -97,15 +97,21 @@ export const DEFAULT_PROMPTS: Record<string, PromptTemplate> = {
     id: 'sb_text',
     name: '分镜文案提取',
     description: '将脚本拆解为可视化的分镜描述',
-    template: `作为一个专业的分镜师，请将以下脚本转化为一系列视觉画面描述。每个场景必须是具体的、可拍摄的画面。
+    template: `作为一个专业的分镜师，请将以下脚本转化为一系列视觉画面描述。
     
+**严格要求：**
+1. 每个场景必须是具体的、可拍摄的画面。
+2. **只描述画面内容**（人物、动作、环境、光线）。
+3. **严禁**包含任何画质修饰词或提示词工程术语（如：8k, 4k, HD, 电影感, 大师级, 风格, --ar, high quality等）。
+4. 必须使用**纯中文**描述。
+
 脚本内容:
 {{script}}
 
 请仅返回一个纯 JSON 对象数组（不要Markdown格式）。每个对象必须包含 "description" 字段。
 [
   {"description": "一名年轻男子坐在充满科技感的房间里，面前是发光的全息屏幕，侧面特写，蓝色冷调光"},
-  {"description": "繁忙的东京涩谷十字路口，人流穿梭，延时摄影，俯拍视角"}
+  {"description": "繁忙的涩谷十字路口，人流穿梭，俯拍视角"}
 ]
 `
   },
@@ -153,13 +159,13 @@ export const DEFAULT_PROMPTS: Record<string, PromptTemplate> = {
     id: 'image_gen_a',
     name: '分镜画面提示词A',
     description: '图片生成配置方案 A (默认：电影质感)',
-    template: `电影感，大师级构图，8k分辨率，极高细节，照片级真实，16:9宽画幅。 {{description}}`
+    template: `电影感，大师级构图，超高清分辨率，极高细节，照片级真实，宽画幅。 {{description}}`
   },
   IMAGE_GEN_B: {
     id: 'image_gen_b',
     name: '分镜画面提示词B',
     description: '图片生成配置方案 B (备用：漫画风格)',
-    template: `线条漫画插画写实风格，半真实，仿真皮肤，OC质感，超清画质32K，黑色线条厚涂。 {{description}}`
+    template: `线条漫画插画写实风格，半真实，仿真皮肤，原创角色质感，超清画质，黑色线条厚涂。 {{description}}`
   },
   COVER_GEN: {
     id: 'cover_gen',
