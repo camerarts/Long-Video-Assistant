@@ -106,13 +106,13 @@ interface TableResultBoxProps<T> {
 }
 
 const TableResultBox = <T extends any>({ headers, data, renderRow }: TableResultBoxProps<T>) => (
-  <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
-    <div className="overflow-x-auto">
+  <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden h-full flex flex-col">
+    <div className="overflow-x-auto flex-1">
       <table className="w-full text-left border-collapse">
-        <thead className="bg-slate-50 border-b border-slate-100">
+        <thead className="bg-slate-50 border-b border-slate-100 sticky top-0 z-10">
           <tr>
             {headers.map((h: string) => (
-              <th key={h} className="py-3 px-5 text-xs font-bold text-slate-500 uppercase tracking-wider whitespace-nowrap">{h}</th>
+              <th key={h} className="py-3 px-5 text-xs font-bold text-slate-500 uppercase tracking-wider whitespace-nowrap bg-slate-50">{h}</th>
             ))}
           </tr>
         </thead>
@@ -140,8 +140,6 @@ const NODES_CONFIG = [
   { id: 'sb_text', label: '分镜文案', panelTitle: '分镜画面描述', icon: Film, color: 'fuchsia', promptKey: 'STORYBOARD_TEXT', description: '拆解为可视化画面描述', x: 850, y: 300 },
   { id: 'summary', label: '简介与标签', panelTitle: '视频简介与标签', icon: List, color: 'emerald', promptKey: 'SUMMARY', description: '生成简介和Hashtags', x: 850, y: 500 },
   { id: 'cover', label: '封面策划', panelTitle: '封面视觉与文案策划', icon: Palette, color: 'rose', promptKey: 'COVER_GEN', description: '策划封面视觉与文案', x: 850, y: 700 },
-  // Column 3: Image Generation
-  { id: 'image_gen', label: '图片工坊', panelTitle: 'AI 图片生成工坊', icon: Images, color: 'pink', description: '前往生图页面', x: 1250, y: 300 },
 ];
 
 const CONNECTIONS = [
@@ -150,7 +148,6 @@ const CONNECTIONS = [
   { from: 'script', to: 'titles' },
   { from: 'script', to: 'summary' },
   { from: 'script', to: 'cover' },
-  { from: 'sb_text', to: 'image_gen' },
 ];
 
 // --- Main Component ---
@@ -310,6 +307,7 @@ const ProjectWorkspace: React.FC = () => {
                   }
               }
           });
+          // Note: Mapping original -> originalText, description -> description
           const frames: StoryboardFrame[] = data.map((item, idx) => ({
               id: crypto.randomUUID(),
               sceneNumber: idx + 1,
@@ -525,10 +523,6 @@ const ProjectWorkspace: React.FC = () => {
                      if (node.id === 'titles') hasData = !!project.titles && project.titles.length > 0;
                      if (node.id === 'summary') hasData = !!project.summary;
                      if (node.id === 'cover') hasData = !!project.coverOptions && project.coverOptions.length > 0;
-                     if (node.id === 'image_gen') {
-                         const generatedCount = project.storyboard?.filter(f => !!f.imageUrl).length || 0;
-                         hasData = generatedCount > 0;
-                     }
 
                      // Visual Feedback Logic for Titles, Storyboard, Summary, Cover
                      let bgClass = 'bg-white';
@@ -587,27 +581,18 @@ const ProjectWorkspace: React.FC = () => {
                                 {/* Action Button - Positioned Bottom Right */}
                                 {node.id !== 'input' && (
                                      <div className="absolute right-5 bottom-5">
-                                        {node.id === 'image_gen' ? (
-                                             <button 
-                                                onClick={(e) => { e.stopPropagation(); navigate(`/project/${project.id}/images`); }}
-                                                className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-900 text-white rounded-lg text-xs font-bold hover:bg-slate-800 transition-all shadow-md hover:shadow-lg shadow-slate-900/20"
-                                            >
-                                                前往工坊 <ArrowRight className="w-3 h-3" />
-                                            </button>
-                                        ) : (
-                                            <button 
-                                                onClick={(e) => { e.stopPropagation(); handleGenerate(node.id); }}
-                                                disabled={isGenerating}
-                                                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all shadow-sm ${
-                                                    hasData 
-                                                    ? 'bg-white border border-slate-200 text-slate-500 hover:text-violet-600 hover:border-violet-200 hover:shadow-md' 
-                                                    : `bg-${node.color}-50 text-${node.color}-600 hover:bg-${node.color}-100 border border-${node.color}-100 hover:shadow-md`
-                                                }`}
-                                            >
-                                                {isGenerating ? <Loader2 className="w-3 h-3 animate-spin" /> : (hasData ? <RefreshCw className="w-3 h-3" /> : (isFailed ? <RefreshCw className="w-3 h-3" /> : <Sparkles className="w-3 h-3" />))}
-                                                {isGenerating ? '生成中...' : (hasData ? '重新生成' : (isFailed ? '重试生成' : '开始生成'))}
-                                            </button>
-                                        )}
+                                        <button 
+                                            onClick={(e) => { e.stopPropagation(); handleGenerate(node.id); }}
+                                            disabled={isGenerating}
+                                            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all shadow-sm ${
+                                                hasData 
+                                                ? 'bg-white border border-slate-200 text-slate-500 hover:text-violet-600 hover:border-violet-200 hover:shadow-md' 
+                                                : `bg-${node.color}-50 text-${node.color}-600 hover:bg-${node.color}-100 border border-${node.color}-100 hover:shadow-md`
+                                            }`}
+                                        >
+                                            {isGenerating ? <Loader2 className="w-3 h-3 animate-spin" /> : (hasData ? <RefreshCw className="w-3 h-3" /> : (isFailed ? <RefreshCw className="w-3 h-3" /> : <Sparkles className="w-3 h-3" />))}
+                                            {isGenerating ? '生成中...' : (hasData ? '重新生成' : (isFailed ? '重试生成' : '开始生成'))}
+                                        </button>
                                      </div>
                                 )}
                                 {node.id === 'input' && (
@@ -628,7 +613,7 @@ const ProjectWorkspace: React.FC = () => {
             onMouseDown={(e) => e.stopPropagation()}
         >
             {/* Right Panel Header */}
-            <div className="p-5 border-b border-slate-100 flex items-center justify-between bg-white/50 sticky top-0 z-20 backdrop-blur-md">
+            <div className="p-5 border-b border-slate-100 flex items-center justify-between bg-white/50 sticky top-0 z-20 backdrop-blur-md flex-shrink-0">
                 <div className="flex items-center gap-3">
                     <button onClick={() => setSelectedNodeId(null)} className="p-2 hover:bg-slate-100 rounded-lg text-slate-400 transition-colors">
                         <PanelRightClose className="w-5 h-5 text-slate-600" />
@@ -650,7 +635,7 @@ const ProjectWorkspace: React.FC = () => {
                      {selectedNodeId && (() => {
                          const node = NODES_CONFIG.find(n => n.id === selectedNodeId);
                          return (
-                            node?.id !== 'input' && node?.id !== 'image_gen' && (
+                            node?.id !== 'input' && (
                                 <button 
                                     onClick={() => handleGenerate(selectedNodeId!)}
                                     className={`px-3 py-1.5 rounded-lg text-[10px] font-bold flex items-center gap-1.5 transition-all bg-${node?.color}-50 text-${node?.color}-600 hover:bg-${node?.color}-100 shadow-sm border border-${node?.color}-100`}
@@ -663,7 +648,7 @@ const ProjectWorkspace: React.FC = () => {
                 </div>
             </div>
 
-            <div className="flex-1 overflow-y-auto p-6 bg-[#F8F9FC]">
+            <div className="flex-1 overflow-y-auto p-6 bg-[#F8F9FC] flex flex-col">
                  {/* Dynamic Content Based on Node */}
                  {selectedNodeId === 'input' && (
                      <div className="space-y-4 h-full">
@@ -757,62 +742,41 @@ const ProjectWorkspace: React.FC = () => {
                  )}
 
                  {selectedNodeId === 'sb_text' && (
-                     <TableResultBox 
-                        headers={['#', '原文', '画面描述', '']}
-                        data={project.storyboard || []}
-                        renderRow={(item: StoryboardFrame, i: number) => (
-                            <tr key={item.id} className="hover:bg-slate-50 group">
-                                <td className="py-4 px-5 text-center text-xs font-bold text-slate-400 align-top">{item.sceneNumber}</td>
-                                <td className="py-4 px-5 text-xs text-slate-500 leading-relaxed align-top whitespace-pre-wrap max-w-[120px]">{item.originalText}</td>
-                                <td className="py-4 px-5 text-xs text-slate-700 leading-relaxed align-top">{item.description}</td>
-                                <td className="py-4 px-5 text-right align-top">
-                                     <RowCopyButton text={item.description} />
-                                </td>
-                            </tr>
-                        )}
-                     />
-                 )}
-                 
-                 {selectedNodeId === 'image_gen' && (
-                    <div className="flex flex-col h-full">
-                        {/* Top Section: CTA */}
-                        <div className="flex flex-col items-center text-center p-6 border-b border-slate-100 bg-slate-50/50">
-                            <div className="w-12 h-12 bg-pink-100 text-pink-500 rounded-xl flex items-center justify-center mb-3 shadow-lg shadow-pink-500/20">
-                                <Images className="w-6 h-6" />
+                     <div className="flex flex-col h-full">
+                        <div className="px-6 py-4 border-b border-slate-100 bg-slate-50/30 flex items-center justify-between flex-shrink-0 -mx-6 -mt-6 mb-6">
+                            <div className="flex items-center gap-3">
+                                <div className="p-2 bg-pink-100 text-pink-600 rounded-lg">
+                                    <Images className="w-4 h-4" />
+                                </div>
+                                <div>
+                                    <h3 className="text-sm font-bold text-slate-800">AI 图片生成</h3>
+                                    <p className="text-[10px] text-slate-400">基于当前分镜列表批量生图</p>
+                                </div>
                             </div>
-                            <h3 className="text-base font-bold text-slate-900 mb-1">图片生成工坊</h3>
-                            <p className="text-slate-500 text-xs mb-4 max-w-xs leading-relaxed">
-                                前往独立工作台进行批量生成。下方为即将使用的分镜提示词预览。
-                            </p>
                             <button
                                 onClick={() => navigate(`/project/${project.id}/images`)}
-                                className="bg-slate-900 text-white px-5 py-2.5 rounded-xl font-bold hover:bg-slate-800 transition-all flex items-center gap-2 shadow-xl shadow-slate-900/20 text-xs"
+                                className="bg-slate-900 text-white px-4 py-2 rounded-lg font-bold hover:bg-slate-800 transition-all flex items-center gap-2 shadow-lg shadow-slate-900/20 text-xs"
                             >
-                                前往工坊 <ArrowRight className="w-4 h-4" />
+                                前往工坊 <ArrowRight className="w-3 h-3" />
                             </button>
                         </div>
-
-                        {/* Bottom Section: Table */}
-                        <div className="flex-1 overflow-y-auto p-4 bg-[#F8F9FC]">
-                            <TableResultBox
-                                headers={['序号', '原文', '中文提示词']}
+                        <div className="flex-1 overflow-y-auto">
+                             <TableResultBox 
+                                headers={['#', '原文', '画面描述', '']}
                                 data={project.storyboard || []}
                                 renderRow={(item: StoryboardFrame, i: number) => (
-                                    <tr key={item.id} className="hover:bg-slate-50 group border-b border-slate-50 last:border-0">
-                                        <td className="py-3 px-3 text-center text-xs font-bold text-slate-400 align-top w-12">
-                                            {item.sceneNumber}
-                                        </td>
-                                        <td className="py-3 px-3 text-xs text-slate-500 leading-relaxed align-top w-[40%]">
-                                            {item.originalText}
-                                        </td>
-                                        <td className="py-3 px-3 text-xs text-slate-800 leading-relaxed align-top font-medium">
-                                            {item.description}
+                                    <tr key={item.id} className="hover:bg-slate-50 group">
+                                        <td className="py-4 px-5 text-center text-xs font-bold text-slate-400 align-top">{item.sceneNumber}</td>
+                                        <td className="py-4 px-5 text-xs text-slate-500 leading-relaxed align-top whitespace-pre-wrap max-w-[120px]">{item.originalText}</td>
+                                        <td className="py-4 px-5 text-xs text-slate-700 leading-relaxed align-top">{item.description}</td>
+                                        <td className="py-4 px-5 text-right align-top">
+                                             <RowCopyButton text={item.description} />
                                         </td>
                                     </tr>
                                 )}
-                            />
+                             />
                         </div>
-                    </div>
+                     </div>
                  )}
             </div>
         </div>
