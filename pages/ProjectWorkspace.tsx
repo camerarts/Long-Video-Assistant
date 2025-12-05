@@ -34,9 +34,10 @@ interface TextResultBoxProps {
     title: string;
     onSave?: (val: string) => void;
     placeholder?: string;
+    showStats?: boolean;
 }
 
-const TextResultBox = ({ content, title, onSave, placeholder }: TextResultBoxProps) => {
+const TextResultBox = ({ content, title, onSave, placeholder, showStats }: TextResultBoxProps) => {
   const [value, setValue] = useState(content || '');
   const [isDirty, setIsDirty] = useState(false);
 
@@ -56,10 +57,25 @@ const TextResultBox = ({ content, title, onSave, placeholder }: TextResultBoxPro
     }
   };
 
+  const charCount = (value || '').length;
+  const chineseCount = (value || '').match(/[\u4e00-\u9fa5]/g)?.length || 0;
+
   return (
     <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden flex flex-col h-full max-h-[600px]">
       <div className="bg-slate-50 px-4 py-3 border-b border-slate-100 flex justify-between items-center flex-shrink-0">
-        <h4 className="text-xs font-bold text-slate-500 uppercase tracking-wider">{title}</h4>
+        <div className="flex items-center gap-3">
+             <h4 className="text-xs font-bold text-slate-500 uppercase tracking-wider">{title}</h4>
+             {showStats && (
+                 <div className="flex gap-2">
+                     <span className="text-[10px] bg-white border border-slate-200 px-1.5 py-0.5 rounded text-slate-500 font-mono flex items-center gap-1" title="总字符数">
+                        <span className="font-bold text-slate-700">{charCount}</span> 字符
+                     </span>
+                     <span className="text-[10px] bg-white border border-slate-200 px-1.5 py-0.5 rounded text-slate-500 font-mono flex items-center gap-1" title="中文字符数">
+                        <span className="font-bold text-slate-700">{chineseCount}</span> 汉字
+                     </span>
+                 </div>
+             )}
+        </div>
         <div className="flex items-center gap-2">
             {onSave && isDirty && (
                  <button onClick={handleSave} className="flex items-center gap-1 text-[10px] font-bold text-white bg-emerald-500 hover:bg-emerald-600 px-2 py-1 rounded shadow-sm transition-all animate-pulse">
@@ -657,6 +673,7 @@ const ProjectWorkspace: React.FC = () => {
                         title="视频文案脚本" 
                         placeholder="在此输入或粘贴视频脚本内容。输入完成后点击右上角保存，即可作为后续步骤的依据。"
                         onSave={(val) => saveProjectUpdate(p => ({ ...p, script: val, status: p.status === ProjectStatus.DRAFT ? ProjectStatus.IN_PROGRESS : p.status }))}
+                        showStats={true}
                     />
                  )}
 
