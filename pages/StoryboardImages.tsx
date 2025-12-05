@@ -5,7 +5,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { ProjectData, StoryboardFrame, PromptTemplate } from '../types';
 import * as storage from '../services/storageService';
 import * as gemini from '../services/geminiService';
-import { ArrowLeft, Download, Loader2, Sparkles, Image as ImageIcon, RefreshCw, X, Maximize2, CloudUpload, FileSpreadsheet, Palette, RotateCcw, CheckCircle2, AlertCircle, Settings2, Key, Zap } from 'lucide-react';
+import { ArrowLeft, Download, Loader2, Sparkles, Image as ImageIcon, RefreshCw, X, Maximize2, CloudUpload, FileSpreadsheet, Palette, RotateCcw, CheckCircle2, AlertCircle, Settings2, Key, Zap, Clock } from 'lucide-react';
 import JSZip from 'jszip';
 
 const StoryboardImages: React.FC = () => {
@@ -38,7 +38,7 @@ const StoryboardImages: React.FC = () => {
   const [downloading, setDownloading] = useState(false);
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
-  const [messageType, setMessageType] = useState<'success' | 'error'>('success');
+  const [messageType, setMessageType] = useState<'success' | 'error' | 'warning'>('success');
   
   const mountedRef = useRef(true);
 
@@ -182,13 +182,11 @@ const StoryboardImages: React.FC = () => {
     setBatchProgress({ planned: framesToGenerate.length, completed: 0, failed: 0 });
 
     // SETTINGS FOR RATE LIMITING
-    // Turbo Mode (Pro): 3 Concurrent, 200ms Delay
-    // Safe Mode (Free): 1 Concurrent, 3500ms Delay
     const CONCURRENCY_LIMIT = isTurboMode ? 3 : 1;
-    const REQUEST_DELAY = isTurboMode ? 200 : 3500;
+    // Dynamic delay: can be increased if 429 is hit
+    let currentDelay = isTurboMode ? 200 : 3500;
 
     let index = 0;
-    const results: Promise<void>[] = [];
 
     const processNext = async () => {
         if (index >= framesToGenerate.length) return;
@@ -200,47 +198,70 @@ const StoryboardImages: React.FC = () => {
             setCurrentGenIds(prev => new Set(prev).add(frame.id));
         }
 
-        try {
-            const base64 = await generateSingleImage(frame);
+        let retries = 0;
+        const MAX_RETRIES = 3;
+        let success = false;
 
-            if (base64) {
-                 // Save locally to IndexedDB
-                 const updated = await storage.updateProject(id!, (latest) => {
-                     const newSb = latest.storyboard?.map(f => 
-                        f.id === frame.id ? { ...f, imageUrl: base64, imageModel: imageModel } : f
-                     );
-                     return { ...latest, storyboard: newSb };
-                 });
-                 
-                 // Update UI with the atomic result to ensure consistency
-                 if (mountedRef.current && updated) {
-                    setProject(updated);
-                    setBatchProgress(prev => ({ ...prev, completed: prev.completed + 1 }));
-                 }
-            } else {
-                 if (mountedRef.current) {
-                    setBatchProgress(prev => ({ ...prev, failed: prev.failed + 1 }));
-                 }
+        while (retries <= MAX_RETRIES && !success) {
+            try {
+                const base64 = await generateSingleImage(frame);
+
+                if (base64) {
+                    // Save locally to IndexedDB
+                    const updated = await storage.updateProject(id!, (latest) => {
+                        const newSb = latest.storyboard?.map(f => 
+                            f.id === frame.id ? { ...f, imageUrl: base64, imageModel: imageModel } : f
+                        );
+                        return { ...latest, storyboard: newSb };
+                    });
+                    
+                    // Update UI
+                    if (mountedRef.current && updated) {
+                        setProject(updated);
+                        setBatchProgress(prev => ({ ...prev, completed: prev.completed + 1 }));
+                        success = true;
+                    }
+                } else {
+                    throw new Error("Empty response");
+                }
+            } catch(e: any) {
+                const msg = e.message || '';
+                // Check for 429 Rate Limit
+                if ((msg.includes('429') || msg.includes('Quota')) && retries < MAX_RETRIES) {
+                    retries++;
+                    console.warn(`Rate limit hit for scene ${frame.sceneNumber}. Retrying (${retries}/${MAX_RETRIES})...`);
+                    
+                    // Increase global delay to slow down queue
+                    currentDelay = Math.max(currentDelay, 10000); // Wait at least 10s between requests now
+
+                    if (mountedRef.current) {
+                        setMessageType('warning');
+                        setMessage(`触发频率限制 (429)，休息 15 秒后自动重试... (${retries}/${MAX_RETRIES})`);
+                    }
+
+                    // Wait 15 seconds before retry
+                    await new Promise(r => setTimeout(r, 15000));
+                } else {
+                    // Fatal Error or Max Retries reached
+                    console.error(`Failed to generate image for scene ${frame.sceneNumber}`, e);
+                    if (mountedRef.current) {
+                        setBatchProgress(prev => ({ ...prev, failed: prev.failed + 1 }));
+                        setMessageType('error');
+                        setMessage(`场景 ${frame.sceneNumber} 失败: ${msg}`);
+                        setTimeout(() => setMessage(null), 6000);
+                    }
+                    break; // Exit retry loop
+                }
             }
-        } catch(e: any) {
-            console.error(`Failed to generate image for scene ${frame.sceneNumber}`, e);
-            if (mountedRef.current) {
-                setBatchProgress(prev => ({ ...prev, failed: prev.failed + 1 }));
-                
-                // Show Error Toast
-                setMessageType('error');
-                setMessage(`场景 ${frame.sceneNumber} 失败: ${e.message}`);
-                setTimeout(() => setMessage(null), 6000);
-            }
-        } finally {
-             // UI: Unmark loading
-             if (mountedRef.current) {
-                setCurrentGenIds(prev => {
-                    const next = new Set(prev);
-                    next.delete(frame.id);
-                    return next;
-                });
-             }
+        }
+
+        // UI: Unmark loading
+        if (mountedRef.current) {
+            setCurrentGenIds(prev => {
+                const next = new Set(prev);
+                next.delete(frame.id);
+                return next;
+            });
         }
     };
 
@@ -252,8 +273,9 @@ const StoryboardImages: React.FC = () => {
                 (async () => {
                     while (index < framesToGenerate.length) {
                         await processNext();
+                        // Wait dynamic delay
                         if (index < framesToGenerate.length) {
-                             await new Promise(r => setTimeout(r, REQUEST_DELAY));
+                             await new Promise(r => setTimeout(r, currentDelay));
                         }
                     }
                 })()
@@ -412,9 +434,9 @@ const StoryboardImages: React.FC = () => {
   return (
     <div className="flex flex-col h-full bg-[#F8F9FC] relative">
         {message && (
-            <div className={`fixed bottom-8 right-8 max-w-[90vw] md:max-w-lg text-white px-6 py-4 rounded-xl shadow-2xl z-50 font-bold flex items-start gap-3 animate-in fade-in slide-in-from-bottom-5 duration-300 shadow-rose-900/20 ${messageType === 'error' ? 'bg-rose-600' : 'bg-emerald-600'}`}>
+            <div className={`fixed bottom-8 right-8 max-w-[90vw] md:max-w-lg text-white px-6 py-4 rounded-xl shadow-2xl z-50 font-bold flex items-start gap-3 animate-in fade-in slide-in-from-bottom-5 duration-300 shadow-rose-900/20 ${messageType === 'error' ? 'bg-rose-600' : (messageType === 'warning' ? 'bg-orange-500' : 'bg-emerald-600')}`}>
                 <div className="shrink-0 mt-0.5">
-                    {messageType === 'error' ? <AlertCircle className="w-5 h-5" /> : <CheckCircle2 className="w-5 h-5" />}
+                    {messageType === 'error' ? <AlertCircle className="w-5 h-5" /> : (messageType === 'warning' ? <Clock className="w-5 h-5" /> : <CheckCircle2 className="w-5 h-5" />)}
                 </div>
                 <div className="break-words text-sm leading-relaxed whitespace-pre-wrap">
                     {message}
