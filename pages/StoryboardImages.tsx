@@ -5,7 +5,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { ProjectData, StoryboardFrame, PromptTemplate } from '../types';
 import * as storage from '../services/storageService';
 import * as gemini from '../services/geminiService';
-import { ArrowLeft, Download, Loader2, Sparkles, Image as ImageIcon, RefreshCw, X, Maximize2, CloudUpload, FileSpreadsheet, Palette, RotateCcw, CheckCircle2, AlertCircle, Settings2 } from 'lucide-react';
+import { ArrowLeft, Download, Loader2, Sparkles, Image as ImageIcon, RefreshCw, X, Maximize2, CloudUpload, FileSpreadsheet, Palette, RotateCcw, CheckCircle2, AlertCircle, Settings2, Key } from 'lucide-react';
 import JSZip from 'jszip';
 
 const StoryboardImages: React.FC = () => {
@@ -376,6 +376,13 @@ const StoryboardImages: React.FC = () => {
     }
   };
 
+  // Helper to show partial key
+  const getMaskedKey = (key: string) => {
+    if (!key) return '';
+    if (key.length <= 10) return '******';
+    return `${key.slice(0, 4)}····${key.slice(-4)}`;
+  };
+
   // Calculate Project Stats
   const totalScenes = project?.storyboard?.length || 0;
   // "Generated" means has any image URL (local or cloud)
@@ -717,14 +724,25 @@ const StoryboardImages: React.FC = () => {
 
                 <div className="space-y-4 mb-6">
                     <div>
-                        <label className="block text-xs font-bold text-slate-600 mb-1.5">Google Gemini API Key</label>
-                        <input
-                            type="password"
-                            value={customKey}
-                            onChange={(e) => setCustomKey(e.target.value)}
-                            placeholder="sk-..."
-                            className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 font-mono"
-                        />
+                        <div className="flex justify-between items-center mb-1.5">
+                            <label className="block text-xs font-bold text-slate-600">Google Gemini API Key</label>
+                            {customKey && (
+                                <div className="text-[10px] font-mono text-slate-500 bg-slate-100 px-2 py-0.5 rounded border border-slate-200 flex items-center gap-1">
+                                    <span className="text-slate-400 select-none">预览:</span>
+                                    <span className="font-bold text-slate-700">{getMaskedKey(customKey)}</span>
+                                </div>
+                            )}
+                        </div>
+                        <div className="relative">
+                            <input
+                                type="password"
+                                value={customKey}
+                                onChange={(e) => setCustomKey(e.target.value)}
+                                placeholder="sk-..."
+                                className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 pl-10 text-sm outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 font-mono transition-all"
+                            />
+                            <Key className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                        </div>
                     </div>
                     
                     <div>
@@ -763,3 +781,4 @@ const StoryboardImages: React.FC = () => {
 };
 
 export default StoryboardImages;
+
