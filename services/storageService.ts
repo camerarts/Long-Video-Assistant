@@ -373,6 +373,18 @@ export const updateProject = async (id: string, updater: (current: ProjectData) 
   });
 };
 
+export const archiveProject = async (id: string): Promise<void> => {
+    await updateProject(id, (p) => ({ ...p, status: ProjectStatus.ARCHIVED }));
+};
+
+export const unarchiveProject = async (id: string): Promise<void> => {
+    await updateProject(id, (p) => ({ 
+        ...p, 
+        // Logic in updateProject will automatically verify if it's COMPLETED or IN_PROGRESS
+        status: ProjectStatus.IN_PROGRESS 
+    }));
+};
+
 export const createProject = async (initialTitle?: string): Promise<string> => {
   const newProject: ProjectData = {
     id: crypto.randomUUID(),
