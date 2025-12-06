@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { LayoutDashboard, Settings, Video, Plus, Image as ImageIcon, Lightbulb, LogOut, CloudUpload, CloudDownload, Loader2, CheckCircle2, XCircle, Circle, Menu, X, Sparkles, Type } from 'lucide-react';
+import { LayoutDashboard, Settings, Video, Plus, Image as ImageIcon, Lightbulb, LogOut, CloudUpload, CloudDownload, Loader2, CheckCircle2, XCircle, Circle, Menu, X, Sparkles, Type, Archive } from 'lucide-react';
 import * as storage from '../services/storageService';
 
 interface LayoutProps {
@@ -261,6 +261,18 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
           >
             <Type className={`w-5 h-5 ${isActive('/ai-titles') ? 'stroke-[2.5px]' : 'stroke-2'}`} />
             <span className="text-[10px] font-bold tracking-wide scale-90">AI标题</span>
+          </Link>
+          
+          <Link
+            to="/archive"
+            className={`flex flex-col items-center justify-center py-2 px-1 w-full rounded-xl transition-all gap-1 duration-300 ${
+              isActive('/archive') 
+                ? 'bg-slate-100 text-slate-700 shadow-sm' 
+                : 'text-slate-400 hover:bg-slate-50 hover:text-slate-700'
+            }`}
+          >
+            <Archive className={`w-5 h-5 ${isActive('/archive') ? 'stroke-[2.5px]' : 'stroke-2'}`} />
+            <span className="text-[10px] font-bold tracking-wide scale-90">归档仓库</span>
           </Link>
 
           <Link
