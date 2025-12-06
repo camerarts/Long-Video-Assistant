@@ -1,9 +1,9 @@
 
 import React, { useEffect, useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ProjectData } from '../types';
+import { ProjectData, ProjectStatus } from '../types';
 import * as storage from '../services/storageService';
-import { Calendar, Loader2, Image as ImageIcon, AlertCircle, CheckCircle2, Trash2 } from 'lucide-react';
+import { Calendar, Loader2, Image as ImageIcon, AlertCircle, CheckCircle2, Trash2, Archive } from 'lucide-react';
 
 const ImageWorkshopList: React.FC = () => {
   const navigate = useNavigate();
@@ -24,10 +24,9 @@ const ImageWorkshopList: React.FC = () => {
     setLoading(false);
   };
 
-  // Generate Serial Numbers based on creation date
+  // Generate Serial Numbers based on ALL projects
   const serialMap = useMemo(() => {
     const map = new Map<string, string>();
-    // Sort by creation time ascending to assign numbers chronologically
     const sorted = [...projects].sort((a, b) => a.createdAt - b.createdAt);
     const dailyCounts: Record<string, number> = {};
 
@@ -47,11 +46,24 @@ const ImageWorkshopList: React.FC = () => {
     return map;
   }, [projects]);
 
+  // Filter for display: exclude ARCHIVED projects
+  const displayedProjects = useMemo(() => 
+    projects.filter(p => p.status !== ProjectStatus.ARCHIVED),
+  [projects]);
+
   const handleDelete = async (e: React.MouseEvent, id: string) => {
     e.stopPropagation();
     await storage.deleteProject(id);
     setProjects(prev => prev.filter(p => p.id !== id));
     setDeleteConfirmId(null);
+  };
+
+  const handleArchive = async (e: React.MouseEvent, id: string) => {
+      e.stopPropagation();
+      if (window.confirm('确定要归档此项目吗？归档后项目将移入归档仓库，仅供只读浏览。')) {
+          await storage.archiveProject(id);
+          navigate('/archive');
+      }
   };
 
   const getImageProgress = (project: ProjectData) => {
@@ -92,7 +104,7 @@ const ImageWorkshopList: React.FC = () => {
         <div className="flex justify-center py-20">
           <Loader2 className="w-10 h-10 text-fuchsia-500 animate-spin" />
         </div>
-      ) : projects.length === 0 ? (
+      ) : displayedProjects.length === 0 ? (
         <div className="bg-white border border-dashed border-slate-300 rounded-3xl p-16 text-center shadow-sm">
           <div className="w-20 h-20 bg-slate-50 rounded-full flex items-center justify-center mx-auto mb-6 shadow-inner">
             <ImageIcon className="w-8 h-8 text-slate-400" />
@@ -118,7 +130,7 @@ const ImageWorkshopList: React.FC = () => {
                         </tr>
                     </thead>
                     <tbody>
-                        {projects.map((project, index) => {
+                        {displayedProjects.map((project, index) => {
                             const progress = getImageProgress(project);
                             const hasStoryboard = !!progress;
                             const serial = serialMap.get(project.id) || '-';
@@ -176,23 +188,33 @@ const ImageWorkshopList: React.FC = () => {
                                         </div>
                                     </td>
                                     <td className="py-2.5 px-3 text-center border border-slate-200 align-middle">
-                                        {deleteConfirmId === project.id ? (
+                                        <div className="flex items-center justify-center gap-2">
                                             <button 
-                                                onClick={(e) => handleDelete(e, project.id)}
-                                                className="text-xs bg-rose-50 text-rose-600 border border-rose-200 px-3 py-1.5 rounded-lg font-bold hover:bg-rose-100 transition-colors whitespace-nowrap"
-                                                onMouseLeave={() => setDeleteConfirmId(null)}
+                                                onClick={(e) => handleArchive(e, project.id)}
+                                                className="p-1.5 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-md transition-all"
+                                                title="归档项目"
                                             >
-                                                确认删除?
+                                                <Archive className="w-4 h-4" />
                                             </button>
-                                        ) : (
-                                            <button 
-                                                onClick={(e) => { e.stopPropagation(); setDeleteConfirmId(project.id); }}
-                                                className="p-1.5 text-slate-300 hover:text-rose-500 hover:bg-rose-50 rounded-md transition-all"
-                                                title="删除项目"
-                                            >
-                                                <Trash2 className="w-4 h-4" />
-                                            </button>
-                                        )}
+                                            
+                                            {deleteConfirmId === project.id ? (
+                                                <button 
+                                                    onClick={(e) => handleDelete(e, project.id)}
+                                                    className="text-xs bg-rose-50 text-rose-600 border border-rose-200 px-2 py-1.5 rounded-lg font-bold hover:bg-rose-100 transition-colors whitespace-nowrap"
+                                                    onMouseLeave={() => setDeleteConfirmId(null)}
+                                                >
+                                                    确认删除?
+                                                </button>
+                                            ) : (
+                                                <button 
+                                                    onClick={(e) => { e.stopPropagation(); setDeleteConfirmId(project.id); }}
+                                                    className="p-1.5 text-slate-300 hover:text-rose-500 hover:bg-rose-50 rounded-md transition-all"
+                                                    title="删除项目"
+                                                >
+                                                    <Trash2 className="w-4 h-4" />
+                                                </button>
+                                            )}
+                                        </div>
                                     </td>
                                 </tr>
                             );
