@@ -222,7 +222,9 @@ const StoryboardImages: React.FC = () => {
     setGenerating(true);
     setBatchProgress({ planned: pendingFrames.length, completed: 0, failed: 0 });
     
-    const CONCURRENCY_LIMIT = 3;
+    // High concurrency for standard accounts/Flash model
+    // Note: Free tier still has limits, but we are removing artificial blocks as requested.
+    const CONCURRENCY_LIMIT = 5; 
     const queue = [...pendingFrames];
     const activePromises: Promise<void>[] = [];
 
@@ -584,66 +586,80 @@ const StoryboardImages: React.FC = () => {
                                         </div>
                                     </td>
                                     <td className="py-4 px-4 align-top text-center">
-                                        <div className="relative w-full aspect-video bg-slate-100 rounded-xl overflow-hidden border border-slate-200 shadow-sm group/preview">
-                                            {frame.imageUrl ? (
-                                                <>
-                                                    <img 
-                                                        src={frame.imageUrl} 
-                                                        loading="lazy"
-                                                        alt={`Scene ${frame.sceneNumber}`} 
-                                                        className="w-full h-full object-cover cursor-zoom-in hover:scale-105 transition-transform duration-500"
-                                                        onClick={() => setSelectedImage(frame.imageUrl || null)}
-                                                    />
-                                                    {/* Reload Button (Top-Left) - Only for remote images */}
-                                                    {!frame.imageUrl.startsWith('data:') && (
-                                                        <button 
-                                                            onClick={(e) => { e.stopPropagation(); handleReloadImage(frame); }}
-                                                            className="absolute top-2 left-2 p-1.5 bg-black/50 hover:bg-black/70 text-white rounded-lg opacity-0 group-hover/preview:opacity-100 transition-opacity backdrop-blur-sm"
-                                                            title="强制刷新图片"
-                                                        >
-                                                            <RefreshCw className="w-3.5 h-3.5" />
-                                                        </button>
-                                                    )}
-                                                    
-                                                    {/* Regenerate Button (Top-Right) - Hidden by default, show on hover */}
-                                                    <button 
-                                                        onClick={(e) => { e.stopPropagation(); generateSingleImage(frame); }}
-                                                        disabled={isGeneratingThis}
-                                                        className="absolute top-2 right-2 p-1.5 bg-black/50 hover:bg-fuchsia-600 text-white rounded-lg opacity-0 group-hover/preview:opacity-100 transition-all backdrop-blur-sm shadow-sm"
-                                                        title="重新生成这张"
-                                                    >
-                                                        {isGeneratingThis ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <RefreshCw className="w-3.5 h-3.5" />}
-                                                    </button>
-                                                    
-                                                    {/* Model Label (Bottom) */}
-                                                    {frame.imageModel && (
-                                                        <div className="absolute bottom-0 left-0 right-0 bg-black/60 backdrop-blur-[2px] py-1 px-2 text-[10px] text-white/80 font-mono text-center">
-                                                            {frame.imageModel}
-                                                        </div>
-                                                    )}
-                                                </>
-                                            ) : (
-                                                <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 text-slate-300">
-                                                    {isGeneratingThis ? (
-                                                        <>
-                                                            <Loader2 className="w-8 h-8 animate-spin text-fuchsia-500" />
-                                                            <span className="text-xs font-bold text-fuchsia-500 animate-pulse">正在绘制...</span>
-                                                        </>
-                                                    ) : (
-                                                        <>
-                                                            <ImageIcon className="w-8 h-8 opacity-20" />
-                                                            {/* Regenerate Button (Top-Right) - Visible for empty state */}
-                                                            <button 
-                                                                onClick={(e) => { e.stopPropagation(); generateSingleImage(frame); }}
-                                                                className="absolute top-2 right-2 p-1.5 bg-white border border-slate-200 text-slate-400 hover:text-fuchsia-600 hover:border-fuchsia-200 rounded-lg shadow-sm transition-all"
-                                                                title="立即生成"
-                                                            >
-                                                                <Zap className="w-3.5 h-3.5" />
-                                                            </button>
-                                                        </>
-                                                    )}
-                                                </div>
+                                        {/* Dynamic Border Container */}
+                                        <div className={`relative w-full aspect-video rounded-xl shadow-sm overflow-hidden transition-all duration-300 group/preview ${
+                                            isGeneratingThis 
+                                              ? 'p-[3px] bg-slate-900' // Dark background for neon contrast + padding for border width
+                                              : 'border border-slate-200 bg-slate-100'
+                                        }`}>
+                                            
+                                            {/* Neon Spinner Background (Only visible when generating) */}
+                                            {isGeneratingThis && (
+                                                <div className="absolute inset-[-50%] bg-[conic-gradient(transparent,theme(colors.fuchsia.500),transparent)] animate-[spin_2s_linear_infinite]" />
                                             )}
+
+                                            {/* Inner Content Container (The Mask) */}
+                                            <div className="relative w-full h-full bg-slate-100 rounded-[9px] overflow-hidden z-10">
+                                                {frame.imageUrl ? (
+                                                    <>
+                                                        <img 
+                                                            src={frame.imageUrl} 
+                                                            loading="lazy"
+                                                            alt={`Scene ${frame.sceneNumber}`} 
+                                                            className="w-full h-full object-cover cursor-zoom-in hover:scale-105 transition-transform duration-500"
+                                                            onClick={() => setSelectedImage(frame.imageUrl || null)}
+                                                        />
+                                                        {/* Reload Button (Top-Left) - Only for remote images */}
+                                                        {!frame.imageUrl.startsWith('data:') && (
+                                                            <button 
+                                                                onClick={(e) => { e.stopPropagation(); handleReloadImage(frame); }}
+                                                                className="absolute top-2 left-2 p-1.5 bg-black/50 hover:bg-black/70 text-white rounded-lg opacity-0 group-hover/preview:opacity-100 transition-opacity backdrop-blur-sm"
+                                                                title="强制刷新图片"
+                                                            >
+                                                                <RefreshCw className="w-3.5 h-3.5" />
+                                                            </button>
+                                                        )}
+                                                        
+                                                        {/* Regenerate Button (Top-Right) - Hidden by default, show on hover */}
+                                                        <button 
+                                                            onClick={(e) => { e.stopPropagation(); generateSingleImage(frame); }}
+                                                            disabled={isGeneratingThis}
+                                                            className="absolute top-2 right-2 p-1.5 bg-black/50 hover:bg-fuchsia-600 text-white rounded-lg opacity-0 group-hover/preview:opacity-100 transition-all backdrop-blur-sm shadow-sm"
+                                                            title="重新生成这张"
+                                                        >
+                                                            {isGeneratingThis ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <RefreshCw className="w-3.5 h-3.5" />}
+                                                        </button>
+                                                        
+                                                        {/* Model Label (Bottom) */}
+                                                        {frame.imageModel && (
+                                                            <div className="absolute bottom-0 left-0 right-0 bg-black/60 backdrop-blur-[2px] py-1 px-2 text-[10px] text-white/80 font-mono text-center">
+                                                                {frame.imageModel}
+                                                            </div>
+                                                        )}
+                                                    </>
+                                                ) : (
+                                                    <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 text-slate-300">
+                                                        {isGeneratingThis ? (
+                                                            <>
+                                                                <Loader2 className="w-8 h-8 animate-spin text-fuchsia-500" />
+                                                                <span className="text-xs font-bold text-fuchsia-500 animate-pulse">正在绘制...</span>
+                                                            </>
+                                                        ) : (
+                                                            <>
+                                                                <ImageIcon className="w-8 h-8 opacity-20" />
+                                                                {/* Regenerate Button (Top-Right) - Visible for empty state */}
+                                                                <button 
+                                                                    onClick={(e) => { e.stopPropagation(); generateSingleImage(frame); }}
+                                                                    className="absolute top-2 right-2 p-1.5 bg-white border border-slate-200 text-slate-400 hover:text-fuchsia-600 hover:border-fuchsia-200 rounded-lg shadow-sm transition-all"
+                                                                    title="立即生成"
+                                                                >
+                                                                    <Zap className="w-3.5 h-3.5" />
+                                                                </button>
+                                                            </>
+                                                        )}
+                                                    </div>
+                                                )}
+                                            </div>
                                         </div>
                                     </td>
                                 </tr>
