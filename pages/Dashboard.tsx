@@ -23,7 +23,7 @@ const Dashboard: React.FC = () => {
     setLoading(false);
   };
 
-  // Generate Serial Numbers based on creation date
+  // Generate Serial Numbers based on ALL projects to maintain consistency
   const serialMap = useMemo(() => {
     const map = new Map<string, string>();
     // Sort by creation time ascending to assign numbers chronologically
@@ -45,6 +45,11 @@ const Dashboard: React.FC = () => {
     });
     return map;
   }, [projects]);
+
+  // Filter for display: exclude ARCHIVED projects
+  const displayedProjects = useMemo(() => 
+    projects.filter(p => p.status !== ProjectStatus.ARCHIVED),
+  [projects]);
 
   const handleCreate = async () => {
     const newId = await storage.createProject();
@@ -119,7 +124,7 @@ const Dashboard: React.FC = () => {
         <div className="flex justify-center py-20">
           <Loader2 className="w-10 h-10 text-violet-500 animate-spin" />
         </div>
-      ) : projects.length === 0 ? (
+      ) : displayedProjects.length === 0 ? (
         <div className="bg-white border border-dashed border-slate-300 rounded-3xl p-16 text-center shadow-sm">
           <div className="w-20 h-20 bg-slate-50 rounded-full flex items-center justify-center mx-auto mb-6 shadow-inner">
             <Sparkles className="w-8 h-8 text-slate-400" />
@@ -145,7 +150,7 @@ const Dashboard: React.FC = () => {
                         </tr>
                     </thead>
                     <tbody>
-                        {projects.map((project, index) => {
+                        {displayedProjects.map((project, index) => {
                             const status = getEffectiveStatus(project);
                             const serial = serialMap.get(project.id) || '-';
                             return (
