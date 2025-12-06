@@ -1,4 +1,5 @@
 
+
 import React, { useEffect, useState, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { ProjectData, StoryboardFrame, PromptTemplate } from '../types';
@@ -161,6 +162,9 @@ const StoryboardImages: React.FC = () => {
   const generateSingleImage = async (frame: StoryboardFrame, showToast = true) => {
       if (!frame.imagePrompt) return;
       
+      // Mark as generating
+      setCurrentGenIds(prev => new Set(prev).add(frame.id));
+
       try {
           const base64Data = await gemini.generateImage(frame.imagePrompt, customKey, imageModel);
           const cloudUrl = await storage.uploadImage(base64Data, project?.id);
@@ -191,6 +195,13 @@ const StoryboardImages: React.FC = () => {
              setTimeout(() => setMessage(null), 5000);
           }
           throw error;
+      } finally {
+          // Clear generating state
+          setCurrentGenIds(prev => {
+              const next = new Set(prev);
+              next.delete(frame.id);
+              return next;
+          });
       }
   };
 
@@ -221,20 +232,12 @@ const StoryboardImages: React.FC = () => {
         if (!frame) return;
 
         try {
-            setCurrentGenIds(prev => new Set(prev).add(frame.id));
             await generateSingleImage(frame, false);
             setBatchProgress(prev => ({ ...prev, completed: prev.completed + 1 }));
         } catch (error) {
             console.error(error);
             setBatchProgress(prev => ({ ...prev, failed: prev.failed + 1 }));
         } finally {
-            if (mountedRef.current) {
-                setCurrentGenIds(prev => {
-                    const next = new Set(prev);
-                    next.delete(frame.id);
-                    return next;
-                });
-            }
             await processNext();
         }
     };
@@ -594,7 +597,7 @@ const StoryboardImages: React.FC = () => {
                                                     {/* Reload Button (Top-Left) - Only for remote images */}
                                                     {!frame.imageUrl.startsWith('data:') && (
                                                         <button 
-                                                            onClick={() => handleReloadImage(frame)}
+                                                            onClick={(e) => { e.stopPropagation(); handleReloadImage(frame); }}
                                                             className="absolute top-2 left-2 p-1.5 bg-black/50 hover:bg-black/70 text-white rounded-lg opacity-0 group-hover/preview:opacity-100 transition-opacity backdrop-blur-sm"
                                                             title="强制刷新图片"
                                                         >
@@ -604,7 +607,7 @@ const StoryboardImages: React.FC = () => {
                                                     
                                                     {/* Regenerate Button (Top-Right) - Hidden by default, show on hover */}
                                                     <button 
-                                                        onClick={() => generateSingleImage(frame)}
+                                                        onClick={(e) => { e.stopPropagation(); generateSingleImage(frame); }}
                                                         disabled={isGeneratingThis}
                                                         className="absolute top-2 right-2 p-1.5 bg-black/50 hover:bg-fuchsia-600 text-white rounded-lg opacity-0 group-hover/preview:opacity-100 transition-all backdrop-blur-sm shadow-sm"
                                                         title="重新生成这张"
@@ -631,7 +634,7 @@ const StoryboardImages: React.FC = () => {
                                                             <ImageIcon className="w-8 h-8 opacity-20" />
                                                             {/* Regenerate Button (Top-Right) - Visible for empty state */}
                                                             <button 
-                                                                onClick={() => generateSingleImage(frame)}
+                                                                onClick={(e) => { e.stopPropagation(); generateSingleImage(frame); }}
                                                                 className="absolute top-2 right-2 p-1.5 bg-white border border-slate-200 text-slate-400 hover:text-fuchsia-600 hover:border-fuchsia-200 rounded-lg shadow-sm transition-all"
                                                                 title="立即生成"
                                                             >
