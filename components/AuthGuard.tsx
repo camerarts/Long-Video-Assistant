@@ -1,11 +1,15 @@
 
 import React, { useState, useEffect } from 'react';
-import { Lock, ArrowRight, ShieldCheck, Home } from 'lucide-react';
+import { Lock, ArrowRight, ShieldCheck, Home, AlertTriangle } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
 const AUTH_KEY = 'lva_auth_expiry';
+const ATTEMPTS_KEY = 'lva_login_attempts';
+const LOCKOUT_KEY = 'lva_lockout_date';
 const SESSION_DURATION = 3 * 60 * 60 * 1000; // 3 hours
 const DEFAULT_PASS = '1211';
+const SUPER_PASS = 'samsung1';
+const MAX_ATTEMPTS = 3;
 
 interface AuthGuardProps {
   children: React.ReactNode;
@@ -15,12 +19,29 @@ const AuthGuard: React.FC<AuthGuardProps> = ({ children }) => {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [loading, setLoading] = useState(true);
   const [password, setPassword] = useState('');
-  const [error, setError] = useState(false);
+  const [errorMsg, setErrorMsg] = useState('');
+  const [isLocked, setIsLocked] = useState(false);
   const navigate = useNavigate();
 
   useEffect(() => {
     checkAuth();
+    checkLockout();
   }, []);
+
+  const checkLockout = () => {
+    const lockoutDate = localStorage.getItem(LOCKOUT_KEY);
+    const today = new Date().toDateString();
+
+    if (lockoutDate === today) {
+      setIsLocked(true);
+      setErrorMsg('今日尝试次数过多，已被禁止登录。');
+    } else if (lockoutDate && lockoutDate !== today) {
+      // New day, reset
+      localStorage.removeItem(LOCKOUT_KEY);
+      localStorage.setItem(ATTEMPTS_KEY, '0');
+      setIsLocked(false);
+    }
+  };
 
   const checkAuth = () => {
     const expiry = localStorage.getItem(AUTH_KEY);
@@ -32,13 +53,50 @@ const AuthGuard: React.FC<AuthGuardProps> = ({ children }) => {
 
   const handleLogin = (e: React.FormEvent) => {
     e.preventDefault();
+    setErrorMsg('');
+
+    // 1. Super Password Bypass (Always allows login, resets locks)
+    if (password === SUPER_PASS) {
+      const newExpiry = Date.now() + SESSION_DURATION;
+      localStorage.setItem(AUTH_KEY, newExpiry.toString());
+      
+      // Reset security counters
+      localStorage.removeItem(LOCKOUT_KEY);
+      localStorage.setItem(ATTEMPTS_KEY, '0');
+      
+      setIsAuthenticated(true);
+      return;
+    }
+
+    // 2. Check Lockout Status
+    const lockoutDate = localStorage.getItem(LOCKOUT_KEY);
+    const today = new Date().toDateString();
+    if (lockoutDate === today) {
+      setIsLocked(true);
+      setErrorMsg('今日尝试次数过多，账号已被锁定，请明日再试。');
+      return;
+    }
+
+    // 3. Validate Normal Password
     if (password === DEFAULT_PASS) {
       const newExpiry = Date.now() + SESSION_DURATION;
       localStorage.setItem(AUTH_KEY, newExpiry.toString());
+      // Reset attempts on success
+      localStorage.setItem(ATTEMPTS_KEY, '0');
       setIsAuthenticated(true);
-      setError(false);
     } else {
-      setError(true);
+      // Handle Failure
+      const currentAttempts = parseInt(localStorage.getItem(ATTEMPTS_KEY) || '0') + 1;
+      localStorage.setItem(ATTEMPTS_KEY, currentAttempts.toString());
+      
+      if (currentAttempts >= MAX_ATTEMPTS) {
+        localStorage.setItem(LOCKOUT_KEY, today);
+        setIsLocked(true);
+        setErrorMsg('密码错误次数过多，今日已禁止登录。');
+      } else {
+        const remaining = MAX_ATTEMPTS - currentAttempts;
+        setErrorMsg(`密码错误。还剩 ${remaining} 次机会。`);
+      }
       setPassword('');
     }
   };
@@ -60,37 +118,44 @@ const AuthGuard: React.FC<AuthGuardProps> = ({ children }) => {
             <Home className="w-5 h-5" />
         </button>
 
-        <div className="w-20 h-20 bg-gradient-to-br from-violet-100 to-indigo-50 rounded-full flex items-center justify-center mx-auto mb-6 shadow-inner text-violet-600">
-          <Lock className="w-8 h-8" />
+        <div className={`w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-6 shadow-inner ${isLocked ? 'bg-rose-100 text-rose-600' : 'bg-gradient-to-br from-violet-100 to-indigo-50 text-violet-600'}`}>
+          {isLocked ? <AlertTriangle className="w-8 h-8" /> : <Lock className="w-8 h-8" />}
         </div>
         
-        <h1 className="text-2xl font-extrabold text-slate-900 mb-2">访问验证</h1>
-        <p className="text-slate-500 mb-8 font-medium">这是一个私人工作空间，请输入访问密码。</p>
+        <h1 className="text-2xl font-extrabold text-slate-900 mb-2">{isLocked ? '访问受限' : '访问验证'}</h1>
+        <p className="text-slate-500 mb-8 font-medium">
+            {isLocked ? '为了安全起见，您的访问已被暂时阻止。' : '这是一个私人工作空间，请输入访问密码。'}
+        </p>
 
         <form onSubmit={handleLogin} className="space-y-4">
           <div className="relative">
             <input
               type="password"
               autoFocus
+              disabled={isLocked && password !== SUPER_PASS} // Allow typing to potentially enter super pass, but UI looks disabled
               value={password}
               onChange={(e) => {
                 setPassword(e.target.value);
-                setError(false);
+                setErrorMsg('');
               }}
-              placeholder="输入密码"
-              className={`w-full bg-slate-50 border ${error ? 'border-rose-300 ring-4 ring-rose-100' : 'border-slate-200 focus:ring-4 focus:ring-violet-100 focus:border-violet-400'} rounded-xl px-5 py-4 text-center text-lg outline-none transition-all placeholder:text-slate-400 text-slate-800 font-bold tracking-widest`}
+              placeholder={isLocked ? "已锁定" : "输入密码"}
+              className={`w-full bg-slate-50 border ${errorMsg ? 'border-rose-300 ring-4 ring-rose-100' : 'border-slate-200 focus:ring-4 focus:ring-violet-100 focus:border-violet-400'} rounded-xl px-5 py-4 text-center text-lg outline-none transition-all placeholder:text-slate-400 text-slate-800 font-bold tracking-widest disabled:opacity-50 disabled:cursor-not-allowed`}
             />
           </div>
 
-          {error && (
-            <p className="text-rose-500 text-sm font-bold animate-pulse">密码错误，请重试</p>
+          {errorMsg && (
+            <p className="text-rose-500 text-sm font-bold animate-pulse">{errorMsg}</p>
           )}
 
           <button
             type="submit"
-            className="w-full py-4 bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-500 hover:to-indigo-500 text-white font-bold rounded-xl shadow-lg shadow-indigo-500/30 hover:shadow-indigo-500/40 hover:-translate-y-0.5 transition-all flex items-center justify-center gap-2"
+            className={`w-full py-4 font-bold rounded-xl shadow-lg transition-all flex items-center justify-center gap-2 ${
+                isLocked 
+                ? 'bg-slate-300 text-slate-500 cursor-not-allowed' 
+                : 'bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-500 hover:to-indigo-500 text-white shadow-indigo-500/30 hover:shadow-indigo-500/40 hover:-translate-y-0.5'
+            }`}
           >
-            解锁进入 <ArrowRight className="w-5 h-5" />
+            {isLocked ? '今日已禁止登录' : '解锁进入'} {!isLocked && <ArrowRight className="w-5 h-5" />}
           </button>
         </form>
         
