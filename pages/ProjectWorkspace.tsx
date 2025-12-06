@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { ProjectData, TitleItem, StoryboardFrame, CoverOption, PromptTemplate, ProjectStatus } from '../types';
@@ -7,7 +8,7 @@ import {
   ArrowLeft, Layout, FileText, Type, 
   List, PanelRightClose, Sparkles, Loader2, Copy, 
   Check, Images, ArrowRight, Palette, Film, Maximize2, Play,
-  ZoomIn, ZoomOut, Move, RefreshCw, Rocket, AlertCircle
+  ZoomIn, ZoomOut, Move, RefreshCw, Rocket, AlertCircle, Archive
 } from 'lucide-react';
 
 // --- Sub-Components ---
@@ -33,9 +34,10 @@ interface TextResultBoxProps {
     onSave?: (val: string) => void;
     placeholder?: string;
     showStats?: boolean;
+    readOnly?: boolean;
 }
 
-const TextResultBox = ({ content, title, onSave, placeholder, showStats }: TextResultBoxProps) => {
+const TextResultBox = ({ content, title, onSave, placeholder, showStats, readOnly }: TextResultBoxProps) => {
   const [value, setValue] = useState(content || '');
   const [isDirty, setIsDirty] = useState(false);
 
@@ -75,7 +77,7 @@ const TextResultBox = ({ content, title, onSave, placeholder, showStats }: TextR
              )}
         </div>
         <div className="flex items-center gap-2">
-            {onSave && isDirty && (
+            {!readOnly && onSave && isDirty && (
                  <button onClick={handleSave} className="flex items-center gap-1 text-[10px] font-bold text-white bg-emerald-500 hover:bg-emerald-600 px-2 py-1 rounded shadow-sm transition-all animate-pulse">
                     <Check className="w-3 h-3" /> 保存
                  </button>
@@ -83,7 +85,7 @@ const TextResultBox = ({ content, title, onSave, placeholder, showStats }: TextR
             <RowCopyButton text={value} />
         </div>
       </div>
-      {onSave ? (
+      {onSave && !readOnly ? (
         <textarea 
             className="flex-1 w-full p-4 text-sm text-slate-700 leading-relaxed font-mono outline-none resize-none bg-white focus:bg-slate-50/30 transition-colors"
             value={value}
@@ -434,6 +436,8 @@ const ProjectWorkspace: React.FC = () => {
     return <div className="flex items-center justify-center h-full"><Loader2 className="w-8 h-8 animate-spin text-violet-500" /></div>;
   }
 
+  const isArchived = project.status === ProjectStatus.ARCHIVED;
+
   return (
     <div className="flex h-full bg-[#F8F9FC] relative overflow-hidden">
         {/* Top Header Overlay */}
@@ -445,22 +449,31 @@ const ProjectWorkspace: React.FC = () => {
                 <div>
                     <h1 className="text-lg font-extrabold text-slate-900">{project.title}</h1>
                     <div className="flex items-center gap-2 mt-0.5">
-                        <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-slate-100 text-slate-500">{project.status}</span>
+                        <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${isArchived ? 'bg-slate-800 text-white' : 'bg-slate-100 text-slate-500'}`}>
+                            {isArchived ? '已归档 (只读)' : project.status}
+                        </span>
                         <span className="text-[10px] text-slate-400">更新于 {new Date(project.updatedAt).toLocaleTimeString()}</span>
                     </div>
                 </div>
              </div>
 
              <div className="pointer-events-auto flex gap-3">
-                 <button 
-                    onClick={handleOneClickStart}
-                    disabled={generatingNodes.size > 0 || !project.script}
-                    className="flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-violet-600 to-indigo-600 text-white rounded-xl font-bold shadow-lg shadow-violet-500/20 hover:shadow-violet-500/40 hover:-translate-y-0.5 transition-all disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none disabled:shadow-none"
-                    title={!project.script ? "请先生成视频脚本" : "一键生成标题、分镜、简介与封面 (自动失败重试)"}
-                 >
-                    {generatingNodes.size > 0 && ['titles', 'sb_text', 'summary', 'cover'].some(id => generatingNodes.has(id)) ? <Loader2 className="w-4 h-4 animate-spin" /> : <Rocket className="w-4 h-4" />}
-                    一键启动
-                 </button>
+                 {isArchived ? (
+                     <div className="flex items-center gap-2 px-5 py-2.5 bg-slate-800 text-white rounded-xl font-bold shadow-lg shadow-slate-900/10">
+                         <Archive className="w-4 h-4" />
+                         <span>项目已归档</span>
+                     </div>
+                 ) : (
+                    <button 
+                        onClick={handleOneClickStart}
+                        disabled={generatingNodes.size > 0 || !project.script}
+                        className="flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-violet-600 to-indigo-600 text-white rounded-xl font-bold shadow-lg shadow-violet-500/20 hover:shadow-violet-500/40 hover:-translate-y-0.5 transition-all disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none disabled:shadow-none"
+                        title={!project.script ? "请先生成视频脚本" : "一键生成标题、分镜、简介与封面 (自动失败重试)"}
+                    >
+                        {generatingNodes.size > 0 && ['titles', 'sb_text', 'summary', 'cover'].some(id => generatingNodes.has(id)) ? <Loader2 className="w-4 h-4 animate-spin" /> : <Rocket className="w-4 h-4" />}
+                        一键启动
+                    </button>
+                 )}
 
                  <div className="flex gap-2">
                     <button onClick={() => setTransform(prev => ({...prev, scale: prev.scale + 0.1}))} className="p-3 bg-white border border-slate-200 rounded-xl hover:bg-slate-50 shadow-sm text-slate-600">
@@ -593,7 +606,7 @@ const ProjectWorkspace: React.FC = () => {
                                 </div>
 
                                 {/* Action Button - Positioned Bottom Right */}
-                                {node.id !== 'input' && (
+                                {node.id !== 'input' && !isArchived && (
                                      <div className="absolute right-5 bottom-5">
                                         <button 
                                             onClick={(e) => { e.stopPropagation(); handleGenerate(node.id); }}
@@ -646,7 +659,7 @@ const ProjectWorkspace: React.FC = () => {
                 </div>
                 
                 <div>
-                     {selectedNodeId && (() => {
+                     {selectedNodeId && !isArchived && (() => {
                          const node = NODES_CONFIG.find(n => n.id === selectedNodeId);
                          return (
                             node?.id !== 'input' && (
@@ -683,6 +696,7 @@ const ProjectWorkspace: React.FC = () => {
                         placeholder="在此输入或粘贴视频脚本内容。输入完成后点击右上角保存，即可作为后续步骤的依据。"
                         onSave={(val) => saveProjectUpdate(p => ({ ...p, script: val, status: p.status === ProjectStatus.DRAFT ? ProjectStatus.IN_PROGRESS : p.status }))}
                         showStats={true}
+                        readOnly={isArchived}
                     />
                  )}
 
