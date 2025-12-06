@@ -241,7 +241,7 @@ const LandingPage: React.FC = () => {
                         <input 
                             type="password" 
                             autoFocus
-                            placeholder={isLocked ? "已锁定 (输入超级密码解锁)" : "输入密码"}
+                            placeholder={isLocked ? "今日已锁定" : "输入密码"}
                             value={password}
                             onChange={(e) => {
                                 setPassword(e.target.value);
