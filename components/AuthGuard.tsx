@@ -137,7 +137,7 @@ const AuthGuard: React.FC<AuthGuardProps> = ({ children }) => {
                 setPassword(e.target.value);
                 setErrorMsg('');
               }}
-              placeholder={isLocked ? "已锁定 (输入超级密码解锁)" : "输入密码"}
+              placeholder={isLocked ? "今日已锁定" : "输入密码"}
               className={`w-full bg-slate-50 border ${errorMsg ? 'border-rose-300 ring-4 ring-rose-100' : 'border-slate-200 focus:ring-4 focus:ring-violet-100 focus:border-violet-400'} rounded-xl px-5 py-4 text-center text-lg outline-none transition-all placeholder:text-slate-400 text-slate-800 font-bold tracking-widest`}
             />
           </div>
