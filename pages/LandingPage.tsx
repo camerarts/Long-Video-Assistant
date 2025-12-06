@@ -241,14 +241,13 @@ const LandingPage: React.FC = () => {
                         <input 
                             type="password" 
                             autoFocus
-                            placeholder={isLocked ? "已锁定" : "输入密码"}
-                            disabled={isLocked && password !== SUPER_PASS}
+                            placeholder={isLocked ? "已锁定 (输入超级密码解锁)" : "输入密码"}
                             value={password}
                             onChange={(e) => {
                                 setPassword(e.target.value);
                                 setErrorMsg('');
                             }}
-                            className={`w-full bg-black/50 border ${errorMsg ? 'border-rose-500/50 text-rose-500' : 'border-white/10 focus:border-violet-500'} rounded-xl px-4 py-4 text-center text-lg font-bold tracking-widest outline-none transition-all placeholder:text-slate-600 text-white disabled:opacity-50 disabled:cursor-not-allowed`}
+                            className={`w-full bg-black/50 border ${errorMsg ? 'border-rose-500/50 text-rose-500' : 'border-white/10 focus:border-violet-500'} rounded-xl px-4 py-4 text-center text-lg font-bold tracking-widest outline-none transition-all placeholder:text-slate-600 text-white`}
                         />
                          {errorMsg && (
                             <p className="text-rose-500 text-xs font-bold text-center mt-2 animate-pulse">
@@ -258,9 +257,13 @@ const LandingPage: React.FC = () => {
                     </div>
                     <button 
                         type="submit"
-                        className={`w-full py-4 text-slate-950 font-bold rounded-xl transition-all flex items-center justify-center gap-2 ${isLocked ? 'bg-slate-500 cursor-not-allowed' : 'bg-white hover:bg-slate-200'}`}
+                        className={`w-full py-4 text-slate-950 font-bold rounded-xl transition-all flex items-center justify-center gap-2 ${
+                            isLocked 
+                            ? 'bg-slate-400 text-slate-200 hover:bg-slate-300 hover:text-slate-800' 
+                            : 'bg-white hover:bg-slate-200'
+                        }`}
                     >
-                        {isLocked ? '禁止登录' : '立即进入'} {!isLocked && <ArrowRight className="w-5 h-5" />}
+                        {isLocked ? '尝试解锁' : '立即进入'} {!isLocked && <ArrowRight className="w-5 h-5" />}
                     </button>
                 </form>
             </div>
