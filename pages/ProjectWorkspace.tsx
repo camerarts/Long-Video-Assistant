@@ -299,6 +299,7 @@ const ProjectWorkspace: React.FC = () => {
           await saveProjectUpdate(p => ({ ...p, coverOptions: data }));
       }
       else if (nodeId === 'sb_text') {
+          // IMPORTANT: Mapped correctly now: original -> originalText, description -> description
           const data = await gemini.generateJSON<{original: string, description: string}[]>(prompt, {
               type: "ARRAY", items: {
                   type: "OBJECT", properties: {
@@ -307,7 +308,8 @@ const ProjectWorkspace: React.FC = () => {
                   }
               }
           });
-          // Note: Mapping original -> originalText, description -> description
+          // Note: Mapping extracted 'original' (script text) to 'originalText' field
+          // and 'description' (visual desc) to 'description' field
           const frames: StoryboardFrame[] = data.map((item, idx) => ({
               id: crypto.randomUUID(),
               sceneNumber: idx + 1,
@@ -695,9 +697,9 @@ const ProjectWorkspace: React.FC = () => {
                                         ))}
                                     </div>
                                 </td>
-                                <td className="py-3 px-2 text-center w-[12%] align-top pt-3">
-                                    <span className={`inline-flex items-center gap-1 text-xs font-bold px-1.5 py-0.5 rounded ${item.score && item.score > 9 ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-100 text-slate-600'}`}>
-                                        {item.score ? (Number(item.score) / 10).toFixed(2) : '-'}
+                                <td className="py-3 px-2 text-center w-[12%] align-middle">
+                                    <span className="text-2xl font-black text-transparent bg-clip-text bg-gradient-to-r from-rose-600 to-orange-600 italic tracking-tighter">
+                                        {item.score ? (Number(item.score) / 10).toFixed(1) : '-'}
                                     </span>
                                 </td>
                                 <td className="py-3 px-2 text-right w-[6%] align-top pt-3">
@@ -718,7 +720,9 @@ const ProjectWorkspace: React.FC = () => {
                                             <span className="bg-rose-50 text-rose-600 text-xs font-bold px-2.5 py-1 rounded-lg border border-rose-100">方案 {i+1}</span>
                                             <div className="flex items-baseline gap-1">
                                                 <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">推荐指数</span>
-                                                <span className="text-3xl font-black text-transparent bg-clip-text bg-gradient-to-r from-rose-600 to-orange-600 italic tracking-tighter">{opt.score}</span>
+                                                <span className="text-3xl font-black text-transparent bg-clip-text bg-gradient-to-r from-rose-600 to-orange-600 italic tracking-tighter">
+                                                    {opt.score ? (Number(opt.score) / 10).toFixed(1) : '-'}
+                                                </span>
                                             </div>
                                         </div>
                                         <div className="mb-4">
