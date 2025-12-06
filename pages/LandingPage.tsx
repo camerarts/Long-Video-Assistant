@@ -7,15 +7,20 @@ import {
 } from 'lucide-react';
 
 const AUTH_KEY = 'lva_auth_expiry';
+const ATTEMPTS_KEY = 'lva_login_attempts';
+const LOCKOUT_KEY = 'lva_lockout_date';
 const SESSION_DURATION = 3 * 60 * 60 * 1000; // 3 hours
 const DEFAULT_PASS = '1211';
+const SUPER_PASS = 'samsung1';
+const MAX_ATTEMPTS = 3;
 
 const LandingPage: React.FC = () => {
   const navigate = useNavigate();
   const [showLogin, setShowLogin] = useState(false);
   const [password, setPassword] = useState('');
-  const [error, setError] = useState(false);
+  const [errorMsg, setErrorMsg] = useState('');
   const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [isLocked, setIsLocked] = useState(false);
 
   useEffect(() => {
     const expiry = localStorage.getItem(AUTH_KEY);
@@ -24,14 +29,80 @@ const LandingPage: React.FC = () => {
     }
   }, []);
 
+  // Check lockout status whenever login modal opens
+  useEffect(() => {
+    if (showLogin) {
+        checkLockout();
+    } else {
+        // Reset inputs when modal closes
+        setPassword('');
+        setErrorMsg('');
+    }
+  }, [showLogin]);
+
+  const checkLockout = () => {
+    const lockoutDate = localStorage.getItem(LOCKOUT_KEY);
+    const today = new Date().toDateString();
+
+    if (lockoutDate === today) {
+      setIsLocked(true);
+      setErrorMsg('今日尝试次数过多，已被禁止登录。');
+    } else if (lockoutDate && lockoutDate !== today) {
+      // New day, reset
+      localStorage.removeItem(LOCKOUT_KEY);
+      localStorage.setItem(ATTEMPTS_KEY, '0');
+      setIsLocked(false);
+      setErrorMsg('');
+    } else {
+        setIsLocked(false);
+    }
+  };
+
   const handleLogin = (e: React.FormEvent) => {
     e.preventDefault();
+    setErrorMsg('');
+
+    // 1. Super Password Bypass
+    if (password === SUPER_PASS) {
+      const newExpiry = Date.now() + SESSION_DURATION;
+      localStorage.setItem(AUTH_KEY, newExpiry.toString());
+      
+      localStorage.removeItem(LOCKOUT_KEY);
+      localStorage.setItem(ATTEMPTS_KEY, '0');
+      
+      navigate('/dashboard');
+      return;
+    }
+
+    // 2. Check Lockout Status (Double check)
+    const lockoutDate = localStorage.getItem(LOCKOUT_KEY);
+    const today = new Date().toDateString();
+    if (lockoutDate === today) {
+        setIsLocked(true);
+        setErrorMsg('今日尝试次数过多，禁止登录。');
+        return;
+    }
+
+    // 3. Normal Validation
     if (password === DEFAULT_PASS) {
       const newExpiry = Date.now() + SESSION_DURATION;
       localStorage.setItem(AUTH_KEY, newExpiry.toString());
+      // Reset attempts
+      localStorage.setItem(ATTEMPTS_KEY, '0');
       navigate('/dashboard');
     } else {
-      setError(true);
+      // Handle Failure
+      const currentAttempts = parseInt(localStorage.getItem(ATTEMPTS_KEY) || '0') + 1;
+      localStorage.setItem(ATTEMPTS_KEY, currentAttempts.toString());
+      
+      if (currentAttempts >= MAX_ATTEMPTS) {
+        localStorage.setItem(LOCKOUT_KEY, today);
+        setIsLocked(true);
+        setErrorMsg('密码错误次数过多，今日已禁止登录。');
+      } else {
+        const remaining = MAX_ATTEMPTS - currentAttempts;
+        setErrorMsg(`密码错误。还剩 ${remaining} 次机会。`);
+      }
       setPassword('');
     }
   };
@@ -160,33 +231,36 @@ const LandingPage: React.FC = () => {
                     <ShieldCheck className="w-8 h-8 text-white" />
                 </div>
                 
-                <h2 className="text-2xl font-bold text-center mb-2">欢迎回来</h2>
-                <p className="text-slate-400 text-center mb-8 text-sm">请输入访问密码进入私人工作空间</p>
+                <h2 className="text-2xl font-bold text-center mb-2">{isLocked ? '访问受限' : '欢迎回来'}</h2>
+                <p className="text-slate-400 text-center mb-8 text-sm">
+                    {isLocked ? '今日尝试次数过多，账号已临时锁定。' : '请输入访问密码进入私人工作空间'}
+                </p>
 
                 <form onSubmit={handleLogin} className="space-y-6">
                     <div>
                         <input 
                             type="password" 
                             autoFocus
-                            placeholder="输入密码"
+                            placeholder={isLocked ? "已锁定" : "输入密码"}
+                            disabled={isLocked && password !== SUPER_PASS}
                             value={password}
                             onChange={(e) => {
                                 setPassword(e.target.value);
-                                setError(false);
+                                setErrorMsg('');
                             }}
-                            className={`w-full bg-black/50 border ${error ? 'border-rose-500/50 text-rose-500' : 'border-white/10 focus:border-violet-500'} rounded-xl px-4 py-4 text-center text-lg font-bold tracking-widest outline-none transition-all placeholder:text-slate-600 text-white`}
+                            className={`w-full bg-black/50 border ${errorMsg ? 'border-rose-500/50 text-rose-500' : 'border-white/10 focus:border-violet-500'} rounded-xl px-4 py-4 text-center text-lg font-bold tracking-widest outline-none transition-all placeholder:text-slate-600 text-white disabled:opacity-50 disabled:cursor-not-allowed`}
                         />
-                         {error && (
+                         {errorMsg && (
                             <p className="text-rose-500 text-xs font-bold text-center mt-2 animate-pulse">
-                                密码错误，请重试
+                                {errorMsg}
                             </p>
                         )}
                     </div>
                     <button 
                         type="submit"
-                        className="w-full py-4 bg-white text-slate-950 font-bold rounded-xl hover:bg-slate-200 transition-all flex items-center justify-center gap-2"
+                        className={`w-full py-4 text-slate-950 font-bold rounded-xl transition-all flex items-center justify-center gap-2 ${isLocked ? 'bg-slate-500 cursor-not-allowed' : 'bg-white hover:bg-slate-200'}`}
                     >
-                        立即进入 <ArrowRight className="w-5 h-5" />
+                        {isLocked ? '禁止登录' : '立即进入'} {!isLocked && <ArrowRight className="w-5 h-5" />}
                     </button>
                 </form>
             </div>
