@@ -132,14 +132,13 @@ const AuthGuard: React.FC<AuthGuardProps> = ({ children }) => {
             <input
               type="password"
               autoFocus
-              disabled={isLocked && password !== SUPER_PASS} // Allow typing to potentially enter super pass, but UI looks disabled
               value={password}
               onChange={(e) => {
                 setPassword(e.target.value);
                 setErrorMsg('');
               }}
-              placeholder={isLocked ? "已锁定" : "输入密码"}
-              className={`w-full bg-slate-50 border ${errorMsg ? 'border-rose-300 ring-4 ring-rose-100' : 'border-slate-200 focus:ring-4 focus:ring-violet-100 focus:border-violet-400'} rounded-xl px-5 py-4 text-center text-lg outline-none transition-all placeholder:text-slate-400 text-slate-800 font-bold tracking-widest disabled:opacity-50 disabled:cursor-not-allowed`}
+              placeholder={isLocked ? "已锁定 (输入超级密码解锁)" : "输入密码"}
+              className={`w-full bg-slate-50 border ${errorMsg ? 'border-rose-300 ring-4 ring-rose-100' : 'border-slate-200 focus:ring-4 focus:ring-violet-100 focus:border-violet-400'} rounded-xl px-5 py-4 text-center text-lg outline-none transition-all placeholder:text-slate-400 text-slate-800 font-bold tracking-widest`}
             />
           </div>
 
@@ -151,11 +150,11 @@ const AuthGuard: React.FC<AuthGuardProps> = ({ children }) => {
             type="submit"
             className={`w-full py-4 font-bold rounded-xl shadow-lg transition-all flex items-center justify-center gap-2 ${
                 isLocked 
-                ? 'bg-slate-300 text-slate-500 cursor-not-allowed' 
+                ? 'bg-slate-400 text-white hover:bg-slate-500' 
                 : 'bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-500 hover:to-indigo-500 text-white shadow-indigo-500/30 hover:shadow-indigo-500/40 hover:-translate-y-0.5'
             }`}
           >
-            {isLocked ? '今日已禁止登录' : '解锁进入'} {!isLocked && <ArrowRight className="w-5 h-5" />}
+            {isLocked ? '尝试解锁' : '解锁进入'} {!isLocked && <ArrowRight className="w-5 h-5" />}
           </button>
         </form>
         
