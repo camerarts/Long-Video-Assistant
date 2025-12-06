@@ -231,6 +231,18 @@ const ProjectWorkspace: React.FC = () => {
       setIsDragging(false);
   };
 
+  // Helper for score formatting
+  const formatScore = (val: number | undefined) => {
+    if (val === undefined || val === null) return '-';
+    const num = Number(val);
+    // Backward compatibility: If score is on 100 scale (e.g. 85), divide by 10.
+    // If it's on 10 scale (e.g. 8.5), keep it.
+    if (num > 10) {
+        return (num / 10).toFixed(1);
+    }
+    return num.toFixed(1);
+  };
+
   // Helper for prompt interpolation
   const interpolate = (template: string, data: Record<string, string>) => {
     return template.replace(/\{\{(\w+)\}\}/g, (_, key) => data[key] || '');
@@ -699,7 +711,7 @@ const ProjectWorkspace: React.FC = () => {
                                 </td>
                                 <td className="py-3 px-2 text-center w-[12%] align-middle">
                                     <span className="text-2xl font-black text-transparent bg-clip-text bg-gradient-to-r from-rose-600 to-orange-600 italic tracking-tighter">
-                                        {item.score ? (Number(item.score) / 10).toFixed(1) : '-'}
+                                        {formatScore(item.score)}
                                     </span>
                                 </td>
                                 <td className="py-3 px-2 text-right w-[6%] align-top pt-3">
@@ -721,7 +733,7 @@ const ProjectWorkspace: React.FC = () => {
                                             <div className="flex items-baseline gap-1">
                                                 <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">推荐指数</span>
                                                 <span className="text-3xl font-black text-transparent bg-clip-text bg-gradient-to-r from-rose-600 to-orange-600 italic tracking-tighter">
-                                                    {opt.score ? (Number(opt.score) / 10).toFixed(1) : '-'}
+                                                    {formatScore(opt.score)}
                                                 </span>
                                             </div>
                                         </div>
