@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { ProjectData, TitleItem, StoryboardFrame, CoverOption, PromptTemplate, ProjectStatus } from '../types';
@@ -347,8 +348,8 @@ const ProjectWorkspace: React.FC = () => {
           const frames: StoryboardFrame[] = data.map((item, idx) => ({
               id: crypto.randomUUID(),
               sceneNumber: idx + 1,
-              originalText: item.description,
-              description: item.original
+              originalText: item.original,
+              description: item.description
           }));
           await saveProjectUpdate(p => ({ ...p, storyboard: frames }));
       }
@@ -827,8 +828,16 @@ const ProjectWorkspace: React.FC = () => {
                                 renderRow={(item: StoryboardFrame, i: number) => (
                                     <tr key={item.id} className="hover:bg-slate-50 group">
                                         <td className="py-4 px-5 text-center text-xs font-bold text-slate-400 align-top">{item.sceneNumber}</td>
-                                        <td className="py-4 px-5 text-xs text-slate-500 leading-relaxed align-top whitespace-pre-wrap max-w-[120px]">{item.originalText}</td>
-                                        <td className="py-4 px-5 text-xs text-slate-700 leading-relaxed align-top">{item.description}</td>
+                                        <td className="py-4 px-5 align-top max-w-[150px]">
+                                            <div className="text-xs text-slate-500 leading-relaxed whitespace-pre-wrap line-clamp-5">
+                                                {item.originalText}
+                                            </div>
+                                        </td>
+                                        <td className="py-4 px-5 align-top">
+                                            <div className="text-xs text-slate-700 leading-relaxed whitespace-pre-wrap line-clamp-5">
+                                                {item.description}
+                                            </div>
+                                        </td>
                                         <td className="py-4 px-5 text-right align-top">
                                              <RowCopyButton text={item.description} />
                                         </td>
