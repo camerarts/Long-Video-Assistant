@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { ProjectData, StoryboardFrame, PromptTemplate } from '../types';
@@ -84,6 +83,68 @@ const StoryboardImages: React.FC = () => {
   const [lastSyncTime, setLastSyncTime] = useState('');
 
   const mountedRef = useRef(true);
+
+  // Activity Tracking Refs
+  const lastActivityRef = useRef(Date.now());
+  const isBusyRef = useRef(false);
+
+  // Update busy ref based on state
+  useEffect(() => {
+      // Busy if generating, uploading, downloading, or config modal is open
+      isBusyRef.current = generating || uploading || downloading || showConfigModal;
+  }, [generating, uploading, downloading, showConfigModal]);
+
+  // Activity Listeners
+  useEffect(() => {
+    const updateActivity = () => { lastActivityRef.current = Date.now(); };
+    window.addEventListener('click', updateActivity);
+    window.addEventListener('keydown', updateActivity);
+    window.addEventListener('mousemove', updateActivity);
+    return () => {
+        window.removeEventListener('click', updateActivity);
+        window.removeEventListener('keydown', updateActivity);
+        window.removeEventListener('mousemove', updateActivity);
+    };
+  }, []);
+
+  // Smart Auto-Sync Loop
+  useEffect(() => {
+      let timeoutId: ReturnType<typeof setTimeout>;
+
+      const performSync = async () => {
+          if (!mountedRef.current || !id) return;
+
+          const isUserActive = (Date.now() - lastActivityRef.current) < 30000;
+          
+          if (isBusyRef.current || isUserActive) {
+              console.log("Auto-sync delayed: User active or system busy");
+              timeoutId = setTimeout(performSync, 2 * 60 * 1000); // Retry in 2 mins
+              return;
+          }
+
+          setSyncStatus('saving');
+          try {
+              await storage.downloadAllData();
+              const freshP = await storage.getProject(id);
+              if (freshP && mountedRef.current) {
+                  setProject(freshP);
+                  setSyncStatus('synced');
+                  setLastSyncTime(new Date().toLocaleTimeString());
+              }
+          } catch (e) {
+              console.warn("Auto-sync failed", e);
+              if (mountedRef.current) setSyncStatus('error');
+          }
+
+          // Schedule next run (5 mins)
+          timeoutId = setTimeout(performSync, 5 * 60 * 1000);
+      };
+
+      // Initial Delay
+      timeoutId = setTimeout(performSync, 5 * 60 * 1000);
+
+      return () => clearTimeout(timeoutId);
+  }, [id]);
 
   useEffect(() => {
     mountedRef.current = true;
