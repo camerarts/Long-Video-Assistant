@@ -585,15 +585,15 @@ const StoryboardImages: React.FC = () => {
                                     </td>
                                     <td className="py-4 px-2 align-middle text-center w-[45%] md:w-[40%]">
                                         {/* Dynamic Border Container */}
-                                        <div className={`relative w-full aspect-video rounded-xl shadow-sm overflow-hidden transition-all duration-300 group/preview mx-auto ${
+                                        <div className={`relative w-full aspect-video rounded-xl shadow-sm overflow-hidden transition-all duration-300 group/preview mx-auto isolate ${
                                             isGeneratingThis 
                                               ? 'p-[3px] bg-slate-900' // Dark background for neon contrast + padding for border width
                                               : 'border border-slate-200 bg-slate-900'
-                                        }`} style={{ minHeight: '1px' }}>
+                                        }`}>
                                             
                                             {/* Neon Spinner Background (Only visible when generating) */}
                                             {isGeneratingThis && (
-                                                <div className="absolute inset-[-50%] bg-[conic-gradient(transparent,theme(colors.fuchsia.500),transparent)] animate-[spin_2s_linear_infinite]" />
+                                                <div className="absolute inset-[-50%] bg-[conic-gradient(transparent,theme(colors.fuchsia.500),transparent)] animate-[spin_2s_linear_infinite] -z-10" />
                                             )}
 
                                             {/* Inner Content Container (The Mask) */}
@@ -602,10 +602,8 @@ const StoryboardImages: React.FC = () => {
                                                     <>
                                                         <img 
                                                             src={frame.imageUrl} 
-                                                            // Removed loading="lazy" to fix iPad display issues
                                                             alt={`Scene ${frame.sceneNumber}`} 
-                                                            className="w-full h-full object-contain md:hover:scale-105 transition-transform duration-500 block"
-                                                            style={{ display: 'block' }}
+                                                            className="absolute inset-0 w-full h-full object-contain md:hover:scale-105 transition-transform duration-500"
                                                             onClick={() => setSelectedImage(frame.imageUrl || null)}
                                                         />
                                                         {/* Reload Button (Top-Left) - Only for remote images */}
