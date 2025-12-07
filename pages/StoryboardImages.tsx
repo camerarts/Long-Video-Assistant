@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { ProjectData, StoryboardFrame, PromptTemplate } from '../types';
@@ -222,7 +221,6 @@ const StoryboardImages: React.FC = () => {
     setBatchProgress({ planned: pendingFrames.length, completed: 0, failed: 0 });
     
     // High concurrency for standard accounts/Flash model
-    // Note: Free tier still has limits, but we are removing artificial blocks as requested.
     const CONCURRENCY_LIMIT = 5; 
     const queue = [...pendingFrames];
     const activePromises: Promise<void>[] = [];
@@ -539,7 +537,6 @@ const StoryboardImages: React.FC = () => {
         )}
 
         {/* Table Area */}
-        {/* Added extra padding-bottom to allow scrolling past the fixed title/header if needed in a long list */}
         <div className="flex-1 bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden flex flex-col">
             {/* Project Title Header */}
             <div className="px-6 py-4 border-b border-slate-100 bg-slate-50/50">
@@ -553,8 +550,8 @@ const StoryboardImages: React.FC = () => {
                     <thead className="bg-slate-50 text-slate-500 sticky top-0 z-10 shadow-sm">
                         <tr>
                             <th className="py-3 px-2 text-xs font-extrabold uppercase tracking-wider w-12 text-center border-b border-slate-200">序号</th>
-                            <th className="py-3 px-2 text-xs font-extrabold uppercase tracking-wider w-[20%] text-center border-b border-slate-200">原文</th>
-                            <th className="py-3 px-2 text-xs font-extrabold uppercase tracking-wider w-[25%] text-center border-b border-slate-200">AI 绘图提示词</th>
+                            <th className="py-3 px-2 text-xs font-extrabold uppercase tracking-wider w-[15%] text-center border-b border-slate-200">原文</th>
+                            <th className="py-3 px-2 text-xs font-extrabold uppercase tracking-wider w-[20%] text-center border-b border-slate-200">AI 绘图提示词</th>
                             <th className="py-3 px-2 text-xs font-extrabold uppercase tracking-wider text-center border-b border-slate-200">画面预览</th>
                         </tr>
                     </thead>
@@ -569,7 +566,7 @@ const StoryboardImages: React.FC = () => {
                                     <td className="py-4 px-2 align-middle h-px">
                                         <textarea
                                             readOnly
-                                            className="w-full bg-slate-50 rounded-lg p-3 border border-slate-100 text-xs text-slate-700 leading-relaxed font-medium resize-none outline-none focus:ring-0 h-full min-h-[160px]"
+                                            className="w-full bg-slate-50 rounded-lg p-3 border border-slate-100 text-xs text-slate-700 leading-relaxed font-medium resize-none outline-none focus:ring-0 h-full"
                                             value={frame.originalText || ''}
                                             placeholder="无原文内容"
                                         />
@@ -577,7 +574,7 @@ const StoryboardImages: React.FC = () => {
                                     <td className="py-4 px-2 align-middle h-px">
                                         <div className="relative h-full">
                                             <textarea
-                                                className="w-full bg-white border border-slate-200 rounded-xl p-3 pr-10 text-xs text-slate-600 leading-relaxed focus:ring-2 focus:ring-fuchsia-500/20 focus:border-fuchsia-500 outline-none resize-none transition-all shadow-sm h-full min-h-[160px]"
+                                                className="w-full bg-white border border-slate-200 rounded-xl p-3 pr-10 text-xs text-slate-600 leading-relaxed focus:ring-2 focus:ring-fuchsia-500/20 focus:border-fuchsia-500 outline-none resize-none transition-all shadow-sm h-full"
                                                 value={frame.imagePrompt || ''}
                                                 onChange={(e) => handleSavePrompt(frame.id, e.target.value)}
                                                 placeholder="输入提示词..."
@@ -585,12 +582,12 @@ const StoryboardImages: React.FC = () => {
                                             <CopyButton text={frame.imagePrompt || ''} />
                                         </div>
                                     </td>
-                                    <td className="py-4 px-2 align-middle text-center w-[40%] md:w-[45%]">
+                                    <td className="py-4 px-2 align-middle text-center w-[55%]">
                                         {/* Dynamic Border Container */}
                                         <div className={`relative w-full aspect-video rounded-xl shadow-sm overflow-hidden transition-all duration-300 group/preview mx-auto ${
                                             isGeneratingThis 
                                               ? 'p-[3px] bg-slate-900' // Dark background for neon contrast + padding for border width
-                                              : 'border border-slate-200 bg-slate-100'
+                                              : 'border border-slate-200 bg-slate-900'
                                         }`}>
                                             
                                             {/* Neon Spinner Background (Only visible when generating) */}
@@ -599,14 +596,14 @@ const StoryboardImages: React.FC = () => {
                                             )}
 
                                             {/* Inner Content Container (The Mask) */}
-                                            <div className="relative w-full h-full bg-slate-100 rounded-[9px] overflow-hidden z-10">
+                                            <div className="relative w-full h-full bg-slate-900 rounded-[9px] overflow-hidden z-10">
                                                 {frame.imageUrl ? (
                                                     <>
                                                         <img 
                                                             src={frame.imageUrl} 
                                                             loading="lazy"
                                                             alt={`Scene ${frame.sceneNumber}`} 
-                                                            className="w-full h-full object-cover md:hover:scale-105 transition-transform duration-500"
+                                                            className="w-full h-full object-contain md:hover:scale-105 transition-transform duration-500"
                                                             onClick={() => setSelectedImage(frame.imageUrl || null)}
                                                         />
                                                         {/* Reload Button (Top-Left) - Only for remote images */}
@@ -638,7 +635,7 @@ const StoryboardImages: React.FC = () => {
                                                         )}
                                                     </>
                                                 ) : (
-                                                    <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 text-slate-300">
+                                                    <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 text-slate-500">
                                                         {isGeneratingThis ? (
                                                             <>
                                                                 <Loader2 className="w-8 h-8 animate-spin text-fuchsia-500" />
@@ -650,7 +647,7 @@ const StoryboardImages: React.FC = () => {
                                                                 {/* Regenerate Button (Top-Right) - Visible for empty state */}
                                                                 <button 
                                                                     onClick={(e) => { e.stopPropagation(); generateSingleImage(frame); }}
-                                                                    className="absolute top-2 right-2 p-1.5 bg-white border border-slate-200 text-slate-400 hover:text-fuchsia-600 hover:border-fuchsia-200 rounded-lg shadow-sm transition-all"
+                                                                    className="absolute top-2 right-2 p-1.5 bg-white/10 border border-white/20 text-slate-400 hover:text-fuchsia-400 hover:border-fuchsia-400/50 rounded-lg shadow-sm transition-all"
                                                                     title="立即生成"
                                                                 >
                                                                     <Zap className="w-3.5 h-3.5" />
@@ -674,7 +671,7 @@ const StoryboardImages: React.FC = () => {
       {/* Image Lightbox */}
       {selectedImage && (
         <div className="fixed inset-0 z-50 bg-black/95 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in duration-200" onClick={() => setSelectedImage(null)}>
-            <img src={selectedImage} alt="Fullscreen" className="max-w-full max-h-full rounded-lg shadow-2xl" />
+            <img src={selectedImage} alt="Fullscreen" className="max-w-full max-h-full rounded-lg shadow-2xl object-contain" />
             <button className="absolute top-6 right-6 text-white/50 hover:text-white transition-colors">
                 <X className="w-8 h-8" />
             </button>
