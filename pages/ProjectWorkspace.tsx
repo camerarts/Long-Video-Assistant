@@ -8,7 +8,8 @@ import {
   ArrowLeft, Layout, FileText, Type, 
   List, PanelRightClose, Sparkles, Loader2, Copy, 
   Check, Images, ArrowRight, Palette, Film, Maximize2, Play,
-  ZoomIn, ZoomOut, Move, RefreshCw, Rocket, AlertCircle, Archive
+  ZoomIn, ZoomOut, Move, RefreshCw, Rocket, AlertCircle, Archive,
+  Cloud, CloudCheck
 } from 'lucide-react';
 
 // --- Sub-Components ---
@@ -172,6 +173,10 @@ const ProjectWorkspace: React.FC = () => {
   const canvasRef = useRef<HTMLDivElement>(null);
   const dragStartRef = useRef({ x: 0, y: 0 });
 
+  // Sync Status State
+  const [syncStatus, setSyncStatus] = useState<'saved' | 'saving' | 'synced' | 'error' | null>(null);
+  const [lastSyncTime, setLastSyncTime] = useState('');
+
   // To prevent async update on unmounted component
   const mountedRef = useRef(true);
 
@@ -179,11 +184,28 @@ const ProjectWorkspace: React.FC = () => {
     mountedRef.current = true;
     const init = async () => {
         if (id) {
+            // 1. Local Load
             const p = await storage.getProject(id);
             if (p) {
                 if (mountedRef.current) setProject(p);
             } else {
-                navigate('/');
+                if (mountedRef.current) navigate('/');
+                return;
+            }
+
+            // 2. Cloud Sync (Pull)
+            if (mountedRef.current) setSyncStatus('saving');
+            try {
+                await storage.downloadAllData();
+                const freshP = await storage.getProject(id);
+                if (freshP && mountedRef.current) {
+                    setProject(freshP);
+                    setSyncStatus('synced');
+                    setLastSyncTime(new Date().toLocaleTimeString());
+                }
+            } catch (e) {
+                console.warn("Auto-sync failed", e);
+                if (mountedRef.current) setSyncStatus('error');
             }
         }
         const loadedPrompts = await storage.getPrompts();
@@ -274,8 +296,24 @@ const ProjectWorkspace: React.FC = () => {
 
   const saveProjectUpdate = async (updater: (p: ProjectData) => ProjectData) => {
       if (!id) return;
+      // 1. Local Update
       const updated = await storage.updateProject(id, updater);
-      if (updated && mountedRef.current) setProject(updated);
+      if (updated && mountedRef.current) {
+          setProject(updated);
+
+          // 2. Cloud Sync (Push)
+          setSyncStatus('saving');
+          try {
+              await storage.uploadProjects();
+              if (mountedRef.current) {
+                  setSyncStatus('synced');
+                  setLastSyncTime(new Date().toLocaleTimeString());
+              }
+          } catch (e) {
+              console.error("Auto-save failed", e);
+              if (mountedRef.current) setSyncStatus('error');
+          }
+      }
   };
 
   const generateNodeContent = async (nodeId: string) => {
@@ -479,6 +517,24 @@ const ProjectWorkspace: React.FC = () => {
              </div>
 
              <div className="pointer-events-auto flex gap-3">
+                 {/* Sync Status Badge */}
+                 <div className={`flex items-center gap-1.5 text-[10px] font-bold px-2 py-1 rounded-md border animate-in fade-in transition-colors bg-white/90 backdrop-blur shadow-sm h-10 ${
+                    syncStatus === 'synced' ? 'bg-emerald-50 text-emerald-600 border-emerald-100' :
+                    syncStatus === 'saving' ? 'bg-blue-50 text-blue-600 border-blue-100' :
+                    syncStatus === 'error' ? 'bg-rose-50 text-rose-600 border-rose-100' :
+                    'bg-slate-50 text-slate-400 border-slate-100'
+                }`}>
+                    {syncStatus === 'synced' ? <CloudCheck className="w-3 h-3" /> : 
+                     syncStatus === 'saving' ? <Loader2 className="w-3 h-3 animate-spin" /> : 
+                     syncStatus === 'error' ? <AlertCircle className="w-3 h-3" /> :
+                     <Cloud className="w-3 h-3" />}
+                    
+                    {syncStatus === 'synced' ? `已同步: ${lastSyncTime}` :
+                     syncStatus === 'saving' ? '同步中...' :
+                     syncStatus === 'error' ? '同步失败' :
+                     '准备就绪'}
+                </div>
+
                  {isArchived ? (
                      <div className="flex items-center gap-2 px-5 py-2.5 bg-slate-800 text-white rounded-xl font-bold shadow-lg shadow-slate-900/10">
                          <Archive className="w-4 h-4" />
