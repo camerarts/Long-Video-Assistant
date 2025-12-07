@@ -550,9 +550,9 @@ const StoryboardImages: React.FC = () => {
                 <table className="w-full text-left border-collapse table-fixed">
                     <thead className="bg-slate-50 text-slate-500 sticky top-0 z-10 shadow-sm">
                         <tr>
-                            <th className="py-3 px-2 text-xs font-extrabold uppercase tracking-wider w-12 text-center border-b border-slate-200">序号</th>
-                            <th className="py-3 px-2 text-xs font-extrabold uppercase tracking-wider w-[25%] md:w-[25%] text-center border-b border-slate-200">原文</th>
-                            <th className="py-3 px-2 text-xs font-extrabold uppercase tracking-wider w-[30%] md:w-[30%] text-center border-b border-slate-200">AI 绘图提示词</th>
+                            <th className="py-3 px-2 text-xs font-extrabold uppercase tracking-wider w-8 md:w-12 text-center border-b border-slate-200">序号</th>
+                            <th className="py-3 px-2 text-xs font-extrabold uppercase tracking-wider w-[15%] md:w-[25%] text-center border-b border-slate-200">原文</th>
+                            <th className="py-3 px-2 text-xs font-extrabold uppercase tracking-wider w-[20%] md:w-[30%] text-center border-b border-slate-200">AI 绘图提示词</th>
                             <th className="py-3 px-2 text-xs font-extrabold uppercase tracking-wider text-center border-b border-slate-200">画面预览</th>
                         </tr>
                     </thead>
@@ -567,13 +567,13 @@ const StoryboardImages: React.FC = () => {
                                     <td className="py-4 px-2 align-middle h-px">
                                         <textarea
                                             readOnly
-                                            className="w-full bg-slate-50 rounded-lg p-3 border border-slate-100 text-xs text-slate-700 leading-relaxed font-medium resize-none outline-none focus:ring-0 h-[180px] md:h-[270px]"
+                                            className="w-full bg-slate-50 rounded-lg p-3 border border-slate-100 text-xs text-slate-700 leading-relaxed font-medium resize-none outline-none focus:ring-0 h-full min-h-[100px] md:h-[270px]"
                                             value={frame.originalText || ''}
                                             placeholder="无原文内容"
                                         />
                                     </td>
                                     <td className="py-4 px-2 align-middle h-px">
-                                        <div className="relative h-[180px] md:h-[270px]">
+                                        <div className="relative h-full min-h-[100px] md:h-[270px]">
                                             <textarea
                                                 className="w-full bg-white border border-slate-200 rounded-xl p-3 pr-10 text-xs text-slate-600 leading-relaxed focus:ring-2 focus:ring-fuchsia-500/20 focus:border-fuchsia-500 outline-none resize-none transition-all shadow-sm h-full"
                                                 value={frame.imagePrompt || ''}
@@ -583,7 +583,7 @@ const StoryboardImages: React.FC = () => {
                                             <CopyButton text={frame.imagePrompt || ''} />
                                         </div>
                                     </td>
-                                    <td className="py-4 px-2 align-middle text-center w-[45%] md:w-[40%]">
+                                    <td className="py-4 px-2 align-middle text-center w-[60%] md:w-[40%]">
                                         {/* Dynamic Border Container */}
                                         <div className={`relative w-full aspect-video rounded-xl shadow-sm overflow-hidden transition-all duration-300 group/preview mx-auto isolate ${
                                             isGeneratingThis 
