@@ -398,26 +398,27 @@ const StoryboardImages: React.FC = () => {
   return (
     <div className="flex flex-col h-full bg-[#F8F9FC]">
       
-      {/* 1. Statistics Bar - Top Level (Responsive Grid for Mobile/Pad) */}
-      <div className="bg-slate-900 text-white px-4 py-5 grid grid-cols-2 gap-y-6 md:flex md:items-center md:justify-center md:gap-24 shadow-md z-20">
-          <div className="flex flex-col items-center">
-              <span className="text-3xl font-black text-white">{stats.total}</span>
-              <span className="text-sm font-medium text-slate-400 uppercase tracking-wider mt-1">共分镜</span>
+      {/* 1. Statistics Bar - Top Level */}
+      {/* Mobile: Single line with horizontal scroll. Desktop: Centered with dividers. */}
+      <div className="bg-slate-900 text-white px-4 py-3 md:py-5 flex items-center gap-6 overflow-x-auto no-scrollbar md:justify-center md:gap-24 shadow-md z-20 flex-nowrap">
+          <div className="flex flex-col items-center flex-shrink-0">
+              <span className="text-xl md:text-3xl font-black text-white">{stats.total}</span>
+              <span className="text-[10px] md:text-sm font-medium text-slate-400 uppercase tracking-wider mt-0.5 md:mt-1 whitespace-nowrap">共分镜</span>
           </div>
-          <div className="hidden md:block w-px h-10 bg-slate-700/50"></div>
-          <div className="flex flex-col items-center">
-              <span className="text-3xl font-black text-emerald-400">{stats.generated}</span>
-              <span className="text-sm font-medium text-slate-400 uppercase tracking-wider mt-1">已生图</span>
+          <div className="w-px h-6 md:h-10 bg-slate-700/50 flex-shrink-0"></div>
+          <div className="flex flex-col items-center flex-shrink-0">
+              <span className="text-xl md:text-3xl font-black text-emerald-400">{stats.generated}</span>
+              <span className="text-[10px] md:text-sm font-medium text-slate-400 uppercase tracking-wider mt-0.5 md:mt-1 whitespace-nowrap">已生图</span>
           </div>
-          <div className="hidden md:block w-px h-10 bg-slate-700/50"></div>
-          <div className="flex flex-col items-center">
-              <span className="text-3xl font-black text-amber-400">{stats.pending}</span>
-              <span className="text-sm font-medium text-slate-400 uppercase tracking-wider mt-1">未生图</span>
+          <div className="w-px h-6 md:h-10 bg-slate-700/50 flex-shrink-0"></div>
+          <div className="flex flex-col items-center flex-shrink-0">
+              <span className="text-xl md:text-3xl font-black text-amber-400">{stats.pending}</span>
+              <span className="text-[10px] md:text-sm font-medium text-slate-400 uppercase tracking-wider mt-0.5 md:mt-1 whitespace-nowrap">未生图</span>
           </div>
-          <div className="hidden md:block w-px h-10 bg-slate-700/50"></div>
-          <div className="flex flex-col items-center">
-              <span className="text-3xl font-black text-blue-400">{stats.uploaded}</span>
-              <span className="text-sm font-medium text-slate-400 uppercase tracking-wider mt-1">已保存云端</span>
+          <div className="w-px h-6 md:h-10 bg-slate-700/50 flex-shrink-0"></div>
+          <div className="flex flex-col items-center flex-shrink-0">
+              <span className="text-xl md:text-3xl font-black text-blue-400">{stats.uploaded}</span>
+              <span className="text-[10px] md:text-sm font-medium text-slate-400 uppercase tracking-wider mt-0.5 md:mt-1 whitespace-nowrap">已保存云端</span>
           </div>
       </div>
 
@@ -567,8 +568,7 @@ const StoryboardImages: React.FC = () => {
                                     <td className="py-4 px-4 align-top pt-4">
                                         <textarea
                                             readOnly
-                                            rows={3}
-                                            className="w-full bg-slate-50 rounded-lg p-3 border border-slate-100 text-xs text-slate-700 leading-relaxed font-medium resize-none outline-none focus:ring-0"
+                                            className="w-full bg-slate-50 rounded-lg p-3 border border-slate-100 text-xs text-slate-700 leading-relaxed font-medium resize-none outline-none focus:ring-0 h-24 md:h-64"
                                             value={frame.originalText || ''}
                                             placeholder="无原文内容"
                                         />
@@ -576,8 +576,7 @@ const StoryboardImages: React.FC = () => {
                                     <td className="py-4 px-4 align-top pt-4">
                                         <div className="relative h-full">
                                             <textarea
-                                                rows={3}
-                                                className="w-full bg-white border border-slate-200 rounded-xl p-3 pr-10 text-xs text-slate-600 leading-relaxed focus:ring-2 focus:ring-fuchsia-500/20 focus:border-fuchsia-500 outline-none resize-none transition-all shadow-sm"
+                                                className="w-full bg-white border border-slate-200 rounded-xl p-3 pr-10 text-xs text-slate-600 leading-relaxed focus:ring-2 focus:ring-fuchsia-500/20 focus:border-fuchsia-500 outline-none resize-none transition-all shadow-sm h-24 md:h-64"
                                                 value={frame.imagePrompt || ''}
                                                 onChange={(e) => handleSavePrompt(frame.id, e.target.value)}
                                                 placeholder="输入提示词..."
@@ -587,7 +586,7 @@ const StoryboardImages: React.FC = () => {
                                     </td>
                                     <td className="py-4 px-4 align-top text-center min-w-[200px]">
                                         {/* Dynamic Border Container */}
-                                        <div className={`relative w-full aspect-video rounded-xl shadow-sm overflow-hidden transition-all duration-300 transform-gpu group/preview ${
+                                        <div className={`relative w-full aspect-video rounded-xl shadow-sm overflow-hidden transition-all duration-300 group/preview ${
                                             isGeneratingThis 
                                               ? 'p-[3px] bg-slate-900' // Dark background for neon contrast + padding for border width
                                               : 'border border-slate-200 bg-slate-100'
@@ -606,7 +605,7 @@ const StoryboardImages: React.FC = () => {
                                                             src={frame.imageUrl} 
                                                             loading="lazy"
                                                             alt={`Scene ${frame.sceneNumber}`} 
-                                                            className="w-full h-full object-cover cursor-zoom-in md:hover:scale-105 transition-transform duration-500"
+                                                            className="w-full h-full object-cover md:hover:scale-105 transition-transform duration-500"
                                                             onClick={() => setSelectedImage(frame.imageUrl || null)}
                                                         />
                                                         {/* Reload Button (Top-Left) - Only for remote images */}
