@@ -563,23 +563,21 @@ const StoryboardImages: React.FC = () => {
                             const isGeneratingThis = currentGenIds.has(frame.id);
                             return (
                                 <tr key={frame.id} className="group hover:bg-slate-50/50 transition-colors">
-                                    <td className="py-4 px-2 text-center text-slate-400 font-bold text-sm align-middle">
+                                    <td className="py-4 px-2 text-center text-slate-400 font-bold text-sm align-middle h-px">
                                         {frame.sceneNumber}
                                     </td>
-                                    <td className="py-4 px-2 align-middle">
+                                    <td className="py-4 px-2 align-middle h-px">
                                         <textarea
                                             readOnly
-                                            className="w-full bg-slate-50 rounded-lg p-3 border border-slate-100 text-xs text-slate-700 leading-relaxed font-medium resize-none outline-none focus:ring-0 h-[180px] md:h-[270px]"
-                                            rows={5}
+                                            className="w-full bg-slate-50 rounded-lg p-3 border border-slate-100 text-xs text-slate-700 leading-relaxed font-medium resize-none outline-none focus:ring-0 h-full min-h-[160px]"
                                             value={frame.originalText || ''}
                                             placeholder="无原文内容"
                                         />
                                     </td>
-                                    <td className="py-4 px-2 align-middle">
+                                    <td className="py-4 px-2 align-middle h-px">
                                         <div className="relative h-full">
                                             <textarea
-                                                className="w-full bg-white border border-slate-200 rounded-xl p-3 pr-10 text-xs text-slate-600 leading-relaxed focus:ring-2 focus:ring-fuchsia-500/20 focus:border-fuchsia-500 outline-none resize-none transition-all shadow-sm h-[180px] md:h-[270px]"
-                                                rows={5}
+                                                className="w-full bg-white border border-slate-200 rounded-xl p-3 pr-10 text-xs text-slate-600 leading-relaxed focus:ring-2 focus:ring-fuchsia-500/20 focus:border-fuchsia-500 outline-none resize-none transition-all shadow-sm h-full min-h-[160px]"
                                                 value={frame.imagePrompt || ''}
                                                 onChange={(e) => handleSavePrompt(frame.id, e.target.value)}
                                                 placeholder="输入提示词..."
@@ -587,9 +585,9 @@ const StoryboardImages: React.FC = () => {
                                             <CopyButton text={frame.imagePrompt || ''} />
                                         </div>
                                     </td>
-                                    <td className="py-4 px-2 align-middle text-center">
+                                    <td className="py-4 px-2 align-middle text-center w-[40%] md:w-[45%]">
                                         {/* Dynamic Border Container */}
-                                        <div className={`relative w-full h-[180px] md:h-[270px] rounded-xl shadow-sm overflow-hidden transition-all duration-300 group/preview mx-auto ${
+                                        <div className={`relative w-full aspect-video rounded-xl shadow-sm overflow-hidden transition-all duration-300 group/preview mx-auto ${
                                             isGeneratingThis 
                                               ? 'p-[3px] bg-slate-900' // Dark background for neon contrast + padding for border width
                                               : 'border border-slate-200 bg-slate-100'
