@@ -1,5 +1,4 @@
 
-
 import React, { useEffect, useState, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { ProjectData, StoryboardFrame, PromptTemplate } from '../types';
@@ -399,23 +398,23 @@ const StoryboardImages: React.FC = () => {
   return (
     <div className="flex flex-col h-full bg-[#F8F9FC]">
       
-      {/* 1. Statistics Bar - Top Level */}
-      <div className="bg-slate-900 text-white px-8 py-5 flex items-center justify-center gap-12 md:gap-24 shadow-md z-20">
+      {/* 1. Statistics Bar - Top Level (Responsive Grid for Mobile/Pad) */}
+      <div className="bg-slate-900 text-white px-4 py-5 grid grid-cols-2 gap-y-6 md:flex md:items-center md:justify-center md:gap-24 shadow-md z-20">
           <div className="flex flex-col items-center">
               <span className="text-3xl font-black text-white">{stats.total}</span>
               <span className="text-sm font-medium text-slate-400 uppercase tracking-wider mt-1">共分镜</span>
           </div>
-          <div className="w-px h-10 bg-slate-700/50"></div>
+          <div className="hidden md:block w-px h-10 bg-slate-700/50"></div>
           <div className="flex flex-col items-center">
               <span className="text-3xl font-black text-emerald-400">{stats.generated}</span>
               <span className="text-sm font-medium text-slate-400 uppercase tracking-wider mt-1">已生图</span>
           </div>
-          <div className="w-px h-10 bg-slate-700/50"></div>
+          <div className="hidden md:block w-px h-10 bg-slate-700/50"></div>
           <div className="flex flex-col items-center">
               <span className="text-3xl font-black text-amber-400">{stats.pending}</span>
               <span className="text-sm font-medium text-slate-400 uppercase tracking-wider mt-1">未生图</span>
           </div>
-          <div className="w-px h-10 bg-slate-700/50"></div>
+          <div className="hidden md:block w-px h-10 bg-slate-700/50"></div>
           <div className="flex flex-col items-center">
               <span className="text-3xl font-black text-blue-400">{stats.uploaded}</span>
               <span className="text-sm font-medium text-slate-400 uppercase tracking-wider mt-1">已保存云端</span>
@@ -439,13 +438,13 @@ const StoryboardImages: React.FC = () => {
                 </div>
             </div>
 
-            <div className="flex items-center gap-3">
+            <div className="flex flex-wrap items-center gap-3">
                 {/* Style Selection, Reimport, Batch Generate moved to left of API Config */}
                 <div className="flex items-center bg-white border border-slate-200 rounded-xl p-1 shadow-sm h-10">
                     <select 
                         value={style_mode}
                         onChange={(e) => setStyleMode(e.target.value)}
-                        className="bg-transparent text-xs font-bold text-slate-700 px-3 outline-none border-r border-slate-100 h-full cursor-pointer hover:bg-slate-50 rounded-l-lg"
+                        className="bg-transparent text-xs font-bold text-slate-700 px-3 outline-none border-r border-slate-100 h-full cursor-pointer hover:bg-slate-50 rounded-l-lg max-w-[100px] md:max-w-none"
                         title="选择提示词方案模板"
                     >
                         <option value="IMAGE_GEN_A">方案 A: 电影质感 (写实)</option>
@@ -453,7 +452,7 @@ const StoryboardImages: React.FC = () => {
                     </select>
                     <button 
                         onClick={handleReimportPrompts}
-                        className="px-3 h-full flex items-center gap-1.5 text-slate-500 hover:text-fuchsia-600 hover:bg-fuchsia-50 transition-colors text-xs font-bold border-r border-slate-100"
+                        className="px-3 h-full flex items-center gap-1.5 text-slate-500 hover:text-fuchsia-600 hover:bg-fuchsia-50 transition-colors text-xs font-bold border-r border-slate-100 whitespace-nowrap"
                         title="基于当前选择的方案重新生成提示词"
                     >
                         <RotateCcw className="w-3.5 h-3.5" /> 重新导入
@@ -461,7 +460,7 @@ const StoryboardImages: React.FC = () => {
                     <button 
                         onClick={handleBatchGenerate}
                         disabled={generating}
-                        className="px-4 h-full flex items-center gap-1.5 text-fuchsia-600 hover:bg-fuchsia-50 transition-colors text-xs font-bold rounded-r-lg disabled:opacity-50"
+                        className="px-4 h-full flex items-center gap-1.5 text-fuchsia-600 hover:bg-fuchsia-50 transition-colors text-xs font-bold rounded-r-lg disabled:opacity-50 whitespace-nowrap"
                         title="仅为尚未有图片的分镜生成图片"
                     >
                         {generating ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Zap className="w-3.5 h-3.5 fill-fuchsia-600" />}
@@ -475,7 +474,7 @@ const StoryboardImages: React.FC = () => {
                     className={`h-10 px-4 rounded-xl font-bold text-xs flex items-center gap-2 transition-all shadow-sm border ${customKey ? 'bg-indigo-50 text-indigo-600 border-indigo-200' : 'bg-white text-slate-600 border-slate-200 hover:border-slate-300'}`}
                 >
                     <Settings2 className="w-4 h-4" />
-                    API 配置
+                    <span className="hidden sm:inline">API 配置</span>
                 </button>
                 
                 {/* Cloud Sync Button */}
@@ -486,7 +485,7 @@ const StoryboardImages: React.FC = () => {
                     title="将本地图片上传至云端并同步数据"
                 >
                     {uploading ? <Loader2 className="w-4 h-4 animate-spin" /> : <CloudUpload className="w-4 h-4" />}
-                    上传云端
+                    <span className="hidden sm:inline">上传云端</span>
                 </button>
 
                 {/* Download Button */}
@@ -496,7 +495,7 @@ const StoryboardImages: React.FC = () => {
                     className="h-10 px-4 bg-slate-900 text-white rounded-xl font-bold text-xs flex items-center gap-2 hover:bg-slate-800 transition-all shadow-lg shadow-slate-900/20 disabled:opacity-50 disabled:shadow-none"
                 >
                     {downloading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
-                    打包下载
+                    <span className="hidden sm:inline">打包下载</span>
                 </button>
             </div>
         </div>
@@ -548,13 +547,13 @@ const StoryboardImages: React.FC = () => {
             </div>
 
             <div className="flex-1 overflow-auto">
-                <table className="w-full text-left border-collapse">
+                <table className="w-full text-left border-collapse table-fixed">
                     <thead className="bg-slate-50 text-slate-500 sticky top-0 z-10 shadow-sm">
                         <tr>
                             <th className="py-3 px-4 text-xs font-bold uppercase tracking-wider w-16 text-center border-b border-slate-200">序号</th>
-                            <th className="py-3 px-4 text-xs font-bold uppercase tracking-wider w-1/5 border-b border-slate-200">原文</th>
+                            <th className="py-3 px-4 text-xs font-bold uppercase tracking-wider w-1/4 border-b border-slate-200">原文</th>
                             <th className="py-3 px-4 text-xs font-bold uppercase tracking-wider border-b border-slate-200">AI 绘图提示词 (中文)</th>
-                            <th className="py-3 px-4 text-xs font-bold uppercase tracking-wider w-[360px] text-center border-b border-slate-200">画面预览</th>
+                            <th className="py-3 px-4 text-xs font-bold uppercase tracking-wider w-[240px] md:w-[360px] text-center border-b border-slate-200">画面预览</th>
                         </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-100">
@@ -566,28 +565,29 @@ const StoryboardImages: React.FC = () => {
                                         {frame.sceneNumber}
                                     </td>
                                     <td className="py-4 px-4 align-top pt-4">
-                                        <div className="bg-slate-50 rounded-lg p-3 border border-slate-100 text-xs text-slate-700 leading-relaxed font-medium">
-                                            {frame.originalText || <span className="text-slate-300 italic">无原文内容</span>}
-                                        </div>
+                                        <textarea
+                                            readOnly
+                                            rows={3}
+                                            className="w-full bg-slate-50 rounded-lg p-3 border border-slate-100 text-xs text-slate-700 leading-relaxed font-medium resize-none outline-none focus:ring-0"
+                                            value={frame.originalText || ''}
+                                            placeholder="无原文内容"
+                                        />
                                     </td>
                                     <td className="py-4 px-4 align-top pt-4">
-                                        <div className="relative h-full min-h-[120px]">
+                                        <div className="relative h-full">
                                             <textarea
-                                                className="w-full h-32 bg-white border border-slate-200 rounded-xl p-3 pr-10 text-xs text-slate-600 leading-relaxed focus:ring-2 focus:ring-fuchsia-500/20 focus:border-fuchsia-500 outline-none resize-none transition-all shadow-sm"
+                                                rows={3}
+                                                className="w-full bg-white border border-slate-200 rounded-xl p-3 pr-10 text-xs text-slate-600 leading-relaxed focus:ring-2 focus:ring-fuchsia-500/20 focus:border-fuchsia-500 outline-none resize-none transition-all shadow-sm"
                                                 value={frame.imagePrompt || ''}
                                                 onChange={(e) => handleSavePrompt(frame.id, e.target.value)}
                                                 placeholder="输入提示词..."
                                             />
                                             <CopyButton text={frame.imagePrompt || ''} />
-                                            {/* Absolute positioned copy button to top right of textarea */}
-                                            <div className="absolute top-2 right-2">
-                                                {/* Already handled by CopyButton component styling */}
-                                            </div>
                                         </div>
                                     </td>
-                                    <td className="py-4 px-4 align-top text-center">
+                                    <td className="py-4 px-4 align-top text-center min-w-[200px]">
                                         {/* Dynamic Border Container */}
-                                        <div className={`relative w-full aspect-video rounded-xl shadow-sm overflow-hidden transition-all duration-300 group/preview ${
+                                        <div className={`relative w-full aspect-video rounded-xl shadow-sm overflow-hidden transition-all duration-300 transform-gpu group/preview ${
                                             isGeneratingThis 
                                               ? 'p-[3px] bg-slate-900' // Dark background for neon contrast + padding for border width
                                               : 'border border-slate-200 bg-slate-100'
@@ -606,7 +606,7 @@ const StoryboardImages: React.FC = () => {
                                                             src={frame.imageUrl} 
                                                             loading="lazy"
                                                             alt={`Scene ${frame.sceneNumber}`} 
-                                                            className="w-full h-full object-cover cursor-zoom-in hover:scale-105 transition-transform duration-500"
+                                                            className="w-full h-full object-cover cursor-zoom-in md:hover:scale-105 transition-transform duration-500"
                                                             onClick={() => setSelectedImage(frame.imageUrl || null)}
                                                         />
                                                         {/* Reload Button (Top-Left) - Only for remote images */}
