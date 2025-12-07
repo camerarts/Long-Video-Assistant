@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { ProjectData, TitleItem, StoryboardFrame, CoverOption, PromptTemplate, ProjectStatus } from '../types';
@@ -179,6 +178,68 @@ const ProjectWorkspace: React.FC = () => {
 
   // To prevent async update on unmounted component
   const mountedRef = useRef(true);
+
+  // Activity Tracking Refs
+  const lastActivityRef = useRef(Date.now());
+  const isBusyRef = useRef(false);
+
+  // Update busy ref based on state
+  useEffect(() => {
+      // Busy if loading, generating, dragging canvas, or user has a panel open (likely editing)
+      isBusyRef.current = loading || generatingNodes.size > 0 || isDragging || selectedNodeId !== null;
+  }, [loading, generatingNodes, isDragging, selectedNodeId]);
+
+  // Activity Listeners
+  useEffect(() => {
+    const updateActivity = () => { lastActivityRef.current = Date.now(); };
+    window.addEventListener('click', updateActivity);
+    window.addEventListener('keydown', updateActivity);
+    window.addEventListener('mousemove', updateActivity);
+    return () => {
+        window.removeEventListener('click', updateActivity);
+        window.removeEventListener('keydown', updateActivity);
+        window.removeEventListener('mousemove', updateActivity);
+    };
+  }, []);
+
+  // Smart Auto-Sync Loop
+  useEffect(() => {
+      let timeoutId: ReturnType<typeof setTimeout>;
+
+      const performSync = async () => {
+          if (!mountedRef.current || !id) return;
+
+          const isUserActive = (Date.now() - lastActivityRef.current) < 30000;
+          
+          if (isBusyRef.current || isUserActive) {
+              console.log("Auto-sync delayed: User active or system busy");
+              timeoutId = setTimeout(performSync, 2 * 60 * 1000); // Retry in 2 mins
+              return;
+          }
+
+          setSyncStatus('saving');
+          try {
+              await storage.downloadAllData();
+              const freshP = await storage.getProject(id);
+              if (freshP && mountedRef.current) {
+                  setProject(freshP);
+                  setSyncStatus('synced');
+                  setLastSyncTime(new Date().toLocaleTimeString());
+              }
+          } catch (e) {
+              console.warn("Auto-sync failed", e);
+              if (mountedRef.current) setSyncStatus('error');
+          }
+
+          // Schedule next run (5 mins)
+          timeoutId = setTimeout(performSync, 5 * 60 * 1000);
+      };
+
+      // Initial Delay
+      timeoutId = setTimeout(performSync, 5 * 60 * 1000);
+
+      return () => clearTimeout(timeoutId);
+  }, [id]);
 
   useEffect(() => {
     mountedRef.current = true;
@@ -386,8 +447,8 @@ const ProjectWorkspace: React.FC = () => {
           const frames: StoryboardFrame[] = data.map((item, idx) => ({
               id: crypto.randomUUID(),
               sceneNumber: idx + 1,
-              originalText: item.original,
-              description: item.description
+              originalText: item.description,
+              description: item.original
           }));
           await saveProjectUpdate(p => ({ ...p, storyboard: frames }));
       }
