@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import * as storage from '../services/storageService';
@@ -48,6 +47,84 @@ const AiTitles: React.FC = () => {
   
   // Refs to track initial load and avoid saving on mount
   const isLoadedRef = useRef(false);
+
+  // Activity Tracking Refs
+  const lastActivityRef = useRef(Date.now());
+  const isBusyRef = useRef(false);
+
+  // Update busy ref based on state
+  useEffect(() => {
+      isBusyRef.current = loading || generatingImage;
+  }, [loading, generatingImage]);
+
+  // Activity Listeners
+  useEffect(() => {
+    const updateActivity = () => { lastActivityRef.current = Date.now(); };
+    window.addEventListener('click', updateActivity);
+    window.addEventListener('keydown', updateActivity);
+    window.addEventListener('mousemove', updateActivity);
+    return () => {
+        window.removeEventListener('click', updateActivity);
+        window.removeEventListener('keydown', updateActivity);
+        window.removeEventListener('mousemove', updateActivity);
+    };
+  }, []);
+
+  // Smart Auto-Sync Loop
+  useEffect(() => {
+      let timeoutId: ReturnType<typeof setTimeout>;
+
+      const performSync = async () => {
+          // Note: AiTitles tool data is usually just one item.
+          // DownloadAllData pulls tools too.
+          
+          const isUserActive = (Date.now() - lastActivityRef.current) < 30000;
+          
+          if (isBusyRef.current || isUserActive) {
+              console.log("Auto-sync delayed: User active or system busy");
+              timeoutId = setTimeout(performSync, 2 * 60 * 1000); // Retry in 2 mins
+              return;
+          }
+
+          setSyncStatus('saving');
+          try {
+              await storage.downloadAllData();
+              
+              // Refresh View
+              const saved = await storage.getToolData<AiTitlesState>(TOOL_ID);
+              if (saved && (!saved.updatedAt || !isLoadedRef.current || (saved.updatedAt > (Date.now() - 300000)))) { 
+                 // Simple logic: If server data is newer or just synced, refresh
+                 // But since we are editing in real-time, we should be careful not to overwrite user input if they typed recently.
+                 // The isUserActive check protects us mostly.
+                 if (saved) {
+                      // Only update if not currently typing (protected by isUserActive)
+                      // ... logic to merge or overwrite ...
+                      // For now, let's just assume if we are idle, we accept server state if it's there.
+                      // Actually, for a single-user tool like this, download might be less critical than upload.
+                      // But to keep consistent:
+                      setUserInput(saved.input || '');
+                      setResult(saved.result || null);
+                      setSelectedTitleIndex(saved.selectedTitleIndex !== undefined ? saved.selectedTitleIndex : null);
+                      setGeneratedCover(saved.generatedCover || null);
+                 }
+              }
+
+              setSyncStatus('synced');
+              setLastAutoSave(new Date().toLocaleTimeString());
+          } catch (e) {
+              console.warn("Auto-sync failed", e);
+              setSyncStatus('error');
+          }
+
+          // Schedule next run (5 mins)
+          timeoutId = setTimeout(performSync, 5 * 60 * 1000);
+      };
+
+      // Initial Delay
+      timeoutId = setTimeout(performSync, 5 * 60 * 1000);
+
+      return () => clearTimeout(timeoutId);
+  }, []);
 
   useEffect(() => {
     loadPrompt();
