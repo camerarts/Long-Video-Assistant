@@ -1,5 +1,4 @@
-
-import React, { useEffect, useState, useMemo } from 'react';
+import React, { useEffect, useState, useMemo, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ProjectData, ProjectStatus } from '../types';
 import * as storage from '../services/storageService';
@@ -14,6 +13,68 @@ const Dashboard: React.FC = () => {
   const [syncStatus, setSyncStatus] = useState<'saved' | 'saving' | 'synced' | 'error' | null>(null);
   const [lastSyncTime, setLastSyncTime] = useState('');
 
+  // Activity Tracking Refs
+  const lastActivityRef = useRef(Date.now());
+  const isBusyRef = useRef(false);
+
+  // Update busy ref based on state
+  useEffect(() => {
+      isBusyRef.current = loading;
+  }, [loading]);
+
+  // Activity Listeners
+  useEffect(() => {
+    const updateActivity = () => { lastActivityRef.current = Date.now(); };
+    window.addEventListener('click', updateActivity);
+    window.addEventListener('keydown', updateActivity);
+    window.addEventListener('mousemove', updateActivity);
+    return () => {
+        window.removeEventListener('click', updateActivity);
+        window.removeEventListener('keydown', updateActivity);
+        window.removeEventListener('mousemove', updateActivity);
+    };
+  }, []);
+
+  // Smart Auto-Sync Loop
+  useEffect(() => {
+      let timeoutId: ReturnType<typeof setTimeout>;
+
+      const performSync = async () => {
+          // Check Busy Conditions
+          // 1. System Busy (Loading data)
+          // 2. User Active (Interaction within last 30s)
+          const isUserActive = (Date.now() - lastActivityRef.current) < 30000;
+          
+          if (isBusyRef.current || isUserActive) {
+              console.log("Auto-sync delayed: User active or system busy");
+              timeoutId = setTimeout(performSync, 2 * 60 * 1000); // Retry in 2 mins
+              return;
+          }
+
+          setSyncStatus('saving');
+          try {
+              await storage.downloadAllData();
+              setSyncStatus('synced');
+              setLastSyncTime(new Date().toLocaleTimeString());
+
+              // Refresh Data
+              const syncedData = await storage.getProjects();
+              setProjects(syncedData.sort((a, b) => b.updatedAt - a.updatedAt));
+          } catch (e) {
+              console.warn("Auto-sync failed", e);
+              setSyncStatus('error');
+          }
+
+          // Schedule next run (5 mins)
+          timeoutId = setTimeout(performSync, 5 * 60 * 1000);
+      };
+
+      // Initial Delay before first auto-sync check
+      timeoutId = setTimeout(performSync, 5 * 60 * 1000);
+
+      return () => clearTimeout(timeoutId);
+  }, []);
+
   useEffect(() => {
     initData();
   }, []);
@@ -25,7 +86,7 @@ const Dashboard: React.FC = () => {
     setProjects(localData.sort((a, b) => b.updatedAt - a.updatedAt));
     setLoading(false);
 
-    // 2. Background Sync
+    // 2. Background Sync (Initial Pull)
     setSyncStatus('saving'); // Display "Syncing..."
     try {
         await storage.downloadAllData();
