@@ -551,8 +551,8 @@ const StoryboardImages: React.FC = () => {
                     <thead className="bg-slate-50 text-slate-500 sticky top-0 z-10 shadow-sm">
                         <tr>
                             <th className="py-3 px-2 text-xs font-extrabold uppercase tracking-wider w-12 text-center border-b border-slate-200">序号</th>
-                            <th className="py-3 px-2 text-xs font-extrabold uppercase tracking-wider w-[15%] md:w-[25%] text-center border-b border-slate-200">原文</th>
-                            <th className="py-3 px-2 text-xs font-extrabold uppercase tracking-wider w-[20%] md:w-[30%] text-center border-b border-slate-200">AI 绘图提示词</th>
+                            <th className="py-3 px-2 text-xs font-extrabold uppercase tracking-wider w-[25%] md:w-[25%] text-center border-b border-slate-200">原文</th>
+                            <th className="py-3 px-2 text-xs font-extrabold uppercase tracking-wider w-[30%] md:w-[30%] text-center border-b border-slate-200">AI 绘图提示词</th>
                             <th className="py-3 px-2 text-xs font-extrabold uppercase tracking-wider text-center border-b border-slate-200">画面预览</th>
                         </tr>
                     </thead>
@@ -583,13 +583,13 @@ const StoryboardImages: React.FC = () => {
                                             <CopyButton text={frame.imagePrompt || ''} />
                                         </div>
                                     </td>
-                                    <td className="py-4 px-2 align-middle text-center w-[55%] md:w-[40%]">
+                                    <td className="py-4 px-2 align-middle text-center w-[45%] md:w-[40%]">
                                         {/* Dynamic Border Container */}
                                         <div className={`relative w-full aspect-video rounded-xl shadow-sm overflow-hidden transition-all duration-300 group/preview mx-auto ${
                                             isGeneratingThis 
                                               ? 'p-[3px] bg-slate-900' // Dark background for neon contrast + padding for border width
                                               : 'border border-slate-200 bg-slate-900'
-                                        }`}>
+                                        }`} style={{ minHeight: '1px' }}>
                                             
                                             {/* Neon Spinner Background (Only visible when generating) */}
                                             {isGeneratingThis && (
@@ -602,9 +602,10 @@ const StoryboardImages: React.FC = () => {
                                                     <>
                                                         <img 
                                                             src={frame.imageUrl} 
-                                                            loading="lazy"
+                                                            // Removed loading="lazy" to fix iPad display issues
                                                             alt={`Scene ${frame.sceneNumber}`} 
-                                                            className="w-full h-full object-contain md:hover:scale-105 transition-transform duration-500"
+                                                            className="w-full h-full object-contain md:hover:scale-105 transition-transform duration-500 block"
+                                                            style={{ display: 'block' }}
                                                             onClick={() => setSelectedImage(frame.imageUrl || null)}
                                                         />
                                                         {/* Reload Button (Top-Left) - Only for remote images */}
