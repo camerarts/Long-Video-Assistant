@@ -4,14 +4,17 @@ import { useNavigate } from 'react-router-dom';
 import { Inspiration, ProjectData, ProjectStatus } from '../types';
 import * as storage from '../services/storageService';
 import * as gemini from '../services/geminiService';
-import { Lightbulb, Plus, Trash2, Loader2, Sparkles, X, Save, FileSpreadsheet, ArrowLeft, CheckCircle2, Star, ArrowUpDown, ArrowUp, ArrowDown, Rocket, CheckSquare, Square, Filter, Download } from 'lucide-react';
+import { Lightbulb, Plus, Trash2, Loader2, Sparkles, X, Save, FileSpreadsheet, ArrowLeft, CheckCircle2, Star, ArrowUpDown, ArrowUp, ArrowDown, Rocket, CheckSquare, Square, Filter, Download, Cloud, CloudCheck, AlertCircle } from 'lucide-react';
 
 const InspirationRepo: React.FC = () => {
   const navigate = useNavigate();
   const [inspirations, setInspirations] = useState<Inspiration[]>([]);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
-  const [refreshTime, setRefreshTime] = useState('');
+  
+  // Sync Status State
+  const [syncStatus, setSyncStatus] = useState<'saved' | 'saving' | 'synced' | 'error' | null>(null);
+  const [lastSyncTime, setLastSyncTime] = useState('');
   
   // Sorting State - Initialize from localStorage if available
   const [sortConfig, setSortConfig] = useState<{ key: 'rating' | 'createdAt'; direction: 'asc' | 'desc' }>(() => {
@@ -37,21 +40,50 @@ const InspirationRepo: React.FC = () => {
   const [batchData, setBatchData] = useState<Partial<Inspiration>[]>([]);
 
   useEffect(() => {
-    loadData();
+    initData();
   }, []);
+
+  const initData = async () => {
+    setLoading(true);
+    // 1. Load Local
+    const localData = await storage.getInspirations();
+    setInspirations(localData);
+    setLoading(false);
+
+    // 2. Sync
+    setSyncStatus('saving');
+    try {
+        await storage.downloadAllData();
+        setSyncStatus('synced');
+        setLastSyncTime(new Date().toLocaleTimeString());
+        
+        // 3. Reload
+        const syncedData = await storage.getInspirations();
+        setInspirations(syncedData);
+    } catch (e) {
+        console.warn("Auto-sync failed", e);
+        setSyncStatus('error');
+    }
+  };
+
+  const handleAutoPush = async () => {
+      setSyncStatus('saving');
+      try {
+          // Push both Inspirations and Projects (in case of approval)
+          await storage.uploadInspirations();
+          await storage.uploadProjects();
+          setSyncStatus('synced');
+          setLastSyncTime(new Date().toLocaleTimeString());
+      } catch(e) {
+          console.error(e);
+          setSyncStatus('error');
+      }
+  };
 
   // Persist sort config whenever it changes
   useEffect(() => {
     localStorage.setItem('lva_inspiration_sort', JSON.stringify(sortConfig));
   }, [sortConfig]);
-
-  const loadData = async () => {
-    setLoading(true);
-    const data = await storage.getInspirations();
-    setInspirations(data);
-    setRefreshTime(`刷新数据时间：${storage.getLastUploadTime()}`);
-    setLoading(false);
-  };
 
   // Extract unique categories for filter dropdown
   const uniqueCategories = useMemo(() => {
@@ -94,6 +126,7 @@ const InspirationRepo: React.FC = () => {
     await storage.deleteInspiration(id);
     setInspirations(prev => prev.filter(i => i.id !== id));
     setDeleteConfirmId(null);
+    await handleAutoPush();
   };
 
   const handleToggleMark = async (item: Inspiration) => {
@@ -101,6 +134,7 @@ const InspirationRepo: React.FC = () => {
     // Optimistic update
     setInspirations(prev => prev.map(i => i.id === item.id ? updated : i));
     await storage.saveInspiration(updated);
+    await handleAutoPush();
   };
 
   const handleApprove = async (item: Inspiration) => {
@@ -131,6 +165,10 @@ const InspirationRepo: React.FC = () => {
     };
 
     await storage.saveProject(newProject);
+    
+    // Auto Push changes before navigating
+    await handleAutoPush();
+
     navigate(`/project/${newId}`);
   };
 
@@ -340,6 +378,7 @@ const InspirationRepo: React.FC = () => {
     await storage.saveInspiration(newItem);
     setInspirations(prev => [newItem, ...prev]);
     resetModal();
+    await handleAutoPush();
   };
 
   const handleSaveBatch = async () => {
@@ -361,6 +400,7 @@ const InspirationRepo: React.FC = () => {
     for (const item of newItems) {
         await storage.saveInspiration(item);
     }
+    await handleAutoPush();
   };
 
   return (
@@ -374,9 +414,24 @@ const InspirationRepo: React.FC = () => {
           <p className="text-xs md:text-base text-slate-500 font-medium">收集灵感，打造爆款选题库。</p>
         </div>
         <div className="flex flex-col items-stretch md:items-end gap-2 w-full md:w-auto">
-            <span className="hidden md:inline-block text-[10px] font-bold text-slate-400 tracking-wider bg-slate-50 px-2 py-1 rounded-md border border-slate-100 text-right">
-                {refreshTime}
-            </span>
+             {/* Sync Status Badge */}
+             <div className={`flex items-center gap-1.5 text-[10px] font-bold px-2 py-1 rounded-md border animate-in fade-in transition-colors self-end ${
+                syncStatus === 'synced' ? 'bg-emerald-50 text-emerald-600 border-emerald-100' :
+                syncStatus === 'saving' ? 'bg-blue-50 text-blue-600 border-blue-100' :
+                syncStatus === 'error' ? 'bg-rose-50 text-rose-600 border-rose-100' :
+                'bg-slate-50 text-slate-400 border-slate-100'
+            }`}>
+                {syncStatus === 'synced' ? <CloudCheck className="w-3 h-3" /> : 
+                 syncStatus === 'saving' ? <Loader2 className="w-3 h-3 animate-spin" /> : 
+                 syncStatus === 'error' ? <AlertCircle className="w-3 h-3" /> :
+                 <Cloud className="w-3 h-3" />}
+                
+                {syncStatus === 'synced' ? `已同步云端: ${lastSyncTime}` :
+                 syncStatus === 'saving' ? '正在同步...' :
+                 syncStatus === 'error' ? '同步失败' :
+                 '准备就绪'}
+            </div>
+
             <div className="flex gap-2 md:gap-3">
                 <button 
                     onClick={handleDownloadExcel}
@@ -545,6 +600,7 @@ const InspirationRepo: React.FC = () => {
       {showModal && (
         <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in duration-200">
           <div className="bg-white rounded-2xl shadow-2xl w-full max-w-3xl overflow-hidden flex flex-col max-h-[90vh]">
+            {/* Modal content omitted for brevity as it is unchanged */}
             <div className="px-8 py-6 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
               <h2 className="text-xl font-extrabold text-slate-800 flex items-center gap-2">
                 {viewMode === 'input' && <><Sparkles className="w-5 h-5 text-amber-500" /> 灵感录入</>}
@@ -576,6 +632,7 @@ const InspirationRepo: React.FC = () => {
                 </div>
               )}
 
+              {/* ... Rest of modal content logic remains same, just ensuring correct close handling ... */}
               {viewMode === 'single' && (
                 <div className="space-y-4">
                   <div>
