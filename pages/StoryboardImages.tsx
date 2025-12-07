@@ -400,25 +400,25 @@ const StoryboardImages: React.FC = () => {
       
       {/* 1. Statistics Bar - Top Level */}
       {/* Mobile: Single line with horizontal scroll. Desktop: Centered with dividers. */}
-      <div className="bg-slate-900 text-white px-4 py-3 md:py-5 flex items-center gap-6 overflow-x-auto no-scrollbar md:justify-center md:gap-24 shadow-md z-20 flex-nowrap">
+      <div className="bg-slate-900 text-white px-4 py-5 flex items-center gap-6 overflow-x-auto no-scrollbar md:justify-center md:gap-24 shadow-md z-20 flex-nowrap shrink-0">
           <div className="flex flex-col items-center flex-shrink-0">
               <span className="text-xl md:text-3xl font-black text-white">{stats.total}</span>
-              <span className="text-[10px] md:text-sm font-medium text-slate-400 uppercase tracking-wider mt-0.5 md:mt-1 whitespace-nowrap">共分镜</span>
+              <span className="text-[10px] md:text-sm font-bold text-slate-400 uppercase tracking-wider mt-0.5 md:mt-1 whitespace-nowrap">共分镜</span>
           </div>
           <div className="w-px h-6 md:h-10 bg-slate-700/50 flex-shrink-0"></div>
           <div className="flex flex-col items-center flex-shrink-0">
               <span className="text-xl md:text-3xl font-black text-emerald-400">{stats.generated}</span>
-              <span className="text-[10px] md:text-sm font-medium text-slate-400 uppercase tracking-wider mt-0.5 md:mt-1 whitespace-nowrap">已生图</span>
+              <span className="text-[10px] md:text-sm font-bold text-slate-400 uppercase tracking-wider mt-0.5 md:mt-1 whitespace-nowrap">已生图</span>
           </div>
           <div className="w-px h-6 md:h-10 bg-slate-700/50 flex-shrink-0"></div>
           <div className="flex flex-col items-center flex-shrink-0">
               <span className="text-xl md:text-3xl font-black text-amber-400">{stats.pending}</span>
-              <span className="text-[10px] md:text-sm font-medium text-slate-400 uppercase tracking-wider mt-0.5 md:mt-1 whitespace-nowrap">未生图</span>
+              <span className="text-[10px] md:text-sm font-bold text-slate-400 uppercase tracking-wider mt-0.5 md:mt-1 whitespace-nowrap">未生图</span>
           </div>
           <div className="w-px h-6 md:h-10 bg-slate-700/50 flex-shrink-0"></div>
           <div className="flex flex-col items-center flex-shrink-0">
               <span className="text-xl md:text-3xl font-black text-blue-400">{stats.uploaded}</span>
-              <span className="text-[10px] md:text-sm font-medium text-slate-400 uppercase tracking-wider mt-0.5 md:mt-1 whitespace-nowrap">已保存云端</span>
+              <span className="text-[10px] md:text-sm font-bold text-slate-400 uppercase tracking-wider mt-0.5 md:mt-1 whitespace-nowrap">已保存云端</span>
           </div>
       </div>
 
@@ -539,6 +539,7 @@ const StoryboardImages: React.FC = () => {
         )}
 
         {/* Table Area */}
+        {/* Added extra padding-bottom to allow scrolling past the fixed title/header if needed in a long list */}
         <div className="flex-1 bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden flex flex-col">
             {/* Project Title Header */}
             <div className="px-6 py-4 border-b border-slate-100 bg-slate-50/50">
@@ -551,10 +552,10 @@ const StoryboardImages: React.FC = () => {
                 <table className="w-full text-left border-collapse table-fixed">
                     <thead className="bg-slate-50 text-slate-500 sticky top-0 z-10 shadow-sm">
                         <tr>
-                            <th className="py-3 px-4 text-xs font-bold uppercase tracking-wider w-16 text-center border-b border-slate-200">序号</th>
-                            <th className="py-3 px-4 text-xs font-bold uppercase tracking-wider w-1/4 border-b border-slate-200">原文</th>
-                            <th className="py-3 px-4 text-xs font-bold uppercase tracking-wider border-b border-slate-200">AI 绘图提示词 (中文)</th>
-                            <th className="py-3 px-4 text-xs font-bold uppercase tracking-wider w-[240px] md:w-[360px] text-center border-b border-slate-200">画面预览</th>
+                            <th className="py-3 px-2 text-xs font-extrabold uppercase tracking-wider w-12 text-center border-b border-slate-200">序号</th>
+                            <th className="py-3 px-2 text-xs font-extrabold uppercase tracking-wider w-[20%] text-center border-b border-slate-200">原文</th>
+                            <th className="py-3 px-2 text-xs font-extrabold uppercase tracking-wider w-[25%] text-center border-b border-slate-200">AI 绘图提示词</th>
+                            <th className="py-3 px-2 text-xs font-extrabold uppercase tracking-wider text-center border-b border-slate-200">画面预览</th>
                         </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-100">
@@ -562,21 +563,23 @@ const StoryboardImages: React.FC = () => {
                             const isGeneratingThis = currentGenIds.has(frame.id);
                             return (
                                 <tr key={frame.id} className="group hover:bg-slate-50/50 transition-colors">
-                                    <td className="py-4 px-4 text-center text-slate-400 font-bold text-sm align-top pt-6">
+                                    <td className="py-4 px-2 text-center text-slate-400 font-bold text-sm align-middle">
                                         {frame.sceneNumber}
                                     </td>
-                                    <td className="py-4 px-4 align-top pt-4">
+                                    <td className="py-4 px-2 align-middle">
                                         <textarea
                                             readOnly
-                                            className="w-full bg-slate-50 rounded-lg p-3 border border-slate-100 text-xs text-slate-700 leading-relaxed font-medium resize-none outline-none focus:ring-0 h-24 md:h-64"
+                                            className="w-full bg-slate-50 rounded-lg p-3 border border-slate-100 text-xs text-slate-700 leading-relaxed font-medium resize-none outline-none focus:ring-0 h-[180px] md:h-[270px]"
+                                            rows={5}
                                             value={frame.originalText || ''}
                                             placeholder="无原文内容"
                                         />
                                     </td>
-                                    <td className="py-4 px-4 align-top pt-4">
+                                    <td className="py-4 px-2 align-middle">
                                         <div className="relative h-full">
                                             <textarea
-                                                className="w-full bg-white border border-slate-200 rounded-xl p-3 pr-10 text-xs text-slate-600 leading-relaxed focus:ring-2 focus:ring-fuchsia-500/20 focus:border-fuchsia-500 outline-none resize-none transition-all shadow-sm h-24 md:h-64"
+                                                className="w-full bg-white border border-slate-200 rounded-xl p-3 pr-10 text-xs text-slate-600 leading-relaxed focus:ring-2 focus:ring-fuchsia-500/20 focus:border-fuchsia-500 outline-none resize-none transition-all shadow-sm h-[180px] md:h-[270px]"
+                                                rows={5}
                                                 value={frame.imagePrompt || ''}
                                                 onChange={(e) => handleSavePrompt(frame.id, e.target.value)}
                                                 placeholder="输入提示词..."
@@ -584,9 +587,9 @@ const StoryboardImages: React.FC = () => {
                                             <CopyButton text={frame.imagePrompt || ''} />
                                         </div>
                                     </td>
-                                    <td className="py-4 px-4 align-top text-center min-w-[200px]">
+                                    <td className="py-4 px-2 align-middle text-center">
                                         {/* Dynamic Border Container */}
-                                        <div className={`relative w-full aspect-video rounded-xl shadow-sm overflow-hidden transition-all duration-300 group/preview ${
+                                        <div className={`relative w-full h-[180px] md:h-[270px] rounded-xl shadow-sm overflow-hidden transition-all duration-300 group/preview mx-auto ${
                                             isGeneratingThis 
                                               ? 'p-[3px] bg-slate-900' // Dark background for neon contrast + padding for border width
                                               : 'border border-slate-200 bg-slate-100'
