@@ -1,5 +1,4 @@
-
-import React, { useEffect, useState, useMemo } from 'react';
+import React, { useEffect, useState, useMemo, useRef } from 'react';
 import { ProjectData, ProjectStatus } from '../types';
 import * as storage from '../services/storageService';
 import { Calendar, Trash2, Loader2, Archive, ArchiveRestore, CheckCircle2, AlertCircle, Cloud, CloudCheck } from 'lucide-react';
@@ -12,6 +11,65 @@ const ArchiveRepo: React.FC = () => {
   // Sync Status State
   const [syncStatus, setSyncStatus] = useState<'saved' | 'saving' | 'synced' | 'error' | null>(null);
   const [lastSyncTime, setLastSyncTime] = useState('');
+
+  // Activity Tracking Refs
+  const lastActivityRef = useRef(Date.now());
+  const isBusyRef = useRef(false);
+
+  // Update busy ref based on state
+  useEffect(() => {
+      isBusyRef.current = loading;
+  }, [loading]);
+
+  // Activity Listeners
+  useEffect(() => {
+    const updateActivity = () => { lastActivityRef.current = Date.now(); };
+    window.addEventListener('click', updateActivity);
+    window.addEventListener('keydown', updateActivity);
+    window.addEventListener('mousemove', updateActivity);
+    return () => {
+        window.removeEventListener('click', updateActivity);
+        window.removeEventListener('keydown', updateActivity);
+        window.removeEventListener('mousemove', updateActivity);
+    };
+  }, []);
+
+  // Smart Auto-Sync Loop
+  useEffect(() => {
+      let timeoutId: ReturnType<typeof setTimeout>;
+
+      const performSync = async () => {
+          const isUserActive = (Date.now() - lastActivityRef.current) < 30000;
+          
+          if (isBusyRef.current || isUserActive) {
+              console.log("Auto-sync delayed: User active or system busy");
+              timeoutId = setTimeout(performSync, 2 * 60 * 1000); // Retry in 2 mins
+              return;
+          }
+
+          setSyncStatus('saving');
+          try {
+              await storage.downloadAllData();
+              setSyncStatus('synced');
+              setLastSyncTime(new Date().toLocaleTimeString());
+
+              // Refresh Data
+              const syncedData = await storage.getProjects();
+              setProjects(syncedData.sort((a, b) => b.updatedAt - a.updatedAt));
+          } catch (e) {
+              console.warn("Auto-sync failed", e);
+              setSyncStatus('error');
+          }
+
+          // Schedule next run (5 mins)
+          timeoutId = setTimeout(performSync, 5 * 60 * 1000);
+      };
+
+      // Initial Delay
+      timeoutId = setTimeout(performSync, 5 * 60 * 1000);
+
+      return () => clearTimeout(timeoutId);
+  }, []);
 
   useEffect(() => {
     initData();
