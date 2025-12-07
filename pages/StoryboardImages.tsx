@@ -4,7 +4,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { ProjectData, StoryboardFrame, PromptTemplate } from '../types';
 import * as storage from '../services/storageService';
 import * as gemini from '../services/geminiService';
-import { ArrowLeft, Download, Loader2, Sparkles, Image as ImageIcon, RefreshCw, X, Maximize2, CloudUpload, FileSpreadsheet, Palette, RotateCcw, CheckCircle2, AlertCircle, Settings2, Key, Zap, Clock, Copy, Check, Cloud, CloudCheck } from 'lucide-react';
+import { ArrowLeft, Download, Loader2, Sparkles, Image as ImageIcon, RefreshCw, X, Maximize2, CloudUpload, FileSpreadsheet, Palette, RotateCcw, CheckCircle2, AlertCircle, Settings2, Key, Zap, Clock, Copy, Check, Cloud, CloudCheck, Video } from 'lucide-react';
 import JSZip from 'jszip';
 
 const CopyButton = ({ text }: { text: string }) => {
@@ -647,12 +647,22 @@ const StoryboardImages: React.FC = () => {
                  <h2 className="text-lg md:text-xl font-black text-transparent bg-clip-text bg-gradient-to-r from-slate-800 to-slate-600">
                     {project.title || '未命名项目'}
                  </h2>
-                 <button 
-                    onClick={handleDownloadPromptsCsv}
-                    className="flex items-center gap-1.5 text-slate-500 hover:text-indigo-600 hover:bg-white bg-slate-100/50 border border-slate-200/50 hover:border-indigo-200 px-3 py-1.5 rounded-lg text-xs font-bold transition-all shadow-sm"
-                 >
-                    <FileSpreadsheet className="w-3.5 h-3.5" /> 下载提示词
-                 </button>
+                 <div className="flex items-center gap-2">
+                     <button 
+                        onClick={handleDownloadPromptsCsv}
+                        className="flex items-center gap-1.5 text-slate-500 hover:text-indigo-600 hover:bg-white bg-slate-100/50 border border-slate-200/50 hover:border-indigo-200 px-3 py-1.5 rounded-lg text-xs font-bold transition-all shadow-sm"
+                     >
+                        <FileSpreadsheet className="w-3.5 h-3.5" /> 下载提示词
+                     </button>
+                     <a 
+                        href="https://app.heygen.com/projects"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="flex items-center gap-1.5 text-slate-500 hover:text-violet-600 hover:bg-white bg-slate-100/50 border border-slate-200/50 hover:border-violet-200 px-3 py-1.5 rounded-lg text-xs font-bold transition-all shadow-sm"
+                     >
+                        <Video className="w-3.5 h-3.5" /> 打开heygen
+                     </a>
+                 </div>
             </div>
 
             <div className="flex-1 overflow-auto">
