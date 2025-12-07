@@ -233,6 +233,28 @@ const ProjectWorkspace: React.FC = () => {
       setIsDragging(false);
   };
 
+  // Touch Handlers for Pad/Mobile
+  const handleTouchStart = (e: React.TouchEvent) => {
+      if (e.touches.length === 1) {
+         if (selectedNodeId) setSelectedNodeId(null);
+         setIsDragging(true);
+         dragStartRef.current = { x: e.touches[0].clientX, y: e.touches[0].clientY };
+      }
+  };
+
+  const handleTouchMove = (e: React.TouchEvent) => {
+      if (isDragging && e.touches.length === 1) {
+          const dx = e.touches[0].clientX - dragStartRef.current.x;
+          const dy = e.touches[0].clientY - dragStartRef.current.y;
+          setTransform(prev => ({ ...prev, x: prev.x + dx, y: prev.y + dy }));
+          dragStartRef.current = { x: e.touches[0].clientX, y: e.touches[0].clientY };
+      }
+  };
+
+  const handleTouchEnd = () => {
+      setIsDragging(false);
+  };
+
   // Helper for score formatting
   const formatScore = (val: number | undefined) => {
     if (val === undefined || val === null) return '-';
@@ -489,12 +511,15 @@ const ProjectWorkspace: React.FC = () => {
         {/* Canvas Area */}
         <div 
             ref={canvasRef}
-            className={`flex-1 overflow-hidden relative ${isDragging ? 'cursor-grabbing' : 'cursor-grab'}`}
+            className={`flex-1 overflow-hidden relative ${isDragging ? 'cursor-grabbing' : 'cursor-grab'} touch-none`}
             onMouseDown={handleCanvasMouseDown}
             onMouseMove={handleCanvasMouseMove}
             onMouseUp={handleCanvasMouseUp}
             onMouseLeave={handleCanvasMouseUp}
             onWheel={handleWheel}
+            onTouchStart={handleTouchStart}
+            onTouchMove={handleTouchMove}
+            onTouchEnd={handleTouchEnd}
         >
              {/* Background Grid */}
             <div 
@@ -577,6 +602,10 @@ const ProjectWorkspace: React.FC = () => {
                             }`}
                             onMouseDown={(e) => {
                                 e.stopPropagation(); // Prevent canvas drag
+                                setSelectedNodeId(node.id);
+                            }}
+                            onTouchStart={(e) => {
+                                e.stopPropagation(); // Prevent canvas drag on touch
                                 setSelectedNodeId(node.id);
                             }}
                          >
