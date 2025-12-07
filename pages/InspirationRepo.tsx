@@ -1,5 +1,4 @@
-
-import React, { useEffect, useState, useMemo } from 'react';
+import React, { useEffect, useState, useMemo, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Inspiration, ProjectData, ProjectStatus } from '../types';
 import * as storage from '../services/storageService';
@@ -38,6 +37,65 @@ const InspirationRepo: React.FC = () => {
   const [extracting, setExtracting] = useState(false);
   const [singleData, setSingleData] = useState<Partial<Inspiration>>({});
   const [batchData, setBatchData] = useState<Partial<Inspiration>[]>([]);
+
+  // Activity Tracking Refs
+  const lastActivityRef = useRef(Date.now());
+  const isBusyRef = useRef(false);
+
+  // Update busy ref based on state
+  useEffect(() => {
+      isBusyRef.current = loading || extracting || showModal;
+  }, [loading, extracting, showModal]);
+
+  // Activity Listeners
+  useEffect(() => {
+    const updateActivity = () => { lastActivityRef.current = Date.now(); };
+    window.addEventListener('click', updateActivity);
+    window.addEventListener('keydown', updateActivity);
+    window.addEventListener('mousemove', updateActivity);
+    return () => {
+        window.removeEventListener('click', updateActivity);
+        window.removeEventListener('keydown', updateActivity);
+        window.removeEventListener('mousemove', updateActivity);
+    };
+  }, []);
+
+  // Smart Auto-Sync Loop
+  useEffect(() => {
+      let timeoutId: ReturnType<typeof setTimeout>;
+
+      const performSync = async () => {
+          const isUserActive = (Date.now() - lastActivityRef.current) < 30000;
+          
+          if (isBusyRef.current || isUserActive) {
+              console.log("Auto-sync delayed: User active or system busy");
+              timeoutId = setTimeout(performSync, 2 * 60 * 1000); // Retry in 2 mins
+              return;
+          }
+
+          setSyncStatus('saving');
+          try {
+              await storage.downloadAllData();
+              setSyncStatus('synced');
+              setLastSyncTime(new Date().toLocaleTimeString());
+
+              // Refresh Data
+              const syncedData = await storage.getInspirations();
+              setInspirations(syncedData);
+          } catch (e) {
+              console.warn("Auto-sync failed", e);
+              setSyncStatus('error');
+          }
+
+          // Schedule next run (5 mins)
+          timeoutId = setTimeout(performSync, 5 * 60 * 1000);
+      };
+
+      // Initial Delay
+      timeoutId = setTimeout(performSync, 5 * 60 * 1000);
+
+      return () => clearTimeout(timeoutId);
+  }, []);
 
   useEffect(() => {
     initData();
@@ -600,7 +658,6 @@ const InspirationRepo: React.FC = () => {
       {showModal && (
         <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in duration-200">
           <div className="bg-white rounded-2xl shadow-2xl w-full max-w-3xl overflow-hidden flex flex-col max-h-[90vh]">
-            {/* Modal content omitted for brevity as it is unchanged */}
             <div className="px-8 py-6 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
               <h2 className="text-xl font-extrabold text-slate-800 flex items-center gap-2">
                 {viewMode === 'input' && <><Sparkles className="w-5 h-5 text-amber-500" /> 灵感录入</>}
