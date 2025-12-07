@@ -4,7 +4,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { ProjectData, StoryboardFrame, PromptTemplate } from '../types';
 import * as storage from '../services/storageService';
 import * as gemini from '../services/geminiService';
-import { ArrowLeft, Download, Loader2, Sparkles, Image as ImageIcon, RefreshCw, X, Maximize2, CloudUpload, FileSpreadsheet, Palette, RotateCcw, CheckCircle2, AlertCircle, Settings2, Key, Zap, Clock, Copy, Check } from 'lucide-react';
+import { ArrowLeft, Download, Loader2, Sparkles, Image as ImageIcon, RefreshCw, X, Maximize2, CloudUpload, FileSpreadsheet, Palette, RotateCcw, CheckCircle2, AlertCircle, Settings2, Key, Zap, Clock, Copy, Check, Cloud, CloudCheck } from 'lucide-react';
 import JSZip from 'jszip';
 
 const CopyButton = ({ text }: { text: string }) => {
@@ -79,6 +79,10 @@ const StoryboardImages: React.FC = () => {
   const [message, setMessage] = useState<string | null>(null);
   const [messageType, setMessageType] = useState<'success' | 'error' | 'warning'>('success');
   
+  // Sync Status State
+  const [syncStatus, setSyncStatus] = useState<'saved' | 'saving' | 'synced' | 'error' | null>(null);
+  const [lastSyncTime, setLastSyncTime] = useState('');
+
   const mountedRef = useRef(true);
 
   useEffect(() => {
@@ -89,11 +93,28 @@ const StoryboardImages: React.FC = () => {
   useEffect(() => {
     const init = async () => {
         if (id) {
+            // 1. Local Load
             const p = await storage.getProject(id);
             if (p) {
                 if (mountedRef.current) setProject(p);
             } else {
                 if (mountedRef.current) navigate('/');
+                return;
+            }
+
+            // 2. Cloud Sync (Pull)
+            if (mountedRef.current) setSyncStatus('saving');
+            try {
+                await storage.downloadAllData();
+                const freshP = await storage.getProject(id);
+                if (freshP && mountedRef.current) {
+                    setProject(freshP);
+                    setSyncStatus('synced');
+                    setLastSyncTime(new Date().toLocaleTimeString());
+                }
+            } catch (e) {
+                console.warn("Auto-sync failed", e);
+                if (mountedRef.current) setSyncStatus('error');
             }
         }
         const loadedPrompts = await storage.getPrompts();
@@ -122,14 +143,28 @@ const StoryboardImages: React.FC = () => {
       return `${key.substring(0, 4)}...${key.substring(key.length - 4)}`;
   };
 
+  const saveProjectAndSync = async (updatedProject: ProjectData) => {
+      setProject(updatedProject);
+      await storage.saveProject(updatedProject);
+      
+      setSyncStatus('saving');
+      try {
+          await storage.uploadProjects();
+          setSyncStatus('synced');
+          setLastSyncTime(new Date().toLocaleTimeString());
+      } catch (e) {
+          console.error("Auto-sync push failed", e);
+          setSyncStatus('error');
+      }
+  };
+
   const handleSavePrompt = async (frameId: string, newPrompt: string) => {
     if (!project) return;
     const updatedStoryboard = project.storyboard?.map(f => 
         f.id === frameId ? { ...f, imagePrompt: newPrompt } : f
     );
     const updatedProject = { ...project, storyboard: updatedStoryboard };
-    setProject(updatedProject);
-    await storage.saveProject(updatedProject);
+    await saveProjectAndSync(updatedProject);
   };
 
   const handleReimportPrompts = async () => {
@@ -150,8 +185,7 @@ const StoryboardImages: React.FC = () => {
     });
 
     const updatedProject = { ...project, storyboard: updatedStoryboard };
-    setProject(updatedProject);
-    await storage.saveProject(updatedProject);
+    await saveProjectAndSync(updatedProject);
     
     setMessage("提示词已重新导入成功！");
     setMessageType('success');
@@ -168,18 +202,32 @@ const StoryboardImages: React.FC = () => {
           const base64Data = await gemini.generateImage(frame.imagePrompt, customKey, imageModel);
           const cloudUrl = await storage.uploadImage(base64Data, project?.id);
 
-          // Update state to trigger re-render and stats update
+          // Update state
+          let updatedProject: ProjectData | null = null;
           setProject(prev => {
               if (!prev) return null;
-              const updated = {
+              updatedProject = {
                   ...prev,
                   storyboard: prev.storyboard?.map(f => 
                     f.id === frame.id ? { ...f, imageUrl: cloudUrl, imageModel: imageModel } : f
                   )
               };
-              storage.saveProject(updated); // Save to DB in background
-              return updated;
+              return updatedProject;
           });
+
+          if (updatedProject) {
+              await storage.saveProject(updatedProject);
+              // Background Sync
+              setSyncStatus('saving');
+              storage.uploadProjects().then(() => {
+                  if (mountedRef.current) {
+                      setSyncStatus('synced');
+                      setLastSyncTime(new Date().toLocaleTimeString());
+                  }
+              }).catch(() => {
+                  if (mountedRef.current) setSyncStatus('error');
+              });
+          }
 
           if (showToast) {
             setMessage("图片生成成功！");
@@ -261,6 +309,8 @@ const StoryboardImages: React.FC = () => {
     // Ignore already uploaded URLs (starting with /api/ or http)
     const localImages = project.storyboard.filter(f => f.imageUrl && f.imageUrl.startsWith('data:'));
     
+    setSyncStatus('saving');
+
     if (localImages.length === 0) {
         // Direct execution for metadata sync
         setUploading(true);
@@ -268,9 +318,12 @@ const StoryboardImages: React.FC = () => {
              await storage.uploadProjects();
              setMessage("项目数据同步成功");
              setMessageType('success');
+             setSyncStatus('synced');
+             setLastSyncTime(new Date().toLocaleTimeString());
         } catch(e: any) {
              setMessage(`同步失败: ${e.message}`);
              setMessageType('error');
+             setSyncStatus('error');
         } finally {
              setUploading(false);
              setTimeout(() => setMessage(null), 3000);
@@ -304,7 +357,12 @@ const StoryboardImages: React.FC = () => {
         // Final Save & Sync
         setProject(currentFinal => {
             if (currentFinal) {
-                storage.saveProject(currentFinal).then(() => storage.uploadProjects());
+                storage.saveProject(currentFinal).then(() => {
+                    return storage.uploadProjects();
+                }).then(() => {
+                    setSyncStatus('synced');
+                    setLastSyncTime(new Date().toLocaleTimeString());
+                }).catch(() => setSyncStatus('error'));
             }
             return currentFinal;
         });
@@ -315,6 +373,7 @@ const StoryboardImages: React.FC = () => {
         console.error(e);
         setMessage(`上传失败: ${e.message}`);
         setMessageType('error');
+        setSyncStatus('error');
     } finally {
         setUploading(false);
         setTimeout(() => setMessage(null), 3000);
@@ -398,15 +457,15 @@ const StoryboardImages: React.FC = () => {
       urlObj.searchParams.set('t', Date.now().toString());
       const newUrl = urlObj.toString();
 
-      setProject(prev => {
-          if (!prev) return null;
-          return {
-              ...prev,
-              storyboard: prev.storyboard?.map(f => 
-                f.id === frame.id ? { ...f, imageUrl: newUrl } : f
-              )
-          };
-      });
+      setSyncStatus('saving');
+      const updatedProject = {
+          ...project,
+          storyboard: project?.storyboard?.map(f => 
+            f.id === frame.id ? { ...f, imageUrl: newUrl } : f
+          )
+      } as ProjectData;
+      
+      saveProjectAndSync(updatedProject);
   };
 
   if (!project) return <div className="flex justify-center py-20"><Loader2 className="w-10 h-10 animate-spin text-fuchsia-500" /></div>;
@@ -503,7 +562,7 @@ const StoryboardImages: React.FC = () => {
                     <span className="hidden sm:inline">API 配置</span>
                 </button>
                 
-                {/* Cloud Sync Button */}
+                {/* Cloud Sync Button (Manual) */}
                 <button
                     onClick={handleCloudSync}
                     disabled={uploading}
@@ -523,6 +582,24 @@ const StoryboardImages: React.FC = () => {
                     {downloading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
                     <span className="hidden sm:inline">打包下载</span>
                 </button>
+                
+                {/* Sync Status Badge */}
+                <div className={`flex items-center gap-1.5 text-[10px] font-bold px-2 py-1 rounded-md border animate-in fade-in transition-colors h-10 ${
+                    syncStatus === 'synced' ? 'bg-emerald-50 text-emerald-600 border-emerald-100' :
+                    syncStatus === 'saving' ? 'bg-blue-50 text-blue-600 border-blue-100' :
+                    syncStatus === 'error' ? 'bg-rose-50 text-rose-600 border-rose-100' :
+                    'bg-slate-50 text-slate-400 border-slate-100'
+                }`}>
+                    {syncStatus === 'synced' ? <CloudCheck className="w-3 h-3" /> : 
+                     syncStatus === 'saving' ? <Loader2 className="w-3 h-3 animate-spin" /> : 
+                     syncStatus === 'error' ? <AlertCircle className="w-3 h-3" /> :
+                     <Cloud className="w-3 h-3" />}
+                    
+                    {syncStatus === 'synced' ? `已同步: ${lastSyncTime}` :
+                     syncStatus === 'saving' ? '同步中...' :
+                     syncStatus === 'error' ? '同步失败' :
+                     '准备就绪'}
+                </div>
             </div>
         </div>
 
