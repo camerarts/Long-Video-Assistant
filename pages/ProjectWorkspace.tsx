@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { ProjectData, TitleItem, StoryboardFrame, CoverOption, PromptTemplate, ProjectStatus } from '../types';
@@ -335,7 +334,6 @@ const ProjectWorkspace: React.FC = () => {
           await saveProjectUpdate(p => ({ ...p, coverOptions: data }));
       }
       else if (nodeId === 'sb_text') {
-          // IMPORTANT: Mapped correctly now: original -> originalText, description -> description
           const data = await gemini.generateJSON<{original: string, description: string}[]>(prompt, {
               type: "ARRAY", items: {
                   type: "OBJECT", properties: {
@@ -344,13 +342,13 @@ const ProjectWorkspace: React.FC = () => {
                   }
               }
           });
-          // Note: Mapping extracted 'original' (script text) to 'originalText' field
-          // and 'description' (visual desc) to 'description' field
+          // Note: Mapped reversed based on user feedback that extraction content was swapped.
+          // original -> description field, description -> originalText field
           const frames: StoryboardFrame[] = data.map((item, idx) => ({
               id: crypto.randomUUID(),
               sceneNumber: idx + 1,
-              originalText: item.original,
-              description: item.description
+              originalText: item.description,
+              description: item.original
           }));
           await saveProjectUpdate(p => ({ ...p, storyboard: frames }));
       }
