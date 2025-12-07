@@ -2,24 +2,42 @@
 import React, { useEffect, useState, useMemo } from 'react';
 import { ProjectData, ProjectStatus } from '../types';
 import * as storage from '../services/storageService';
-import { Calendar, Trash2, Loader2, Archive, ArchiveRestore, CheckCircle2, AlertCircle } from 'lucide-react';
+import { Calendar, Trash2, Loader2, Archive, ArchiveRestore, CheckCircle2, AlertCircle, Cloud, CloudCheck } from 'lucide-react';
 
 const ArchiveRepo: React.FC = () => {
   const [projects, setProjects] = useState<ProjectData[]>([]);
   const [loading, setLoading] = useState(true);
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
-  const [refreshTime, setRefreshTime] = useState('');
+  
+  // Sync Status State
+  const [syncStatus, setSyncStatus] = useState<'saved' | 'saving' | 'synced' | 'error' | null>(null);
+  const [lastSyncTime, setLastSyncTime] = useState('');
 
   useEffect(() => {
-    loadProjects();
+    initData();
   }, []);
 
-  const loadProjects = async () => {
+  const initData = async () => {
     setLoading(true);
-    const data = await storage.getProjects();
-    setProjects(data.sort((a, b) => b.updatedAt - a.updatedAt));
-    setRefreshTime(`刷新数据时间：${storage.getLastUploadTime()}`);
+    // 1. Load Local
+    const localData = await storage.getProjects();
+    setProjects(localData.sort((a, b) => b.updatedAt - a.updatedAt));
     setLoading(false);
+
+    // 2. Sync
+    setSyncStatus('saving');
+    try {
+        await storage.downloadAllData();
+        setSyncStatus('synced');
+        setLastSyncTime(new Date().toLocaleTimeString());
+        
+        // 3. Reload
+        const syncedData = await storage.getProjects();
+        setProjects(syncedData.sort((a, b) => b.updatedAt - a.updatedAt));
+    } catch (e) {
+        console.warn("Auto-sync failed", e);
+        setSyncStatus('error');
+    }
   };
 
   // Generate Serial Numbers based on ALL projects to maintain consistency
@@ -54,6 +72,16 @@ const ArchiveRepo: React.FC = () => {
     await storage.deleteProject(id);
     setProjects(prev => prev.filter(p => p.id !== id));
     setDeleteConfirmId(null);
+    
+    // Auto-upload
+    setSyncStatus('saving');
+    try {
+        await storage.uploadProjects();
+        setSyncStatus('synced');
+        setLastSyncTime(new Date().toLocaleTimeString());
+    } catch(e) {
+        setSyncStatus('error');
+    }
   };
 
   const handleUnarchive = async (id: string) => {
@@ -63,6 +91,16 @@ const ArchiveRepo: React.FC = () => {
           setProjects(prev => prev.map(p => 
               p.id === id ? { ...p, status: ProjectStatus.IN_PROGRESS } : p
           ));
+
+          // Auto-upload
+          setSyncStatus('saving');
+          try {
+              await storage.uploadProjects();
+              setSyncStatus('synced');
+              setLastSyncTime(new Date().toLocaleTimeString());
+          } catch(e) {
+              setSyncStatus('error');
+          }
       }
   };
 
@@ -76,11 +114,6 @@ const ArchiveRepo: React.FC = () => {
   };
 
   const getStatusText = (status: ProjectStatus) => {
-      // In archive, the effective status is ARCHIVED, but we might want to show what it was?
-      // For now, prompt asks for "Project Progress", let's use the standard completion logic
-      // to imply what stage it was at, OR just "Completed/In Progress" text even if archived.
-      // However, visually it is archived.
-      // Let's stick to simple text
       return '已归档';
   };
 
@@ -95,9 +128,23 @@ const ArchiveRepo: React.FC = () => {
           <p className="text-xs md:text-base text-slate-500 font-medium">查看已完成并归档的项目，归档项目仅供只读浏览。</p>
         </div>
         <div className="flex flex-col items-end justify-end pb-1">
-             <span className="hidden md:inline-block text-[10px] font-bold text-slate-400 tracking-wider bg-slate-50 px-2 py-1 rounded-md border border-slate-100">
-                {refreshTime}
-            </span>
+             {/* Sync Status Badge */}
+             <div className={`flex items-center gap-1.5 text-[10px] font-bold px-2 py-1 rounded-md border animate-in fade-in transition-colors ${
+                syncStatus === 'synced' ? 'bg-emerald-50 text-emerald-600 border-emerald-100' :
+                syncStatus === 'saving' ? 'bg-blue-50 text-blue-600 border-blue-100' :
+                syncStatus === 'error' ? 'bg-rose-50 text-rose-600 border-rose-100' :
+                'bg-slate-50 text-slate-400 border-slate-100'
+            }`}>
+                {syncStatus === 'synced' ? <CloudCheck className="w-3 h-3" /> : 
+                 syncStatus === 'saving' ? <Loader2 className="w-3 h-3 animate-spin" /> : 
+                 syncStatus === 'error' ? <AlertCircle className="w-3 h-3" /> :
+                 <Cloud className="w-3 h-3" />}
+                
+                {syncStatus === 'synced' ? `已同步云端: ${lastSyncTime}` :
+                 syncStatus === 'saving' ? '正在同步...' :
+                 syncStatus === 'error' ? '同步失败' :
+                 '准备就绪'}
+            </div>
         </div>
       </div>
 
