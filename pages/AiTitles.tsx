@@ -1,10 +1,10 @@
 
-
 import React, { useState, useEffect, useRef } from 'react';
+import { useNavigate } from 'react-router-dom';
 import * as storage from '../services/storageService';
 import * as gemini from '../services/geminiService';
-import { Sparkles, Loader2, Copy, Eraser, Type, Image as ImageIcon, ALargeSmall, Save, Clock, Cloud, CloudCheck, CheckCircle2, Circle, Wand2, Maximize2, X, Download } from 'lucide-react';
-import { PromptTemplate } from '../types';
+import { Sparkles, Loader2, Copy, Eraser, Type, Image as ImageIcon, ALargeSmall, Save, Clock, Cloud, CloudCheck, CheckCircle2, Circle, Wand2, Maximize2, X, Download, Rocket } from 'lucide-react';
+import { PromptTemplate, ProjectData, ProjectStatus } from '../types';
 
 interface AiTitleItem {
     title: string;
@@ -29,6 +29,7 @@ interface AiTitlesState {
 const TOOL_ID = 'ai_titles';
 
 const AiTitles: React.FC = () => {
+  const navigate = useNavigate();
   const [userInput, setUserInput] = useState('');
   const [result, setResult] = useState<AiTitlesResult | null>(null);
   
@@ -275,6 +276,24 @@ const AiTitles: React.FC = () => {
     setResult({ ...result, coverText: val });
   };
 
+  const handleApproveTitle = async (title: string) => {
+      const newId = crypto.randomUUID();
+      const newProject: ProjectData = {
+          id: newId,
+          title: title,
+          status: ProjectStatus.DRAFT,
+          createdAt: Date.now(),
+          updatedAt: Date.now(),
+          inputs: {
+              topic: title,
+              tone: '信息丰富且引人入胜',
+              language: '中文'
+          }
+      };
+      await storage.saveProject(newProject);
+      navigate(`/project/${newId}`);
+  };
+
   return (
     <div className="space-y-6 md:space-y-8 pb-24 md:pb-0 h-[calc(100vh-100px)] flex flex-col">
       <div className="flex flex-col gap-3 md:flex-row md:justify-between md:items-end flex-shrink-0">
@@ -403,13 +422,22 @@ const AiTitles: React.FC = () => {
                                             className="flex-1 text-slate-800 font-medium text-sm leading-snug bg-transparent border-none focus:ring-0 outline-none w-full"
                                         />
                                         
-                                        <button 
-                                            className="ml-auto opacity-0 group-hover:opacity-100 text-slate-300 hover:text-violet-600 transition-all p-1"
-                                            onClick={() => navigator.clipboard.writeText(item.title)}
-                                            title="复制此标题"
-                                        >
-                                            <Copy className="w-3.5 h-3.5" />
-                                        </button>
+                                        <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity ml-auto">
+                                            <button 
+                                                onClick={() => handleApproveTitle(item.title)}
+                                                className="px-2 py-1 bg-gradient-to-r from-violet-600 to-indigo-600 text-white text-[10px] font-bold rounded-md shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all flex items-center gap-1 whitespace-nowrap"
+                                                title="采纳此标题并创建新项目"
+                                            >
+                                                <Rocket className="w-3 h-3" /> 采纳
+                                            </button>
+                                            <button 
+                                                className="text-slate-300 hover:text-violet-600 transition-all p-1"
+                                                onClick={() => navigator.clipboard.writeText(item.title)}
+                                                title="复制此标题"
+                                            >
+                                                <Copy className="w-3.5 h-3.5" />
+                                            </button>
+                                        </div>
                                     </div>
                                 ))}
                             </div>
