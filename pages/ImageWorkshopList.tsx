@@ -3,25 +3,43 @@ import React, { useEffect, useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ProjectData, ProjectStatus } from '../types';
 import * as storage from '../services/storageService';
-import { Calendar, Loader2, Image as ImageIcon, AlertCircle, CheckCircle2, Trash2, Archive } from 'lucide-react';
+import { Calendar, Loader2, Image as ImageIcon, AlertCircle, CheckCircle2, Trash2, Archive, Cloud, CloudCheck } from 'lucide-react';
 
 const ImageWorkshopList: React.FC = () => {
   const navigate = useNavigate();
   const [projects, setProjects] = useState<ProjectData[]>([]);
   const [loading, setLoading] = useState(true);
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
-  const [refreshTime, setRefreshTime] = useState('');
+  
+  // Sync Status State
+  const [syncStatus, setSyncStatus] = useState<'saved' | 'saving' | 'synced' | 'error' | null>(null);
+  const [lastSyncTime, setLastSyncTime] = useState('');
 
   useEffect(() => {
-    loadProjects();
+    initData();
   }, []);
 
-  const loadProjects = async () => {
+  const initData = async () => {
     setLoading(true);
-    const data = await storage.getProjects();
-    setProjects(data.sort((a, b) => b.updatedAt - a.updatedAt));
-    setRefreshTime(`刷新数据时间：${storage.getLastUploadTime()}`);
+    // 1. Load Local
+    const localData = await storage.getProjects();
+    setProjects(localData.sort((a, b) => b.updatedAt - a.updatedAt));
     setLoading(false);
+
+    // 2. Sync
+    setSyncStatus('saving');
+    try {
+        await storage.downloadAllData();
+        setSyncStatus('synced');
+        setLastSyncTime(new Date().toLocaleTimeString());
+        
+        // 3. Reload
+        const syncedData = await storage.getProjects();
+        setProjects(syncedData.sort((a, b) => b.updatedAt - a.updatedAt));
+    } catch (e) {
+        console.warn("Auto-sync failed", e);
+        setSyncStatus('error');
+    }
   };
 
   // Generate Serial Numbers based on ALL projects
@@ -56,13 +74,34 @@ const ImageWorkshopList: React.FC = () => {
     await storage.deleteProject(id);
     setProjects(prev => prev.filter(p => p.id !== id));
     setDeleteConfirmId(null);
+
+    // Auto-upload
+    setSyncStatus('saving');
+    try {
+        await storage.uploadProjects();
+        setSyncStatus('synced');
+        setLastSyncTime(new Date().toLocaleTimeString());
+    } catch(e) {
+        setSyncStatus('error');
+    }
   };
 
   const handleArchive = async (e: React.MouseEvent, id: string) => {
       e.stopPropagation();
       if (window.confirm('确定要归档此项目吗？归档后项目将移入归档仓库，仅供只读浏览。')) {
           await storage.archiveProject(id);
-          navigate('/archive');
+          // Auto-upload
+          setSyncStatus('saving');
+          try {
+              await storage.uploadProjects();
+              setSyncStatus('synced');
+              setLastSyncTime(new Date().toLocaleTimeString());
+              navigate('/archive');
+          } catch(e) {
+              setSyncStatus('error');
+              // Still navigate as local op succeeded
+              navigate('/archive');
+          }
       }
   };
 
@@ -76,7 +115,6 @@ const ImageWorkshopList: React.FC = () => {
   };
 
   const handleRowClick = (project: ProjectData) => {
-    // If no storyboard data, do nothing (no alert, no feedback)
     if (!project.storyboard || project.storyboard.length === 0) {
         return;
     }
@@ -94,9 +132,23 @@ const ImageWorkshopList: React.FC = () => {
           <p className="text-xs md:text-base text-slate-500 font-medium">查看各项目的生图进度，进入工坊批量生产画面。</p>
         </div>
         <div className="flex flex-col items-end justify-end pb-1">
-             <span className="hidden md:inline-block text-[10px] font-bold text-slate-400 tracking-wider bg-slate-50 px-2 py-1 rounded-md border border-slate-100">
-                {refreshTime}
-            </span>
+             {/* Sync Status Badge */}
+             <div className={`flex items-center gap-1.5 text-[10px] font-bold px-2 py-1 rounded-md border animate-in fade-in transition-colors ${
+                syncStatus === 'synced' ? 'bg-emerald-50 text-emerald-600 border-emerald-100' :
+                syncStatus === 'saving' ? 'bg-blue-50 text-blue-600 border-blue-100' :
+                syncStatus === 'error' ? 'bg-rose-50 text-rose-600 border-rose-100' :
+                'bg-slate-50 text-slate-400 border-slate-100'
+            }`}>
+                {syncStatus === 'synced' ? <CloudCheck className="w-3 h-3" /> : 
+                 syncStatus === 'saving' ? <Loader2 className="w-3 h-3 animate-spin" /> : 
+                 syncStatus === 'error' ? <AlertCircle className="w-3 h-3" /> :
+                 <Cloud className="w-3 h-3" />}
+                
+                {syncStatus === 'synced' ? `已同步云端: ${lastSyncTime}` :
+                 syncStatus === 'saving' ? '正在同步...' :
+                 syncStatus === 'error' ? '同步失败' :
+                 '准备就绪'}
+            </div>
         </div>
       </div>
 
