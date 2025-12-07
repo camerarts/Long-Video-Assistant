@@ -422,10 +422,10 @@ const StoryboardImages: React.FC = () => {
       </div>
 
       {/* 2. Main Content Container */}
-      <div className="flex-1 overflow-hidden flex flex-col p-3">
+      <div className="flex-1 overflow-hidden flex flex-col p-0 md:p-3">
         
         {/* Header Toolbar */}
-        <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between mb-4 px-2">
+        <div className="flex flex-col gap-2 md:gap-4 md:flex-row md:items-center md:justify-between mb-2 md:mb-4 px-2 pt-2 md:pt-0">
             <div className="flex items-center gap-4">
                 <button onClick={() => navigate(`/project/${project.id}`)} className="p-2 hover:bg-slate-200 rounded-full transition-colors text-slate-500">
                     <ArrowLeft className="w-5 h-5" />
@@ -538,10 +538,10 @@ const StoryboardImages: React.FC = () => {
         )}
 
         {/* Table Area */}
-        <div className="flex-1 bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden flex flex-col">
+        <div className="flex-1 bg-white md:rounded-2xl border-t md:border border-slate-200 shadow-sm overflow-hidden flex flex-col">
             {/* Project Title Header */}
-            <div className="px-6 py-4 border-b border-slate-100 bg-slate-50/50">
-                 <h2 className="text-xl font-black text-transparent bg-clip-text bg-gradient-to-r from-slate-800 to-slate-600">
+            <div className="px-3 py-2 md:px-6 md:py-4 border-b border-slate-100 bg-slate-50/50">
+                 <h2 className="text-lg md:text-xl font-black text-transparent bg-clip-text bg-gradient-to-r from-slate-800 to-slate-600">
                     {project.title || '未命名项目'}
                  </h2>
             </div>
@@ -550,10 +550,10 @@ const StoryboardImages: React.FC = () => {
                 <table className="w-full text-left border-collapse table-fixed">
                     <thead className="bg-slate-50 text-slate-500 sticky top-0 z-10 shadow-sm">
                         <tr>
-                            <th className="py-3 px-2 text-xs font-extrabold uppercase tracking-wider w-8 md:w-12 text-center border-b border-slate-200">序号</th>
-                            <th className="py-3 px-2 text-xs font-extrabold uppercase tracking-wider w-[15%] md:w-[25%] text-center border-b border-slate-200">原文</th>
-                            <th className="py-3 px-2 text-xs font-extrabold uppercase tracking-wider w-[20%] md:w-[30%] text-center border-b border-slate-200">AI 绘图提示词</th>
-                            <th className="py-3 px-2 text-xs font-extrabold uppercase tracking-wider text-center border-b border-slate-200">画面预览</th>
+                            <th className="py-2 px-0.5 md:py-3 md:px-2 text-xs font-extrabold uppercase tracking-wider w-8 md:w-12 text-center border-b border-slate-200">序号</th>
+                            <th className="py-2 px-0.5 md:py-3 md:px-2 text-xs font-extrabold uppercase tracking-wider w-[15%] md:w-[25%] text-center border-b border-slate-200">原文</th>
+                            <th className="py-2 px-0.5 md:py-3 md:px-2 text-xs font-extrabold uppercase tracking-wider w-[20%] md:w-[30%] text-center border-b border-slate-200">AI 绘图提示词</th>
+                            <th className="py-2 px-0.5 md:py-3 md:px-2 text-xs font-extrabold uppercase tracking-wider text-center border-b border-slate-200">画面预览</th>
                         </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-100">
@@ -561,21 +561,21 @@ const StoryboardImages: React.FC = () => {
                             const isGeneratingThis = currentGenIds.has(frame.id);
                             return (
                                 <tr key={frame.id} className="group hover:bg-slate-50/50 transition-colors">
-                                    <td className="py-4 px-2 text-center text-slate-400 font-bold text-sm align-middle h-px">
+                                    <td className="py-2 px-0.5 md:py-4 md:px-2 text-center text-slate-400 font-bold text-sm align-middle h-px">
                                         {frame.sceneNumber}
                                     </td>
-                                    <td className="py-4 px-2 align-middle h-px">
+                                    <td className="py-2 px-0.5 md:py-4 md:px-2 align-middle h-px">
                                         <textarea
                                             readOnly
-                                            className="w-full bg-slate-50 rounded-lg p-3 border border-slate-100 text-xs text-slate-700 leading-relaxed font-medium resize-none outline-none focus:ring-0 h-full min-h-[100px] md:h-[270px]"
+                                            className="w-full bg-slate-50 rounded-lg p-1 md:p-3 border border-slate-100 text-xs text-slate-700 leading-relaxed font-medium resize-none outline-none focus:ring-0 h-full min-h-[100px] md:h-[270px]"
                                             value={frame.originalText || ''}
                                             placeholder="无原文内容"
                                         />
                                     </td>
-                                    <td className="py-4 px-2 align-middle h-px">
+                                    <td className="py-2 px-0.5 md:py-4 md:px-2 align-middle h-px">
                                         <div className="relative h-full min-h-[100px] md:h-[270px]">
                                             <textarea
-                                                className="w-full bg-white border border-slate-200 rounded-xl p-3 pr-10 text-xs text-slate-600 leading-relaxed focus:ring-2 focus:ring-fuchsia-500/20 focus:border-fuchsia-500 outline-none resize-none transition-all shadow-sm h-full"
+                                                className="w-full bg-white border border-slate-200 rounded-xl p-1 md:p-3 pr-6 md:pr-10 text-xs text-slate-600 leading-relaxed focus:ring-2 focus:ring-fuchsia-500/20 focus:border-fuchsia-500 outline-none resize-none transition-all shadow-sm h-full"
                                                 value={frame.imagePrompt || ''}
                                                 onChange={(e) => handleSavePrompt(frame.id, e.target.value)}
                                                 placeholder="输入提示词..."
@@ -583,7 +583,7 @@ const StoryboardImages: React.FC = () => {
                                             <CopyButton text={frame.imagePrompt || ''} />
                                         </div>
                                     </td>
-                                    <td className="py-4 px-2 align-middle text-center w-[60%] md:w-[40%]">
+                                    <td className="py-2 px-0.5 md:py-4 md:px-2 align-middle text-center w-[60%] md:w-[40%]">
                                         {/* Dynamic Border Container */}
                                         <div className={`relative w-full aspect-video rounded-xl shadow-sm overflow-hidden transition-all duration-300 group/preview mx-auto isolate ${
                                             isGeneratingThis 
@@ -600,12 +600,14 @@ const StoryboardImages: React.FC = () => {
                                             <div className="relative w-full h-full bg-slate-900 rounded-[9px] overflow-hidden z-10">
                                                 {frame.imageUrl ? (
                                                     <>
-                                                        <img 
-                                                            src={frame.imageUrl} 
-                                                            alt={`Scene ${frame.sceneNumber}`} 
-                                                            className="absolute inset-0 w-full h-full object-contain md:hover:scale-105 transition-transform duration-500"
-                                                            onClick={() => setSelectedImage(frame.imageUrl || null)}
-                                                        />
+                                                        <div className="absolute inset-0 w-full h-full">
+                                                          <img 
+                                                              src={frame.imageUrl} 
+                                                              alt={`Scene ${frame.sceneNumber}`} 
+                                                              className="absolute inset-0 w-full h-full object-contain md:hover:scale-105 transition-transform duration-500"
+                                                              onClick={() => setSelectedImage(frame.imageUrl || null)}
+                                                          />
+                                                        </div>
                                                         {/* Reload Button (Top-Left) - Only for remote images */}
                                                         {!frame.imageUrl.startsWith('data:') && (
                                                             <button 
