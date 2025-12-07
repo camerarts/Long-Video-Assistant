@@ -3,24 +3,42 @@ import React, { useEffect, useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ProjectData, ProjectStatus } from '../types';
 import * as storage from '../services/storageService';
-import { Calendar, Trash2, Plus, Sparkles, Loader2 } from 'lucide-react';
+import { Calendar, Trash2, Plus, Sparkles, Loader2, Cloud, CloudCheck, AlertCircle } from 'lucide-react';
 
 const Dashboard: React.FC = () => {
   const navigate = useNavigate();
   const [projects, setProjects] = useState<ProjectData[]>([]);
   const [loading, setLoading] = useState(true);
-  const [refreshTime, setRefreshTime] = useState('');
+  
+  // Sync Status State
+  const [syncStatus, setSyncStatus] = useState<'saved' | 'saving' | 'synced' | 'error' | null>(null);
+  const [lastSyncTime, setLastSyncTime] = useState('');
 
   useEffect(() => {
-    loadProjects();
+    initData();
   }, []);
 
-  const loadProjects = async () => {
+  const initData = async () => {
     setLoading(true);
-    const data = await storage.getProjects();
-    setProjects(data.sort((a, b) => b.updatedAt - a.updatedAt));
-    setRefreshTime(`刷新数据时间：${storage.getLastUploadTime()}`);
+    // 1. Load Local Data Immediately
+    const localData = await storage.getProjects();
+    setProjects(localData.sort((a, b) => b.updatedAt - a.updatedAt));
     setLoading(false);
+
+    // 2. Background Sync
+    setSyncStatus('saving'); // Display "Syncing..."
+    try {
+        await storage.downloadAllData();
+        setSyncStatus('synced');
+        setLastSyncTime(new Date().toLocaleTimeString());
+
+        // 3. Refresh View with Synced Data
+        const syncedData = await storage.getProjects();
+        setProjects(syncedData.sort((a, b) => b.updatedAt - a.updatedAt));
+    } catch (e) {
+        console.warn("Auto-sync failed", e);
+        setSyncStatus('error');
+    }
   };
 
   // Generate Serial Numbers based on ALL projects to maintain consistency
@@ -52,7 +70,11 @@ const Dashboard: React.FC = () => {
   [projects]);
 
   const handleCreate = async () => {
+    // Creating handled via /create route usually, but if using storage.createProject directly:
     const newId = await storage.createProject();
+    // Auto-push handled inside storageService? No, usually distinct. 
+    // createProject saves to local DB. We should ideally sync, but navigation happens immediately.
+    // The workspace will handle saving.
     navigate(`/project/${newId}`);
   };
 
@@ -62,6 +84,17 @@ const Dashboard: React.FC = () => {
     if (window.confirm('确定要删除这个项目吗？')) {
       await storage.deleteProject(id);
       setProjects(prev => prev.filter(p => p.id !== id));
+
+      // Auto-upload changes
+      setSyncStatus('saving');
+      try {
+          await storage.uploadProjects();
+          setSyncStatus('synced');
+          setLastSyncTime(new Date().toLocaleTimeString());
+      } catch(e) {
+          console.error(e);
+          setSyncStatus('error');
+      }
     }
   };
 
@@ -108,9 +141,24 @@ const Dashboard: React.FC = () => {
           <p className="text-xs md:text-base text-slate-500 font-medium">管理您的长视频创作流水线。</p>
         </div>
         <div className="flex flex-col items-stretch md:items-end gap-2 w-full md:w-auto">
-            <span className="hidden md:inline-block text-[10px] font-bold text-slate-400 tracking-wider bg-slate-50 px-2 py-1 rounded-md border border-slate-100">
-                {refreshTime}
-            </span>
+            {/* Sync Status Badge */}
+            <div className={`flex items-center gap-1.5 text-[10px] font-bold px-2 py-1 rounded-md border animate-in fade-in transition-colors ${
+                syncStatus === 'synced' ? 'bg-emerald-50 text-emerald-600 border-emerald-100' :
+                syncStatus === 'saving' ? 'bg-blue-50 text-blue-600 border-blue-100' :
+                syncStatus === 'error' ? 'bg-rose-50 text-rose-600 border-rose-100' :
+                'bg-slate-50 text-slate-400 border-slate-100'
+            }`}>
+                {syncStatus === 'synced' ? <CloudCheck className="w-3 h-3" /> : 
+                 syncStatus === 'saving' ? <Loader2 className="w-3 h-3 animate-spin" /> : 
+                 syncStatus === 'error' ? <AlertCircle className="w-3 h-3" /> :
+                 <Cloud className="w-3 h-3" />}
+                
+                {syncStatus === 'synced' ? `已同步云端: ${lastSyncTime}` :
+                 syncStatus === 'saving' ? '正在同步...' :
+                 syncStatus === 'error' ? '同步失败' :
+                 '准备就绪'}
+            </div>
+
             <button 
               onClick={handleCreate}
               className="bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-500 hover:to-indigo-500 text-white px-6 py-2.5 md:py-3 rounded-xl font-semibold transition-all shadow-lg shadow-indigo-500/30 hover:shadow-indigo-500/40 hover:-translate-y-0.5 flex items-center justify-center gap-2 w-full md:w-auto text-sm md:text-base"
