@@ -3,7 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { ProjectData, StoryboardFrame, PromptTemplate } from '../types';
 import * as storage from '../services/storageService';
 import * as gemini from '../services/geminiService';
-import { ArrowLeft, Download, Loader2, Sparkles, Image as ImageIcon, RefreshCw, X, Maximize2, CloudUpload, FileSpreadsheet, Palette, RotateCcw, CheckCircle2, AlertCircle, Settings2, Key, Zap, Clock, Copy, Check, Cloud, CloudCheck, Video } from 'lucide-react';
+import { ArrowLeft, Download, Loader2, Sparkles, Image as ImageIcon, RefreshCw, X, Maximize2, CloudUpload, FileSpreadsheet, Palette, RotateCcw, CheckCircle2, AlertCircle, Settings2, Key, Zap, Clock, Copy, Check, Cloud, CloudCheck, Video, FileText } from 'lucide-react';
 import JSZip from 'jszip';
 
 const CopyButton = ({ text }: { text: string }) => {
@@ -83,6 +83,7 @@ const StoryboardImages: React.FC = () => {
   const [lastSyncTime, setLastSyncTime] = useState('');
 
   const mountedRef = useRef(true);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Activity Tracking Refs
   const lastActivityRef = useRef(Date.now());
@@ -251,6 +252,125 @@ const StoryboardImages: React.FC = () => {
     setMessage("提示词已重新导入成功！");
     setMessageType('success');
     setTimeout(() => setMessage(null), 3000);
+  };
+
+  const handleSubtitleUploadClick = () => {
+    fileInputRef.current?.click();
+  };
+
+  const parseSubtitleFile = (content: string) => {
+      // Normalize line endings
+      const lines = content.replace(/\r\n/g, '\n').split('\n');
+      const entries: { start: string, end: string, text: string }[] = [];
+      let currentStart = '';
+      let currentEnd = '';
+      let currentText = '';
+      
+      // Regex for SRT timestamp: 00:00:00,000 --> 00:00:00,000
+      const timeRegex = /(\d{2}:\d{2}:\d{2}[,.]\d{3}) --> (\d{2}:\d{2}:\d{2}[,.]\d{3})/;
+
+      for (let line of lines) {
+        line = line.trim();
+        if (!line) continue;
+        if (/^\d+$/.test(line)) continue; // Sequence number
+
+        const timeMatch = line.match(timeRegex);
+        if (timeMatch) {
+          if (currentStart && currentText) {
+              entries.push({ start: currentStart, end: currentEnd, text: currentText.trim() });
+              currentText = '';
+          }
+          currentStart = timeMatch[1];
+          currentEnd = timeMatch[2];
+        } else {
+          if (currentStart) {
+            currentText += line + ' ';
+          }
+        }
+      }
+      // push last
+      if (currentStart && currentText) {
+          entries.push({ start: currentStart, end: currentEnd, text: currentText.trim() });
+      }
+      return entries;
+  };
+
+  const handleSubtitleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+      const file = e.target.files?.[0];
+      if (!file || !project?.storyboard) return;
+
+      try {
+          const text = await file.text();
+          const subtitles = parseSubtitleFile(text);
+          
+          if (subtitles.length === 0) {
+              setMessage("未能识别字幕内容，请检查文件格式。");
+              setMessageType('error');
+              setTimeout(() => setMessage(null), 3000);
+              return;
+          }
+
+          // Create a character mapping for the entire subtitle track
+          // Map each character in the normalized full text to its source cue
+          let fullSubText = "";
+          const charToCueMap: { cue: typeof subtitles[0] }[] = [];
+          
+          subtitles.forEach(cue => {
+              // Strictly normalize: remove all whitespace and lowercase
+              const normText = cue.text.replace(/\s+/g, '').toLowerCase(); 
+              fullSubText += normText;
+              for(let i=0; i<normText.length; i++) {
+                  charToCueMap.push({ cue });
+              }
+          });
+
+          let searchCursor = 0;
+          let matchedCount = 0;
+
+          const updatedStoryboard = project.storyboard.map(frame => {
+              if (!frame.originalText) return frame;
+              
+              const normFrameText = frame.originalText.replace(/\s+/g, '').toLowerCase();
+              if (!normFrameText) return frame;
+              
+              const foundIndex = fullSubText.indexOf(normFrameText, searchCursor);
+              
+              if (foundIndex !== -1) {
+                  const startCue = charToCueMap[foundIndex].cue;
+                  // Look up the cue for the last character of the matched text
+                  const endCueIndex = foundIndex + normFrameText.length - 1;
+                  const endCue = charToCueMap[Math.min(endCueIndex, charToCueMap.length - 1)].cue;
+                  
+                  // Update cursor to proceed sequentially
+                  searchCursor = foundIndex + normFrameText.length;
+                  matchedCount++;
+
+                  return {
+                      ...frame,
+                      timeRange: `${startCue.start} --> ${endCue.end}`
+                  };
+              }
+              return frame;
+          });
+
+          if (matchedCount === 0) {
+               setMessage("未能匹配到任何字幕内容，请确认字幕文本与分镜原文是否一致。");
+               setMessageType('warning');
+          } else {
+               await saveProjectAndSync({ ...project, storyboard: updatedStoryboard });
+               setMessage(`成功匹配 ${matchedCount} 条分镜的时间轴！`);
+               setMessageType('success');
+          }
+
+      } catch (err: any) {
+          console.error(err);
+          setMessage("字幕解析失败: " + err.message);
+          setMessageType('error');
+      } finally {
+          // Reset input
+          if (fileInputRef.current) fileInputRef.current.value = '';
+          setTimeout(() => setMessage(null), 3000);
+      }
   };
 
   const generateSingleImage = async (frame: StoryboardFrame, showToast = true) => {
@@ -543,9 +663,9 @@ const StoryboardImages: React.FC = () => {
 
   return (
     <div className="flex flex-col h-full bg-[#F8F9FC]">
+      <input type="file" ref={fileInputRef} hidden accept=".srt,.vtt,.txt" onChange={handleSubtitleFileChange} />
       
       {/* 1. Statistics Bar - Top Level */}
-      {/* Mobile: Single line with horizontal scroll. Desktop: Centered with dividers. */}
       <div className="bg-slate-900 text-white px-4 py-5 flex items-center gap-6 overflow-x-auto no-scrollbar md:justify-center md:gap-24 shadow-md z-20 flex-nowrap shrink-0">
           <div className="flex flex-col items-center flex-shrink-0">
               <span className="text-xl md:text-3xl font-black text-white">{stats.total}</span>
@@ -635,8 +755,25 @@ const StoryboardImages: React.FC = () => {
                     <span className="hidden sm:inline">上传云端</span>
                 </button>
 
+                {/* Upload Subtitles Button */}
+                <button 
+                    onClick={handleSubtitleUploadClick}
+                    className="flex items-center gap-1.5 text-slate-500 hover:text-indigo-600 hover:bg-white bg-slate-100/50 border border-slate-200/50 hover:border-indigo-200 px-3 py-1.5 rounded-lg text-xs font-bold transition-all shadow-sm h-10"
+                    title="上传字幕文件 (.srt, .txt) 自动匹配起止时间"
+                >
+                    <FileText className="w-3.5 h-3.5" /> 上传字幕
+                </button>
+
                 {/* Download Button */}
                 <button
+                    onClick={handleDownloadPromptsCsv}
+                    className="flex items-center gap-1.5 text-slate-500 hover:text-indigo-600 hover:bg-white bg-slate-100/50 border border-slate-200/50 hover:border-indigo-200 px-3 py-1.5 rounded-lg text-xs font-bold transition-all shadow-sm h-10"
+                    title="下载为CSV表格"
+                >
+                   <FileSpreadsheet className="w-3.5 h-3.5" /> 下载提示词
+                </button>
+
+                 <button
                     onClick={handleDownloadAll}
                     disabled={downloading || stats.generated === 0}
                     className="h-10 px-4 bg-slate-900 text-white rounded-xl font-bold text-xs flex items-center gap-2 hover:bg-slate-800 transition-all shadow-lg shadow-slate-900/20 disabled:opacity-50 disabled:shadow-none"
@@ -710,12 +847,6 @@ const StoryboardImages: React.FC = () => {
                     {project.title || '未命名项目'}
                  </h2>
                  <div className="flex items-center gap-2">
-                     <button 
-                        onClick={handleDownloadPromptsCsv}
-                        className="flex items-center gap-1.5 text-slate-500 hover:text-indigo-600 hover:bg-white bg-slate-100/50 border border-slate-200/50 hover:border-indigo-200 px-3 py-1.5 rounded-lg text-xs font-bold transition-all shadow-sm"
-                     >
-                        <FileSpreadsheet className="w-3.5 h-3.5" /> 下载提示词
-                     </button>
                      <a 
                         href="https://app.heygen.com/projects"
                         target="_blank"
@@ -754,14 +885,30 @@ const StoryboardImages: React.FC = () => {
                                         />
                                     </td>
                                     <td className="py-2 px-0.5 md:py-4 md:px-2 align-middle h-px">
-                                        <div className="relative h-full min-h-[100px] md:h-[270px]">
-                                            <textarea
-                                                className="w-full bg-white border border-slate-200 rounded-xl p-1 md:p-3 pr-6 md:pr-10 text-xs text-slate-600 leading-relaxed focus:ring-2 focus:ring-fuchsia-500/20 focus:border-fuchsia-500 outline-none resize-none transition-all shadow-sm h-full"
-                                                value={frame.imagePrompt || ''}
-                                                onChange={(e) => handleSavePrompt(frame.id, e.target.value)}
-                                                placeholder="输入提示词..."
-                                            />
-                                            <CopyButton text={frame.imagePrompt || ''} />
+                                        <div className="relative h-full min-h-[100px] md:h-[270px] flex flex-col bg-white border border-slate-200 rounded-xl overflow-hidden shadow-sm">
+                                            {/* Top: Image Prompt (75%) */}
+                                            <div className="h-[75%] relative border-b border-slate-100">
+                                                <textarea
+                                                    className="w-full h-full bg-white p-1 md:p-3 pr-6 md:pr-10 text-xs text-slate-600 leading-relaxed focus:bg-slate-50 outline-none resize-none transition-all"
+                                                    value={frame.imagePrompt || ''}
+                                                    onChange={(e) => handleSavePrompt(frame.id, e.target.value)}
+                                                    placeholder="输入提示词..."
+                                                />
+                                                <CopyButton text={frame.imagePrompt || ''} />
+                                            </div>
+                                            {/* Bottom: Start/End Time (25%) */}
+                                            <div className="h-[25%] bg-slate-50 flex items-center justify-center px-2">
+                                                 <div className="w-full text-center flex flex-col items-center justify-center">
+                                                    <span className="text-[9px] font-bold text-slate-300 uppercase tracking-wider mb-0.5">起止时间</span>
+                                                    <input 
+                                                        readOnly
+                                                        className="w-full text-center bg-transparent text-[10px] font-mono text-slate-600 font-bold outline-none"
+                                                        placeholder="--:--:-- --> --:--:--"
+                                                        value={frame.timeRange || ''}
+                                                        title="通过上传字幕自动匹配时间"
+                                                    />
+                                                 </div>
+                                            </div>
                                         </div>
                                     </td>
                                     <td className="py-2 px-0.5 md:py-4 md:px-2 align-middle text-center w-[60%] md:w-[40%]">
