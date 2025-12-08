@@ -931,9 +931,9 @@ const StoryboardImages: React.FC = () => {
                                                             <>
                                                                 <div className="mb-2 leading-snug">
                                                                     <span className="text-lg md:text-xl font-black text-slate-900">{head}</span>
-                                                                    <span className="text-sm md:text-base font-bold text-slate-700">{tail}</span>
+                                                                    <span className="text-xs font-normal text-slate-500">{tail}</span>
                                                                 </div>
-                                                                <div className="text-xs text-slate-600 font-medium leading-relaxed whitespace-pre-wrap">
+                                                                <div className="text-[10px] text-slate-400 font-normal leading-relaxed whitespace-pre-wrap">
                                                                     {remaining}
                                                                 </div>
                                                             </>
