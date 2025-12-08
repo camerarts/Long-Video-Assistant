@@ -493,12 +493,13 @@ const StoryboardImages: React.FC = () => {
 
       // Add BOM for Excel UTF-8 compatibility
       let csvContent = "\uFEFF"; 
-      csvContent += "序号,AI 绘图提示词\n";
+      csvContent += "序号,原文,AI 绘图提示词\n";
 
       project.storyboard.forEach(frame => {
           // Escape quotes by doubling them, wrap content in quotes
+          const safeOriginal = (frame.originalText || "").replace(/"/g, '""');
           const safePrompt = (frame.imagePrompt || "").replace(/"/g, '""');
-          csvContent += `${frame.sceneNumber},"${safePrompt}"\n`;
+          csvContent += `${frame.sceneNumber},"${safeOriginal}","${safePrompt}"\n`;
       });
 
       const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
