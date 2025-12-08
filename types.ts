@@ -16,6 +16,7 @@ export interface StoryboardFrame {
   imagePrompt?: string;
   imageModel?: string; // Model used for generation
   timeRange?: string; // New field for subtitle timestamps
+  skipGeneration?: boolean; // New field to skip image generation
 }
 
 export interface TitleItem {
