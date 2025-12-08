@@ -684,27 +684,6 @@ const StoryboardImages: React.FC = () => {
                         分镜图片工坊
                     </h1>
                 </div>
-                
-                {/* Subtitle Tools Group - Placed next to title as requested */}
-                <div className="flex items-center bg-slate-100/50 border border-slate-200 rounded-xl p-0.5 h-10 shadow-sm ml-2 md:ml-4">
-                     <button 
-                        onClick={handleSubtitleUploadClick}
-                        className={`px-3 h-full flex items-center gap-1.5 transition-colors text-xs font-bold rounded-l-lg border-r border-slate-200/50 ${subtitleContent ? 'bg-emerald-50 text-emerald-600 hover:bg-emerald-100' : 'text-slate-500 hover:text-indigo-600 hover:bg-white'}`}
-                        title={subtitleContent ? "字幕已加载，点击可重新上传" : "上传字幕文件 (.srt, .txt)"}
-                    >
-                        {subtitleContent ? <CheckCircle2 className="w-3.5 h-3.5" /> : <FileText className="w-3.5 h-3.5" />}
-                        {subtitleContent ? "已上传" : "上传字幕"}
-                    </button>
-                    <button
-                        onClick={handleSmartIdentify}
-                        disabled={isIdentifying || !subtitleContent}
-                        className="px-3 h-full flex items-center gap-1.5 text-indigo-600 hover:bg-white transition-colors text-xs font-bold rounded-r-lg disabled:opacity-50 disabled:grayscale"
-                        title="使用 Gemini AI 自动分析匹配时间轴"
-                    >
-                        {isIdentifying ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <BrainCircuit className="w-3.5 h-3.5" />}
-                        智能识别
-                    </button>
-                </div>
             </div>
 
             <div className="flex flex-wrap items-center gap-3">
@@ -840,6 +819,26 @@ const StoryboardImages: React.FC = () => {
                     {project.title || '未命名项目'}
                  </h2>
                  <div className="flex items-center gap-2">
+                     <div className="flex items-center bg-slate-100/50 border border-slate-200 rounded-xl p-0.5 h-9 shadow-sm">
+                         <button 
+                            onClick={handleSubtitleUploadClick}
+                            className={`px-3 h-full flex items-center gap-1.5 transition-colors text-xs font-bold rounded-l-lg border-r border-slate-200/50 ${subtitleContent ? 'bg-emerald-50 text-emerald-600 hover:bg-emerald-100' : 'text-slate-500 hover:text-indigo-600 hover:bg-white'}`}
+                            title={subtitleContent ? "字幕已加载，点击可重新上传" : "上传字幕文件 (.srt, .txt)"}
+                        >
+                            {subtitleContent ? <CheckCircle2 className="w-3.5 h-3.5" /> : <FileText className="w-3.5 h-3.5" />}
+                            {subtitleContent ? "已上传" : "上传字幕"}
+                        </button>
+                        <button
+                            onClick={handleSmartIdentify}
+                            disabled={isIdentifying || !subtitleContent}
+                            className="px-3 h-full flex items-center gap-1.5 text-indigo-600 hover:bg-white transition-colors text-xs font-bold rounded-r-lg disabled:opacity-50 disabled:grayscale"
+                            title="使用 Gemini AI 自动分析匹配时间轴"
+                        >
+                            {isIdentifying ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <BrainCircuit className="w-3.5 h-3.5" />}
+                            智能识别
+                        </button>
+                    </div>
+
                      <a 
                         href="https://app.heygen.com/projects"
                         target="_blank"
