@@ -3,7 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { ProjectData, StoryboardFrame, PromptTemplate } from '../types';
 import * as storage from '../services/storageService';
 import * as gemini from '../services/geminiService';
-import { ArrowLeft, Download, Loader2, Sparkles, Image as ImageIcon, RefreshCw, X, Maximize2, CloudUpload, FileSpreadsheet, Palette, RotateCcw, CheckCircle2, AlertCircle, Settings2, Key, Zap, Clock, Copy, Check, Cloud, CloudCheck, Video, FileText, BrainCircuit, Square } from 'lucide-react';
+import { ArrowLeft, Download, Loader2, Image as ImageIcon, RefreshCw, X, CloudUpload, FileSpreadsheet, RotateCcw, CheckCircle2, AlertCircle, Settings2, Key, Zap, Clock, Copy, Check, Cloud, CloudCheck, Video, FileText, BrainCircuit, Square } from 'lucide-react';
 import JSZip from 'jszip';
 
 const CopyButton = ({ text }: { text: string }) => {
@@ -917,12 +917,20 @@ const StoryboardImages: React.FC = () => {
                                         </div>
                                     </td>
                                     <td className="py-2 px-0.5 md:py-4 md:px-2 align-middle h-px">
-                                        <textarea
-                                            readOnly
-                                            className="w-full bg-slate-50 rounded-lg p-1 md:p-3 border border-slate-100 text-xs text-slate-700 leading-relaxed font-medium resize-none outline-none focus:ring-0 h-full min-h-[100px] md:h-[270px]"
-                                            value={frame.originalText || ''}
-                                            placeholder="无原文内容"
-                                        />
+                                        <div className="w-full bg-slate-50 rounded-lg p-2 md:p-3 border border-slate-100 h-full min-h-[100px] md:h-[270px] overflow-y-auto">
+                                            {frame.originalText ? (
+                                                <div>
+                                                    <div className="text-sm md:text-base font-extrabold text-slate-800 mb-1 leading-snug">
+                                                        {frame.originalText.split('\n')[0]}
+                                                    </div>
+                                                    <div className="text-xs text-slate-600 font-medium leading-relaxed whitespace-pre-wrap">
+                                                        {frame.originalText.split('\n').slice(1).join('\n')}
+                                                    </div>
+                                                </div>
+                                            ) : (
+                                                <span className="text-xs text-slate-400 font-medium">无原文内容</span>
+                                            )}
+                                        </div>
                                     </td>
                                     <td className="py-2 px-0.5 md:py-4 md:px-2 align-middle h-px">
                                         <div className="relative h-full min-h-[100px] md:h-[270px] flex flex-col bg-white border border-slate-200 rounded-xl overflow-hidden shadow-sm">
