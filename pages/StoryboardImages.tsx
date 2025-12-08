@@ -759,15 +759,6 @@ const StoryboardImages: React.FC = () => {
                     <span className="hidden sm:inline">上传云端</span>
                 </button>
 
-                {/* Download Button */}
-                <button
-                    onClick={handleDownloadPromptsCsv}
-                    className="flex items-center gap-1.5 text-slate-500 hover:text-indigo-600 hover:bg-white bg-slate-100/50 border border-slate-200/50 hover:border-indigo-200 px-3 py-1.5 rounded-lg text-xs font-bold transition-all shadow-sm h-10"
-                    title="下载为CSV表格"
-                >
-                   <FileSpreadsheet className="w-3.5 h-3.5" /> 下载提示词
-                </button>
-
                  <button
                     onClick={handleDownloadAll}
                     disabled={downloading || stats.generated === 0}
@@ -862,11 +853,19 @@ const StoryboardImages: React.FC = () => {
                         </button>
                     </div>
 
+                    <button
+                        onClick={handleDownloadPromptsCsv}
+                        className="flex items-center gap-1.5 text-slate-500 hover:text-indigo-600 hover:bg-white bg-slate-100/50 border border-slate-200/50 hover:border-indigo-200 px-3 py-1.5 rounded-lg text-xs font-bold transition-all shadow-sm h-9"
+                        title="下载为CSV表格"
+                    >
+                       <FileSpreadsheet className="w-3.5 h-3.5" /> <span className="hidden lg:inline">下载提示词</span>
+                    </button>
+
                      <a 
                         href="https://app.heygen.com/projects"
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="flex items-center gap-1.5 text-slate-500 hover:text-violet-600 hover:bg-white bg-slate-100/50 border border-slate-200/50 hover:border-violet-200 px-3 py-1.5 rounded-lg text-xs font-bold transition-all shadow-sm"
+                        className="flex items-center gap-1.5 text-slate-500 hover:text-violet-600 hover:bg-white bg-slate-100/50 border border-slate-200/50 hover:border-violet-200 px-3 py-1.5 rounded-lg text-xs font-bold transition-all shadow-sm h-9"
                      >
                         <Video className="w-3.5 h-3.5" /> 打开heygen
                      </a>
@@ -912,17 +911,30 @@ const StoryboardImages: React.FC = () => {
                                                 <CopyButton text={frame.imagePrompt || ''} />
                                             </div>
                                             {/* Bottom: Start/End Time (25%) */}
-                                            <div className="h-[25%] bg-slate-50 flex items-center justify-center px-2">
-                                                 <div className="w-full text-center flex flex-col items-center justify-center">
-                                                    <span className="text-[9px] font-bold text-slate-300 uppercase tracking-wider mb-0.5">起止时间</span>
-                                                    <input 
-                                                        readOnly
-                                                        className="w-full text-center bg-transparent text-[10px] font-mono text-slate-600 font-bold outline-none"
-                                                        placeholder="--分--秒 --> --分--秒"
-                                                        value={frame.timeRange || ''}
-                                                        title="通过上传字幕自动匹配时间"
-                                                    />
-                                                 </div>
+                                            <div className="h-[25%] bg-slate-50 border-t border-slate-200 flex flex-col items-center justify-center relative group/timer">
+                                                 {frame.timeRange ? (
+                                                     <div className="w-full text-center px-1">
+                                                         <div className="flex items-center justify-center gap-1 mb-0.5 opacity-40">
+                                                             <Clock className="w-3 h-3 text-slate-500" />
+                                                             <span className="text-[9px] font-black text-slate-500 tracking-widest uppercase">TIMECODE</span>
+                                                         </div>
+                                                         <div className="relative">
+                                                             <input 
+                                                                 readOnly
+                                                                 className="w-full text-center bg-transparent text-base md:text-lg font-black text-slate-700 font-mono tracking-tight outline-none"
+                                                                 value={frame.timeRange}
+                                                             />
+                                                             {/* Subtle highlight effect */}
+                                                             <div className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-1/2 h-0.5 bg-gradient-to-r from-transparent via-indigo-500 to-transparent opacity-0 group-hover/timer:opacity-100 transition-opacity" />
+                                                         </div>
+                                                     </div>
+                                                 ) : (
+                                                     <div className="flex flex-col items-center gap-1 opacity-30">
+                                                        <div className="h-0.5 w-6 bg-slate-300 rounded-full" />
+                                                        <span className="text-[10px] font-bold text-slate-400">等待识别</span>
+                                                        <div className="h-0.5 w-6 bg-slate-300 rounded-full" />
+                                                     </div>
+                                                 )}
                                             </div>
                                         </div>
                                     </td>
