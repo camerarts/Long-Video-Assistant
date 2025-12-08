@@ -47,6 +47,29 @@ const cleanDescription = (text: string): string => {
     return cleaned;
 };
 
+// Helper to format timestamp from 00:00:20,500 to 0分20秒
+const formatTimeRange = (range: string): string => {
+    if (!range) return '';
+    
+    // Matches 00:00:20,500 or 00:00:20.500 or just 00:00:20
+    const formatTime = (t: string) => {
+        const match = t.match(/(\d{1,2}):(\d{2}):(\d{2})[,.]?(\d{0,3})/);
+        if (!match) return t;
+        const h = parseInt(match[1], 10);
+        const m = parseInt(match[2], 10);
+        const s = parseInt(match[3], 10);
+        
+        if (h > 0) return `${h}时${m}分${s}秒`;
+        return `${m}分${s}秒`;
+    };
+
+    const parts = range.split('-->').map(s => s.trim());
+    if (parts.length === 2) {
+        return `${formatTime(parts[0])} --> ${formatTime(parts[1])}`;
+    }
+    return range;
+};
+
 const StoryboardImages: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
@@ -332,7 +355,7 @@ const StoryboardImages: React.FC = () => {
                    if (updatedStoryboard[item.index] && item.timeRange) {
                        updatedStoryboard[item.index] = {
                            ...updatedStoryboard[item.index],
-                           timeRange: item.timeRange
+                           timeRange: formatTimeRange(item.timeRange) // Apply format here
                        };
                        matchCount++;
                    }
@@ -895,7 +918,7 @@ const StoryboardImages: React.FC = () => {
                                                     <input 
                                                         readOnly
                                                         className="w-full text-center bg-transparent text-[10px] font-mono text-slate-600 font-bold outline-none"
-                                                        placeholder="--:--:-- --> --:--:--"
+                                                        placeholder="--分--秒 --> --分--秒"
                                                         value={frame.timeRange || ''}
                                                         title="通过上传字幕自动匹配时间"
                                                     />
