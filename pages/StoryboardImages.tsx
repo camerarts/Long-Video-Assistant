@@ -920,12 +920,25 @@ const StoryboardImages: React.FC = () => {
                                         <div className="w-full bg-slate-50 rounded-lg p-2 md:p-3 border border-slate-100 h-full min-h-[100px] md:h-[270px] overflow-y-auto">
                                             {frame.originalText ? (
                                                 <div>
-                                                    <div className="text-sm md:text-base font-extrabold text-slate-800 mb-1 leading-snug">
-                                                        {frame.originalText.split('\n')[0]}
-                                                    </div>
-                                                    <div className="text-xs text-slate-600 font-medium leading-relaxed whitespace-pre-wrap">
-                                                        {frame.originalText.split('\n').slice(1).join('\n')}
-                                                    </div>
+                                                    {(() => {
+                                                        const lines = frame.originalText.split('\n');
+                                                        const firstLine = lines[0] || '';
+                                                        const remaining = lines.slice(1).join('\n');
+                                                        const head = firstLine.substring(0, 10);
+                                                        const tail = firstLine.substring(10);
+                                                        
+                                                        return (
+                                                            <>
+                                                                <div className="mb-2 leading-snug">
+                                                                    <span className="text-lg md:text-xl font-black text-slate-900">{head}</span>
+                                                                    <span className="text-sm md:text-base font-bold text-slate-700">{tail}</span>
+                                                                </div>
+                                                                <div className="text-xs text-slate-600 font-medium leading-relaxed whitespace-pre-wrap">
+                                                                    {remaining}
+                                                                </div>
+                                                            </>
+                                                        );
+                                                    })()}
                                                 </div>
                                             ) : (
                                                 <span className="text-xs text-slate-400 font-medium">无原文内容</span>
