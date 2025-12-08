@@ -3,7 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { ProjectData, StoryboardFrame, PromptTemplate } from '../types';
 import * as storage from '../services/storageService';
 import * as gemini from '../services/geminiService';
-import { ArrowLeft, Download, Loader2, Sparkles, Image as ImageIcon, RefreshCw, X, Maximize2, CloudUpload, FileSpreadsheet, Palette, RotateCcw, CheckCircle2, AlertCircle, Settings2, Key, Zap, Clock, Copy, Check, Cloud, CloudCheck, Video, FileText } from 'lucide-react';
+import { ArrowLeft, Download, Loader2, Sparkles, Image as ImageIcon, RefreshCw, X, Maximize2, CloudUpload, FileSpreadsheet, Palette, RotateCcw, CheckCircle2, AlertCircle, Settings2, Key, Zap, Clock, Copy, Check, Cloud, CloudCheck, Video, FileText, BrainCircuit } from 'lucide-react';
 import JSZip from 'jszip';
 
 const CopyButton = ({ text }: { text: string }) => {
@@ -82,6 +82,10 @@ const StoryboardImages: React.FC = () => {
   const [syncStatus, setSyncStatus] = useState<'saved' | 'saving' | 'synced' | 'error' | null>(null);
   const [lastSyncTime, setLastSyncTime] = useState('');
 
+  // Subtitle State
+  const [subtitleContent, setSubtitleContent] = useState<string | null>(null);
+  const [isIdentifying, setIsIdentifying] = useState(false);
+
   const mountedRef = useRef(true);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -91,9 +95,9 @@ const StoryboardImages: React.FC = () => {
 
   // Update busy ref based on state
   useEffect(() => {
-      // Busy if generating, uploading, downloading, or config modal is open
-      isBusyRef.current = generating || uploading || downloading || showConfigModal;
-  }, [generating, uploading, downloading, showConfigModal]);
+      // Busy if generating, uploading, downloading, identifying, or config modal is open
+      isBusyRef.current = generating || uploading || downloading || isIdentifying || showConfigModal;
+  }, [generating, uploading, downloading, isIdentifying, showConfigModal]);
 
   // Activity Listeners
   useEffect(() => {
@@ -258,118 +262,95 @@ const StoryboardImages: React.FC = () => {
     fileInputRef.current?.click();
   };
 
-  const parseSubtitleFile = (content: string) => {
-      // Normalize line endings
-      const lines = content.replace(/\r\n/g, '\n').split('\n');
-      const entries: { start: string, end: string, text: string }[] = [];
-      let currentStart = '';
-      let currentEnd = '';
-      let currentText = '';
-      
-      // Regex for SRT timestamp: 00:00:00,000 --> 00:00:00,000
-      const timeRegex = /(\d{2}:\d{2}:\d{2}[,.]\d{3}) --> (\d{2}:\d{2}:\d{2}[,.]\d{3})/;
-
-      for (let line of lines) {
-        line = line.trim();
-        if (!line) continue;
-        if (/^\d+$/.test(line)) continue; // Sequence number
-
-        const timeMatch = line.match(timeRegex);
-        if (timeMatch) {
-          if (currentStart && currentText) {
-              entries.push({ start: currentStart, end: currentEnd, text: currentText.trim() });
-              currentText = '';
-          }
-          currentStart = timeMatch[1];
-          currentEnd = timeMatch[2];
-        } else {
-          if (currentStart) {
-            currentText += line + ' ';
-          }
-        }
-      }
-      // push last
-      if (currentStart && currentText) {
-          entries.push({ start: currentStart, end: currentEnd, text: currentText.trim() });
-      }
-      return entries;
-  };
-
   const handleSubtitleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
       const file = e.target.files?.[0];
-      if (!file || !project?.storyboard) return;
+      if (!file) return;
 
       try {
           const text = await file.text();
-          const subtitles = parseSubtitleFile(text);
-          
-          if (subtitles.length === 0) {
-              setMessage("未能识别字幕内容，请检查文件格式。");
-              setMessageType('error');
-              setTimeout(() => setMessage(null), 3000);
-              return;
-          }
-
-          // Create a character mapping for the entire subtitle track
-          // Map each character in the normalized full text to its source cue
-          let fullSubText = "";
-          const charToCueMap: { cue: typeof subtitles[0] }[] = [];
-          
-          subtitles.forEach(cue => {
-              // Strictly normalize: remove all whitespace and lowercase
-              const normText = cue.text.replace(/\s+/g, '').toLowerCase(); 
-              fullSubText += normText;
-              for(let i=0; i<normText.length; i++) {
-                  charToCueMap.push({ cue });
-              }
-          });
-
-          let searchCursor = 0;
-          let matchedCount = 0;
-
-          const updatedStoryboard = project.storyboard.map(frame => {
-              if (!frame.originalText) return frame;
-              
-              const normFrameText = frame.originalText.replace(/\s+/g, '').toLowerCase();
-              if (!normFrameText) return frame;
-              
-              const foundIndex = fullSubText.indexOf(normFrameText, searchCursor);
-              
-              if (foundIndex !== -1) {
-                  const startCue = charToCueMap[foundIndex].cue;
-                  // Look up the cue for the last character of the matched text
-                  const endCueIndex = foundIndex + normFrameText.length - 1;
-                  const endCue = charToCueMap[Math.min(endCueIndex, charToCueMap.length - 1)].cue;
-                  
-                  // Update cursor to proceed sequentially
-                  searchCursor = foundIndex + normFrameText.length;
-                  matchedCount++;
-
-                  return {
-                      ...frame,
-                      timeRange: `${startCue.start} --> ${endCue.end}`
-                  };
-              }
-              return frame;
-          });
-
-          if (matchedCount === 0) {
-               setMessage("未能匹配到任何字幕内容，请确认字幕文本与分镜原文是否一致。");
-               setMessageType('warning');
-          } else {
-               await saveProjectAndSync({ ...project, storyboard: updatedStoryboard });
-               setMessage(`成功匹配 ${matchedCount} 条分镜的时间轴！`);
-               setMessageType('success');
-          }
-
+          setSubtitleContent(text);
+          setMessage("已上传成功！请点击右侧“智能识别”按钮开始分析。");
+          setMessageType('success');
+          // Reset input to allow re-upload
+          if (fileInputRef.current) fileInputRef.current.value = '';
       } catch (err: any) {
           console.error(err);
-          setMessage("字幕解析失败: " + err.message);
+          setMessage("文件读取失败: " + err.message);
+          setMessageType('error');
+      }
+      setTimeout(() => setMessage(null), 3000);
+  };
+
+  const handleSmartIdentify = async () => {
+      if (!subtitleContent || !project?.storyboard) return;
+      setIsIdentifying(true);
+      
+      try {
+           // Prepare lightweight data for prompt
+           const sbItems = project.storyboard.map((f, i) => ({
+               index: i,
+               text: f.originalText
+           }));
+  
+           const prompt = `
+              You are a professional video editor assistant.
+              I have a subtitle file content and a list of storyboard sentences (Original Text).
+              
+              Goal: Find the start and end timestamp from the subtitle file for each storyboard sentence.
+              
+              Rules:
+              1. The storyboard sentences are derived from the subtitles, so they should match closely or exactly.
+              2. If a storyboard sentence spans multiple subtitle lines, use the start time of the first line and end time of the last line.
+              3. Return the result as a JSON array.
+              
+              Subtitle File Content:
+              ${subtitleContent}
+              
+              Storyboard Sentences:
+              ${JSON.stringify(sbItems)}
+              
+              Output JSON Schema:
+              Array of objects: { index: number, timeRange: string }
+              Example timeRange: "00:00:01,200 --> 00:00:04,500"
+           `;
+  
+           const result = await gemini.generateJSON<{index: number, timeRange: string}[]>(prompt, {
+               type: "ARRAY",
+               items: {
+                   type: "OBJECT",
+                   properties: {
+                       index: { type: "NUMBER" },
+                       timeRange: { type: "STRING" }
+                   }
+               }
+           });
+           
+           if (result && Array.isArray(result)) {
+               const updatedStoryboard = [...project.storyboard];
+               let matchCount = 0;
+               result.forEach(item => {
+                   if (updatedStoryboard[item.index] && item.timeRange) {
+                       updatedStoryboard[item.index] = {
+                           ...updatedStoryboard[item.index],
+                           timeRange: item.timeRange
+                       };
+                       matchCount++;
+                   }
+               });
+               
+               await saveProjectAndSync({ ...project, storyboard: updatedStoryboard });
+               setMessage(`智能识别完成，已更新 ${matchCount} 条时间轴！`);
+               setMessageType('success');
+           } else {
+               throw new Error("模型未返回有效的数据结构");
+           }
+      } catch (err: any) {
+          console.error(err);
+          setMessage("智能识别失败: " + err.message);
           setMessageType('error');
       } finally {
-          // Reset input
-          if (fileInputRef.current) fileInputRef.current.value = '';
-          setTimeout(() => setMessage(null), 3000);
+          setIsIdentifying(false);
+          setTimeout(() => setMessage(null), 4000);
       }
   };
 
@@ -703,10 +684,31 @@ const StoryboardImages: React.FC = () => {
                         分镜图片工坊
                     </h1>
                 </div>
+                
+                {/* Subtitle Tools Group - Placed next to title as requested */}
+                <div className="flex items-center bg-slate-100/50 border border-slate-200 rounded-xl p-0.5 h-10 shadow-sm ml-2 md:ml-4">
+                     <button 
+                        onClick={handleSubtitleUploadClick}
+                        className={`px-3 h-full flex items-center gap-1.5 transition-colors text-xs font-bold rounded-l-lg border-r border-slate-200/50 ${subtitleContent ? 'bg-emerald-50 text-emerald-600 hover:bg-emerald-100' : 'text-slate-500 hover:text-indigo-600 hover:bg-white'}`}
+                        title={subtitleContent ? "字幕已加载，点击可重新上传" : "上传字幕文件 (.srt, .txt)"}
+                    >
+                        {subtitleContent ? <CheckCircle2 className="w-3.5 h-3.5" /> : <FileText className="w-3.5 h-3.5" />}
+                        {subtitleContent ? "已上传" : "上传字幕"}
+                    </button>
+                    <button
+                        onClick={handleSmartIdentify}
+                        disabled={isIdentifying || !subtitleContent}
+                        className="px-3 h-full flex items-center gap-1.5 text-indigo-600 hover:bg-white transition-colors text-xs font-bold rounded-r-lg disabled:opacity-50 disabled:grayscale"
+                        title="使用 Gemini AI 自动分析匹配时间轴"
+                    >
+                        {isIdentifying ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <BrainCircuit className="w-3.5 h-3.5" />}
+                        智能识别
+                    </button>
+                </div>
             </div>
 
             <div className="flex flex-wrap items-center gap-3">
-                {/* Style Selection, Reimport, Batch Generate moved to left of API Config */}
+                {/* Style Selection, Reimport, Batch Generate */}
                 <div className="flex items-center bg-white border border-slate-200 rounded-xl p-1 shadow-sm h-10">
                     <select 
                         value={style_mode}
@@ -753,15 +755,6 @@ const StoryboardImages: React.FC = () => {
                 >
                     {uploading ? <Loader2 className="w-4 h-4 animate-spin" /> : <CloudUpload className="w-4 h-4" />}
                     <span className="hidden sm:inline">上传云端</span>
-                </button>
-
-                {/* Upload Subtitles Button */}
-                <button 
-                    onClick={handleSubtitleUploadClick}
-                    className="flex items-center gap-1.5 text-slate-500 hover:text-indigo-600 hover:bg-white bg-slate-100/50 border border-slate-200/50 hover:border-indigo-200 px-3 py-1.5 rounded-lg text-xs font-bold transition-all shadow-sm h-10"
-                    title="上传字幕文件 (.srt, .txt) 自动匹配起止时间"
-                >
-                    <FileText className="w-3.5 h-3.5" /> 上传字幕
                 </button>
 
                 {/* Download Button */}
