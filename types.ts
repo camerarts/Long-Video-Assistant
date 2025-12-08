@@ -15,6 +15,7 @@ export interface StoryboardFrame {
   imageUrl?: string; // Base64 or URL
   imagePrompt?: string;
   imageModel?: string; // Model used for generation
+  timeRange?: string; // New field for subtitle timestamps
 }
 
 export interface TitleItem {
