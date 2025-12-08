@@ -3,7 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { ProjectData, StoryboardFrame, PromptTemplate } from '../types';
 import * as storage from '../services/storageService';
 import * as gemini from '../services/geminiService';
-import { ArrowLeft, Download, Loader2, Sparkles, Image as ImageIcon, RefreshCw, X, Maximize2, CloudUpload, FileSpreadsheet, Palette, RotateCcw, CheckCircle2, AlertCircle, Settings2, Key, Zap, Clock, Copy, Check, Cloud, CloudCheck, Video, FileText, BrainCircuit } from 'lucide-react';
+import { ArrowLeft, Download, Loader2, Sparkles, Image as ImageIcon, RefreshCw, X, Maximize2, CloudUpload, FileSpreadsheet, Palette, RotateCcw, CheckCircle2, AlertCircle, Settings2, Key, Zap, Clock, Copy, Check, Cloud, CloudCheck, Video, FileText, BrainCircuit, Square } from 'lucide-react';
 import JSZip from 'jszip';
 
 const CopyButton = ({ text }: { text: string }) => {
@@ -256,6 +256,15 @@ const StoryboardImages: React.FC = () => {
     await saveProjectAndSync(updatedProject);
   };
 
+  const handleToggleSkip = async (frameId: string) => {
+      if (!project || !project.storyboard) return;
+      const updatedStoryboard = project.storyboard.map(f => 
+          f.id === frameId ? { ...f, skipGeneration: !f.skipGeneration } : f
+      );
+      const updatedProject = { ...project, storyboard: updatedStoryboard };
+      await saveProjectAndSync(updatedProject);
+  };
+
   const handleReimportPrompts = async () => {
     if (!project || !project.storyboard) return;
     if (!window.confirm(`确定要基于“${style_mode === 'IMAGE_GEN_A' ? '方案A' : '方案B'}”重新生成所有图片的提示词吗？`)) return;
@@ -440,11 +449,11 @@ const StoryboardImages: React.FC = () => {
   const handleBatchGenerate = async () => {
     if (!project || !project.storyboard) return;
     
-    // STRICT FILTER: Only frames that do NOT have an imageUrl
-    const pendingFrames = project.storyboard.filter(f => !f.imageUrl);
+    // STRICT FILTER: Only frames that do NOT have an imageUrl AND are NOT skipped
+    const pendingFrames = project.storyboard.filter(f => !f.imageUrl && !f.skipGeneration);
 
     if (pendingFrames.length === 0) {
-        setMessage("所有分镜已包含图片，无需生成。");
+        setMessage("所有可生成的分镜已包含图片，或已跳过生成，无需操作。");
         setMessageType('success');
         setTimeout(() => setMessage(null), 3000);
         return;
@@ -876,7 +885,7 @@ const StoryboardImages: React.FC = () => {
                 <table className="w-full text-left border-collapse table-fixed">
                     <thead className="bg-slate-50 text-slate-500 sticky top-0 z-10 shadow-sm">
                         <tr>
-                            <th className="py-2 px-0.5 md:py-3 md:px-2 text-xs font-extrabold uppercase tracking-wider w-8 md:w-12 text-center border-b border-slate-200">序号</th>
+                            <th className="py-2 px-0.5 md:py-3 md:px-2 text-xs font-extrabold uppercase tracking-wider w-8 md:w-16 text-center border-b border-slate-200">序号</th>
                             <th className="py-2 px-0.5 md:py-3 md:px-2 text-xs font-extrabold uppercase tracking-wider w-[15%] md:w-[25%] text-center border-b border-slate-200">原文</th>
                             <th className="py-2 px-0.5 md:py-3 md:px-2 text-xs font-extrabold uppercase tracking-wider w-[20%] md:w-[30%] text-center border-b border-slate-200">AI 绘图提示词</th>
                             <th className="py-2 px-0.5 md:py-3 md:px-2 text-xs font-extrabold uppercase tracking-wider text-center border-b border-slate-200">画面预览</th>
@@ -888,7 +897,24 @@ const StoryboardImages: React.FC = () => {
                             return (
                                 <tr key={frame.id} className="group hover:bg-slate-50/50 transition-colors">
                                     <td className="py-2 px-0.5 md:py-4 md:px-2 text-center text-slate-400 font-bold text-sm align-middle h-px">
-                                        {frame.sceneNumber}
+                                        <div className="flex flex-col items-center justify-center gap-2">
+                                            <span>{frame.sceneNumber}</span>
+                                            <button 
+                                                onClick={() => handleToggleSkip(frame.id)}
+                                                className={`w-5 h-5 rounded flex items-center justify-center border transition-all ${
+                                                    frame.skipGeneration 
+                                                    ? 'bg-rose-50 border-rose-200' 
+                                                    : 'bg-white border-slate-200 hover:border-slate-300'
+                                                }`}
+                                                title={frame.skipGeneration ? "已跳过生图 (点击恢复)" : "点击跳过此行生图"}
+                                            >
+                                                {frame.skipGeneration ? (
+                                                    <X className="w-3.5 h-3.5 text-rose-500" />
+                                                ) : (
+                                                    <Square className="w-3.5 h-3.5 text-slate-100 fill-white" />
+                                                )}
+                                            </button>
+                                        </div>
                                     </td>
                                     <td className="py-2 px-0.5 md:py-4 md:px-2 align-middle h-px">
                                         <textarea
@@ -903,10 +929,11 @@ const StoryboardImages: React.FC = () => {
                                             {/* Top: Image Prompt (75%) */}
                                             <div className="h-[75%] relative border-b border-slate-100">
                                                 <textarea
-                                                    className="w-full h-full bg-white p-1 md:p-3 pr-6 md:pr-10 text-xs text-slate-600 leading-relaxed focus:bg-slate-50 outline-none resize-none transition-all"
+                                                    className={`w-full h-full bg-white p-1 md:p-3 pr-6 md:pr-10 text-xs text-slate-600 leading-relaxed focus:bg-slate-50 outline-none resize-none transition-all ${frame.skipGeneration ? 'opacity-50 grayscale bg-slate-50' : ''}`}
                                                     value={frame.imagePrompt || ''}
                                                     onChange={(e) => handleSavePrompt(frame.id, e.target.value)}
                                                     placeholder="输入提示词..."
+                                                    readOnly={frame.skipGeneration}
                                                 />
                                                 <CopyButton text={frame.imagePrompt || ''} />
                                             </div>
@@ -977,8 +1004,8 @@ const StoryboardImages: React.FC = () => {
                                                         {/* Regenerate Button (Top-Right) - Hidden by default, show on hover */}
                                                         <button 
                                                             onClick={(e) => { e.stopPropagation(); generateSingleImage(frame); }}
-                                                            disabled={isGeneratingThis}
-                                                            className="absolute top-2 right-2 p-1.5 bg-black/50 hover:bg-fuchsia-600 text-white rounded-lg opacity-0 group-hover/preview:opacity-100 transition-all backdrop-blur-sm shadow-sm"
+                                                            disabled={isGeneratingThis || frame.skipGeneration}
+                                                            className="absolute top-2 right-2 p-1.5 bg-black/50 hover:bg-fuchsia-600 text-white rounded-lg opacity-0 group-hover/preview:opacity-100 transition-all backdrop-blur-sm shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
                                                             title="重新生成这张"
                                                         >
                                                             {isGeneratingThis ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <RefreshCw className="w-3.5 h-3.5" />}
@@ -997,6 +1024,11 @@ const StoryboardImages: React.FC = () => {
                                                             <>
                                                                 <Loader2 className="w-8 h-8 animate-spin text-fuchsia-500" />
                                                                 <span className="text-xs font-bold text-fuchsia-500 animate-pulse">正在绘制...</span>
+                                                            </>
+                                                        ) : frame.skipGeneration ? (
+                                                            <>
+                                                                <X className="w-8 h-8 text-rose-500/50" />
+                                                                <span className="text-xs font-bold text-rose-500/50">已跳过生成</span>
                                                             </>
                                                         ) : (
                                                             <>
