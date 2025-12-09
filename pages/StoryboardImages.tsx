@@ -1,3 +1,4 @@
+
 import React, { useEffect, useState, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { ProjectData, StoryboardFrame, PromptTemplate } from '../types';
@@ -420,24 +421,58 @@ const StoryboardImages: React.FC = () => {
         reader.onload = async (e) => {
             const base64 = e.target?.result as string;
             if (base64) {
-                 // Upload
-                 setMessage("正在上传剪贴板图片...");
+                 // 1. Immediate Local Update (Preview)
+                 setProject(prev => {
+                     if (!prev) return null;
+                     const updatedStoryboard = prev.storyboard?.map(f => 
+                         f.id === frame.id ? { ...f, imageUrl: base64, imageModel: '预览中 (5秒后上传...)' } : f
+                     );
+                     return { ...prev, storyboard: updatedStoryboard } as ProjectData;
+                 });
+                 
+                 setMessage("已粘贴图片，5秒后自动同步到云端...");
                  setMessageType('success');
-                 try {
-                     const cloudUrl = await storage.uploadImage(base64, project.id);
-                     const updatedProject = {
-                         ...project,
-                         storyboard: project.storyboard?.map(f => 
-                             f.id === frame.id ? { ...f, imageUrl: cloudUrl, imageModel: 'Manual Upload' } : f
-                         )
-                     } as ProjectData;
-                     await saveProjectAndSync(updatedProject);
-                     setMessage("图片上传成功");
-                 } catch(err: any) {
-                     setMessage("上传失败: " + err.message);
-                     setMessageType('error');
-                 }
-                 setTimeout(() => setMessage(null), 3000);
+
+                 // 2. Delayed Upload (5 seconds)
+                 setTimeout(async () => {
+                     if (!mountedRef.current) return;
+                     
+                     try {
+                         // Upload to Cloud
+                         const cloudUrl = await storage.uploadImage(base64, project.id);
+                         
+                         // Update State with Cloud URL & Save to DB
+                         setProject(prev => {
+                             if (!prev) return null;
+                             
+                             const updatedStoryboard = prev.storyboard?.map(f => 
+                                 f.id === frame.id ? { ...f, imageUrl: cloudUrl, imageModel: 'Manual Upload' } : f
+                             );
+                             const nextProject = { ...prev, storyboard: updatedStoryboard } as ProjectData;
+                             
+                             // Side effect: Save to DB & Sync
+                             (async () => {
+                                 try {
+                                    await storage.saveProject(nextProject);
+                                    setSyncStatus('saving');
+                                    await storage.uploadProjects();
+                                    setSyncStatus('synced');
+                                    setLastSyncTime(new Date().toLocaleTimeString());
+                                 } catch(e) { console.error(e); setSyncStatus('error'); }
+                             })();
+                             
+                             return nextProject;
+                         });
+
+                         setMessage("图片已同步到服务器");
+                     } catch(err: any) {
+                         console.error("Auto-upload failed", err);
+                         setMessage("自动上传失败: " + err.message);
+                         setMessageType('error');
+                     }
+                     setTimeout(() => setMessage(null), 3000);
+
+                 }, 5000);
             }
         };
         reader.readAsDataURL(blob);
