@@ -3,7 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { ProjectData, StoryboardFrame, PromptTemplate } from '../types';
 import * as storage from '../services/storageService';
 import * as gemini from '../services/geminiService';
-import { ArrowLeft, Download, Loader2, Image as ImageIcon, RefreshCw, X, CloudUpload, FileSpreadsheet, RotateCcw, CheckCircle2, AlertCircle, Settings2, Key, Zap, Clock, Copy, Check, Cloud, CloudCheck, Video, FileText, BrainCircuit, Square } from 'lucide-react';
+import { ArrowLeft, Download, Loader2, Image as ImageIcon, RefreshCw, X, CloudUpload, FileSpreadsheet, RotateCcw, CheckCircle2, AlertCircle, Settings2, Key, Zap, Clock, Copy, Check, Cloud, CloudCheck, Video, FileText, BrainCircuit, Square, ClipboardPaste } from 'lucide-react';
 import JSZip from 'jszip';
 
 const CopyButton = ({ text }: { text: string }) => {
@@ -384,6 +384,68 @@ const StoryboardImages: React.FC = () => {
           setIsIdentifying(false);
           setTimeout(() => setMessage(null), 4000);
       }
+  };
+
+  const handlePasteImage = async (frame: StoryboardFrame) => {
+    if (!project) return;
+    try {
+        const clipboardItems = await navigator.clipboard.read();
+        let blob: Blob | null = null;
+        for (const item of clipboardItems) {
+            // Prioritize png/jpeg
+            if (item.types.includes('image/png')) {
+                blob = await item.getType('image/png');
+                break;
+            } else if (item.types.includes('image/jpeg')) {
+                blob = await item.getType('image/jpeg');
+                break;
+            } else {
+                // check for any image type
+                const imgType = item.types.find(t => t.startsWith('image/'));
+                if (imgType) {
+                    blob = await item.getType(imgType);
+                    break;
+                }
+            }
+        }
+
+        if (!blob) {
+            setMessage("剪贴板中未找到图片");
+            setMessageType('warning');
+            setTimeout(() => setMessage(null), 3000);
+            return;
+        }
+
+        const reader = new FileReader();
+        reader.onload = async (e) => {
+            const base64 = e.target?.result as string;
+            if (base64) {
+                 // Upload
+                 setMessage("正在上传剪贴板图片...");
+                 setMessageType('success');
+                 try {
+                     const cloudUrl = await storage.uploadImage(base64, project.id);
+                     const updatedProject = {
+                         ...project,
+                         storyboard: project.storyboard?.map(f => 
+                             f.id === frame.id ? { ...f, imageUrl: cloudUrl, imageModel: 'Manual Upload' } : f
+                         )
+                     } as ProjectData;
+                     await saveProjectAndSync(updatedProject);
+                     setMessage("图片上传成功");
+                 } catch(err: any) {
+                     setMessage("上传失败: " + err.message);
+                     setMessageType('error');
+                 }
+                 setTimeout(() => setMessage(null), 3000);
+            }
+        };
+        reader.readAsDataURL(blob);
+
+    } catch (err) {
+        console.error(err);
+        alert("无法访问剪贴板。请确保您允许了剪贴板访问权限，或者当前浏览器不支持直接读取图片。");
+    }
   };
 
   const generateSingleImage = async (frame: StoryboardFrame, showToast = true) => {
@@ -1038,6 +1100,15 @@ const StoryboardImages: React.FC = () => {
                                                                 {frame.imageModel}
                                                             </div>
                                                         )}
+
+                                                        {/* Manual Upload Button (Bottom-Right) - Add when image exists */}
+                                                        <button 
+                                                            onClick={(e) => { e.stopPropagation(); handlePasteImage(frame); }}
+                                                            className="absolute bottom-2 right-2 p-1.5 bg-black/50 hover:bg-indigo-600 text-white rounded-lg opacity-0 group-hover/preview:opacity-100 transition-all backdrop-blur-sm shadow-sm z-20"
+                                                            title="手工上传图片：点击自动上传剪贴板最新图片"
+                                                        >
+                                                            <ClipboardPaste className="w-3.5 h-3.5" />
+                                                        </button>
                                                     </>
                                                 ) : (
                                                     <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 text-slate-500">
@@ -1061,6 +1132,15 @@ const StoryboardImages: React.FC = () => {
                                                                     title="立即生成"
                                                                 >
                                                                     <Zap className="w-3.5 h-3.5" />
+                                                                </button>
+                                                                
+                                                                {/* Manual Upload Button (Bottom-Right) - Add for empty state */}
+                                                                <button 
+                                                                    onClick={(e) => { e.stopPropagation(); handlePasteImage(frame); }}
+                                                                    className="absolute bottom-2 right-2 p-1.5 bg-white/10 border border-white/20 text-slate-400 hover:text-indigo-400 hover:border-indigo-400/50 rounded-lg shadow-sm transition-all z-20 opacity-0 group-hover/preview:opacity-100"
+                                                                    title="手工上传图片：点击自动上传剪贴板最新图片"
+                                                                >
+                                                                    <ClipboardPaste className="w-3.5 h-3.5" />
                                                                 </button>
                                                             </>
                                                         )}
