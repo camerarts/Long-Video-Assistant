@@ -567,7 +567,7 @@ const ProjectWorkspace: React.FC = () => {
                     <ArrowLeft className="w-5 h-5" />
                 </button>
                 <div>
-                    <h1 className="text-lg font-extrabold text-slate-900">{project.title}</h1>
+                    <h1 className="text-lg font-extrabold text-slate-900 truncate max-w-[200px] md:max-w-[600px]" title={project.title}>{project.title}</h1>
                     <div className="flex items-center gap-2 mt-0.5">
                         <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${isArchived ? 'bg-slate-800 text-white' : 'bg-slate-100 text-slate-500'}`}>
                             {isArchived ? '已归档 (只读)' : project.status}
