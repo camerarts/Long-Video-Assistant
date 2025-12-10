@@ -1114,7 +1114,7 @@ const StoryboardImages: React.FC = () => {
                                         </div>
                                     </td>
                                     <td className="py-2 px-0.5 md:py-4 md:px-2 align-middle h-px">
-                                        <div className="w-full bg-slate-50 rounded-lg border border-slate-100 h-full min-h-[100px] md:h-[270px] flex flex-col overflow-hidden">
+                                        <div className="w-full bg-slate-50 rounded-lg border border-slate-100 h-full min-h-[100px] flex flex-col overflow-hidden">
                                             <div className="flex-1 p-2 md:p-3 overflow-y-auto">
                                                 {frame.originalText ? (
                                                     <div>
@@ -1170,7 +1170,7 @@ const StoryboardImages: React.FC = () => {
                                         </div>
                                     </td>
                                     <td className="py-2 px-0.5 md:py-4 md:px-2 align-middle h-px">
-                                        <div className="relative h-full min-h-[100px] md:h-[270px] flex flex-col bg-white border border-slate-200 rounded-xl overflow-hidden shadow-sm">
+                                        <div className="relative h-full min-h-[100px] flex flex-col bg-white border border-slate-200 rounded-xl overflow-hidden shadow-sm">
                                             <div className="h-full relative">
                                                 <textarea
                                                     className={`w-full h-full bg-white p-1 md:p-3 pr-6 md:pr-10 text-xs text-slate-600 leading-relaxed focus:bg-slate-50 outline-none resize-none transition-all ${frame.skipGeneration ? 'opacity-50 grayscale bg-slate-50' : ''}`}
