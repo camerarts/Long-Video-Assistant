@@ -1114,49 +1114,36 @@ const StoryboardImages: React.FC = () => {
                                         </div>
                                     </td>
                                     <td className="py-2 px-0.5 md:py-4 md:px-2 align-middle h-px">
-                                        <div className="w-full bg-slate-50 rounded-lg p-2 md:p-3 border border-slate-100 h-full min-h-[100px] md:h-[270px] overflow-y-auto">
-                                            {frame.originalText ? (
-                                                <div>
-                                                    {(() => {
-                                                        const lines = frame.originalText.split('\n');
-                                                        const firstLine = lines[0] || '';
-                                                        const remaining = lines.slice(1).join('\n');
-                                                        const head = firstLine.substring(0, 10);
-                                                        const tail = firstLine.substring(10);
-                                                        
-                                                        return (
-                                                            <>
-                                                                <div className="mb-2 leading-snug">
-                                                                    <span className="text-lg md:text-xl font-black text-slate-900">{head}</span>
-                                                                    <span className="text-xs font-normal text-slate-500">{tail}</span>
-                                                                </div>
-                                                                <div className="text-[10px] text-slate-400 font-normal leading-relaxed whitespace-pre-wrap">
-                                                                    {remaining}
-                                                                </div>
-                                                            </>
-                                                        );
-                                                    })()}
-                                                </div>
-                                            ) : (
-                                                <span className="text-xs text-slate-400 font-medium">无原文内容</span>
-                                            )}
-                                        </div>
-                                    </td>
-                                    <td className="py-2 px-0.5 md:py-4 md:px-2 align-middle h-px">
-                                        <div className="relative h-full min-h-[100px] md:h-[270px] flex flex-col bg-white border border-slate-200 rounded-xl overflow-hidden shadow-sm">
-                                            {/* Top: Image Prompt (75%) */}
-                                            <div className="h-[75%] relative border-b border-slate-100">
-                                                <textarea
-                                                    className={`w-full h-full bg-white p-1 md:p-3 pr-6 md:pr-10 text-xs text-slate-600 leading-relaxed focus:bg-slate-50 outline-none resize-none transition-all ${frame.skipGeneration ? 'opacity-50 grayscale bg-slate-50' : ''}`}
-                                                    value={frame.imagePrompt || ''}
-                                                    onChange={(e) => handleSavePrompt(frame.id, e.target.value)}
-                                                    placeholder="输入提示词..."
-                                                    readOnly={frame.skipGeneration}
-                                                />
-                                                <CopyButton text={frame.imagePrompt || ''} />
+                                        <div className="w-full bg-slate-50 rounded-lg border border-slate-100 h-full min-h-[100px] md:h-[270px] flex flex-col overflow-hidden">
+                                            <div className="flex-1 p-2 md:p-3 overflow-y-auto">
+                                                {frame.originalText ? (
+                                                    <div>
+                                                        {(() => {
+                                                            const lines = frame.originalText.split('\n');
+                                                            const firstLine = lines[0] || '';
+                                                            const remaining = lines.slice(1).join('\n');
+                                                            const head = firstLine.substring(0, 10);
+                                                            const tail = firstLine.substring(10);
+                                                            
+                                                            return (
+                                                                <>
+                                                                    <div className="mb-2 leading-snug">
+                                                                        <span className="text-lg md:text-xl font-black text-slate-900">{head}</span>
+                                                                        <span className="text-xs font-normal text-slate-500">{tail}</span>
+                                                                    </div>
+                                                                    <div className="text-[10px] text-slate-400 font-normal leading-relaxed whitespace-pre-wrap">
+                                                                        {remaining}
+                                                                    </div>
+                                                                </>
+                                                            );
+                                                        })()}
+                                                    </div>
+                                                ) : (
+                                                    <span className="text-xs text-slate-400 font-medium">无原文内容</span>
+                                                )}
                                             </div>
-                                            {/* Bottom: Start/End Time (25%) */}
-                                            <div className="h-[25%] bg-slate-50 border-t border-slate-200 flex flex-col items-center justify-center relative group/timer">
+                                            {/* Timecode Section Moved Here */}
+                                            <div className="h-[25%] min-h-[40px] bg-slate-100/50 border-t border-slate-200 flex flex-col items-center justify-center relative group/timer">
                                                  {frame.timeRange ? (
                                                      <div className="w-full text-center px-1">
                                                          <div className="flex items-center justify-center gap-1 mb-0.5 opacity-40">
@@ -1169,7 +1156,6 @@ const StoryboardImages: React.FC = () => {
                                                                  className="w-full text-center bg-transparent text-base md:text-lg font-black text-slate-700 font-mono tracking-tight outline-none"
                                                                  value={frame.timeRange}
                                                              />
-                                                             {/* Subtle highlight effect */}
                                                              <div className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-1/2 h-0.5 bg-gradient-to-r from-transparent via-indigo-500 to-transparent opacity-0 group-hover/timer:opacity-100 transition-opacity" />
                                                          </div>
                                                      </div>
@@ -1180,6 +1166,20 @@ const StoryboardImages: React.FC = () => {
                                                         <div className="h-0.5 w-6 bg-slate-300 rounded-full" />
                                                      </div>
                                                  )}
+                                            </div>
+                                        </div>
+                                    </td>
+                                    <td className="py-2 px-0.5 md:py-4 md:px-2 align-middle h-px">
+                                        <div className="relative h-full min-h-[100px] md:h-[270px] flex flex-col bg-white border border-slate-200 rounded-xl overflow-hidden shadow-sm">
+                                            <div className="h-full relative">
+                                                <textarea
+                                                    className={`w-full h-full bg-white p-1 md:p-3 pr-6 md:pr-10 text-xs text-slate-600 leading-relaxed focus:bg-slate-50 outline-none resize-none transition-all ${frame.skipGeneration ? 'opacity-50 grayscale bg-slate-50' : ''}`}
+                                                    value={frame.imagePrompt || ''}
+                                                    onChange={(e) => handleSavePrompt(frame.id, e.target.value)}
+                                                    placeholder="输入提示词..."
+                                                    readOnly={frame.skipGeneration}
+                                                />
+                                                <CopyButton text={frame.imagePrompt || ''} />
                                             </div>
                                         </div>
                                     </td>
