@@ -1153,7 +1153,7 @@ const StoryboardImages: React.FC = () => {
                                                          <div className="relative">
                                                              <input 
                                                                  readOnly
-                                                                 className="w-full text-center bg-transparent text-base md:text-lg font-black text-slate-700 font-mono tracking-tight outline-none"
+                                                                 className="w-full text-center bg-transparent text-[8px] md:text-[9px] xl:text-lg font-black text-slate-700 font-mono tracking-tight outline-none"
                                                                  value={frame.timeRange}
                                                              />
                                                              <div className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-1/2 h-0.5 bg-gradient-to-r from-transparent via-indigo-500 to-transparent opacity-0 group-hover/timer:opacity-100 transition-opacity" />
