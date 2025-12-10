@@ -677,7 +677,11 @@ const StoryboardImages: React.FC = () => {
     
     try {
         const zip = new JSZip();
-        const folder = zip.folder(`storyboard_${project.title}`);
+        
+        // Sanitize title
+        const safeTitle = (project.title || '未命名项目').replace(/[\\/:*?"<>|]/g, "_");
+        
+        const folder = zip.folder(`storyboard_${safeTitle}`);
         
         let count = 0;
         for (const frame of project.storyboard) {
@@ -685,7 +689,13 @@ const StoryboardImages: React.FC = () => {
                 try {
                     const response = await fetch(frame.imageUrl);
                     const blob = await response.blob();
-                    const ext = frame.imageUrl.includes('.png') ? 'png' : 'jpg';
+                    // Determine extension based on MIME type if possible, or URL
+                    // frame.imageUrl could be data URI or http URL
+                    let ext = 'png';
+                    if (frame.imageUrl.startsWith('data:image/jpeg') || frame.imageUrl.includes('.jpg') || frame.imageUrl.includes('.jpeg')) {
+                        ext = 'jpg';
+                    }
+                    
                     folder?.file(`scene_${frame.sceneNumber}.${ext}`, blob);
                     count++;
                 } catch (e) {
@@ -702,7 +712,11 @@ const StoryboardImages: React.FC = () => {
         const content = await zip.generateAsync({ type: "blob" });
         const link = document.createElement("a");
         link.href = URL.createObjectURL(content);
-        link.download = `${project.title}_storyboard.zip`;
+        
+        // Truncate to first 8 chars for filename
+        const filenameTitle = safeTitle.length > 8 ? safeTitle.substring(0, 8) : safeTitle;
+        link.download = `${filenameTitle}.zip`;
+        
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);
