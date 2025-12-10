@@ -263,8 +263,8 @@ const ImageWorkshopList: React.FC = () => {
                                             {serial}
                                         </span>
                                     </td>
-                                    <td className="py-2.5 px-3 border border-slate-200 align-middle">
-                                        <div className="font-bold text-sm md:text-base text-slate-800 group-hover:text-fuchsia-700 transition-colors whitespace-normal break-all block h-auto leading-normal">
+                                    <td className="py-2.5 px-3 border border-slate-200 align-middle max-w-[300px]">
+                                        <div className="font-bold text-sm md:text-base text-slate-800 group-hover:text-fuchsia-700 transition-colors truncate" title={project.title || '未命名项目'}>
                                             {project.title || '未命名项目'}
                                         </div>
                                     </td>
