@@ -452,7 +452,8 @@ const ProjectWorkspace: React.FC = () => {
               id: crypto.randomUUID(),
               sceneNumber: idx + 1,
               originalText: item.original,
-              description: item.description
+              description: item.description,
+              imagePrompt: item.description // Fix: Auto-fill imagePrompt with description
           }));
           await saveProjectUpdate(p => ({ ...p, storyboard: frames }));
       }
