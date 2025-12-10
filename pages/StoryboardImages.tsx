@@ -678,34 +678,54 @@ const StoryboardImages: React.FC = () => {
     try {
         const zip = new JSZip();
         
-        // Sanitize title
-        const safeTitle = (project.title || '未命名项目').replace(/[\\/:*?"<>|]/g, "_");
-        
-        const folder = zip.folder(`storyboard_${safeTitle}`);
+        // Sanitize title for filename
+        // Truncate first to ensure safety
+        let safeTitle = (project.title || '未命名项目').replace(/[\\/:*?"<>|]/g, "_");
         
         let count = 0;
-        for (const frame of project.storyboard) {
+        
+        // Filter valid frames
+        const validFrames = project.storyboard.filter(f => !!f.imageUrl);
+        
+        for (const frame of validFrames) {
             if (frame.imageUrl) {
                 try {
                     const response = await fetch(frame.imageUrl);
+                    if (!response.ok) {
+                         // Skip failed downloads
+                         console.warn(`Skipping scene ${frame.sceneNumber}: Fetch failed ${response.status}`);
+                         continue;
+                    }
+
                     const blob = await response.blob();
-                    // Determine extension based on MIME type if possible, or URL
-                    // frame.imageUrl could be data URI or http URL
+                    if (blob.size === 0) {
+                        console.warn(`Skipping scene ${frame.sceneNumber}: Empty blob`);
+                        continue;
+                    }
+
+                    // Determine extension
                     let ext = 'png';
-                    if (frame.imageUrl.startsWith('data:image/jpeg') || frame.imageUrl.includes('.jpg') || frame.imageUrl.includes('.jpeg')) {
+                    const mime = blob.type;
+                    if (mime === 'image/jpeg' || frame.imageUrl.includes('.jpg') || frame.imageUrl.includes('.jpeg')) {
                         ext = 'jpg';
+                    } else if (mime === 'image/png') {
+                        ext = 'png';
                     }
                     
-                    folder?.file(`scene_${frame.sceneNumber}.${ext}`, blob);
+                    // Flattening is safer for compatibility. 
+                    // Pad scene number for correct ordering in file browser: scene_001.png
+                    const filename = `scene_${String(frame.sceneNumber).padStart(3, '0')}.${ext}`;
+                    
+                    zip.file(filename, blob);
                     count++;
                 } catch (e) {
-                    console.error("Failed to download image", frame.imageUrl);
+                    console.error("Failed to download image", frame.imageUrl, e);
                 }
             }
         }
 
         if (count === 0) {
-            alert("没有可下载的图片");
+            alert("没有可下载的有效图片 (下载失败或无图片)");
             return;
         }
 
@@ -720,6 +740,9 @@ const StoryboardImages: React.FC = () => {
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);
+        
+        // Release object URL
+        setTimeout(() => URL.revokeObjectURL(link.href), 100);
 
     } catch (e) {
         console.error(e);
