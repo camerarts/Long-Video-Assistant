@@ -98,6 +98,7 @@ const StoryboardImages: React.FC = () => {
 
   // State for Downloads and UI
   const [downloading, setDownloading] = useState(false);
+  const [downloadingSequential, setDownloadingSequential] = useState(false);
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
   const [messageType, setMessageType] = useState<'success' | 'error' | 'warning'>('success');
@@ -120,8 +121,8 @@ const StoryboardImages: React.FC = () => {
   // Update busy ref based on state
   useEffect(() => {
       // Busy if generating, uploading, downloading, identifying, or config modal is open
-      isBusyRef.current = generating || uploading || downloading || isIdentifying || showConfigModal;
-  }, [generating, uploading, downloading, isIdentifying, showConfigModal]);
+      isBusyRef.current = generating || uploading || downloading || downloadingSequential || isIdentifying || showConfigModal;
+  }, [generating, uploading, downloading, downloadingSequential, isIdentifying, showConfigModal]);
 
   // Activity Listeners
   useEffect(() => {
@@ -752,6 +753,56 @@ const StoryboardImages: React.FC = () => {
     }
   };
 
+  const handleSequentialDownload = async () => {
+      if (!project?.storyboard) return;
+      
+      const validFrames = project.storyboard.filter(f => !!f.imageUrl);
+      if (validFrames.length === 0) {
+          alert("没有可下载的图片");
+          return;
+      }
+
+      setDownloadingSequential(true);
+      setMessage("开始逐个下载...");
+      setMessageType('success');
+
+      for (const frame of validFrames) {
+          if (!mountedRef.current) break;
+          
+          try {
+              const res = await fetch(frame.imageUrl!);
+              if (!res.ok) continue;
+
+              const blob = await res.blob();
+              const url = URL.createObjectURL(blob);
+              
+              // Determine ext
+              let ext = 'png';
+              if (blob.type === 'image/jpeg' || frame.imageUrl!.includes('.jpg')) ext = 'jpg';
+              
+              const a = document.createElement('a');
+              a.href = url;
+              // Filename = Sequence Number
+              a.download = `${frame.sceneNumber}.${ext}`;
+              document.body.appendChild(a);
+              a.click();
+              document.body.removeChild(a);
+              
+              URL.revokeObjectURL(url);
+              
+              // Rate limit: 10 images per second -> 100ms interval
+              await new Promise(r => setTimeout(r, 100));
+
+          } catch(e) {
+              console.error(`Download failed for frame ${frame.sceneNumber}`, e);
+          }
+      }
+
+      setDownloadingSequential(false);
+      setMessage("下载完成");
+      setTimeout(() => setMessage(null), 3000);
+  };
+
   const handleDownloadPromptsCsv = () => {
       if (!project || !project.storyboard || project.storyboard.length === 0) {
           alert("暂无分镜数据");
@@ -1022,7 +1073,19 @@ const StoryboardImages: React.FC = () => {
                             <th className="py-2 px-0.5 md:py-3 md:px-2 text-xs font-extrabold uppercase tracking-wider w-8 md:w-16 text-center border-b border-slate-200">序号</th>
                             <th className="py-2 px-0.5 md:py-3 md:px-2 text-xs font-extrabold uppercase tracking-wider w-[15%] md:w-[25%] text-center border-b border-slate-200">原文</th>
                             <th className="py-2 px-0.5 md:py-3 md:px-2 text-xs font-extrabold uppercase tracking-wider w-[20%] md:w-[30%] text-center border-b border-slate-200">AI 绘图提示词</th>
-                            <th className="py-2 px-0.5 md:py-3 md:px-2 text-xs font-extrabold uppercase tracking-wider text-center border-b border-slate-200">画面预览</th>
+                            <th className="py-2 px-0.5 md:py-3 md:px-2 text-xs font-extrabold uppercase tracking-wider text-center border-b border-slate-200">
+                                <div className="flex items-center justify-center gap-2">
+                                    画面预览
+                                    <button 
+                                        onClick={handleSequentialDownload}
+                                        disabled={downloadingSequential}
+                                        className="p-1 rounded-md text-slate-400 hover:text-slate-700 hover:bg-slate-200 transition-colors disabled:opacity-50"
+                                        title="逐个下载图片 (文件名=序号，约10张/秒)"
+                                    >
+                                        {downloadingSequential ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
+                                    </button>
+                                </div>
+                            </th>
                         </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-100">
