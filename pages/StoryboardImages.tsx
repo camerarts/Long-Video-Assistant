@@ -935,7 +935,7 @@ const StoryboardImages: React.FC = () => {
         <div className="flex-1 bg-white md:rounded-2xl border-t md:border border-slate-200 shadow-sm overflow-hidden flex flex-col">
             {/* Project Title Header */}
             <div className="px-3 py-2 md:px-6 md:py-4 border-b border-slate-100 bg-slate-50/50 flex justify-between items-center">
-                 <h2 className="text-lg md:text-xl font-black text-transparent bg-clip-text bg-gradient-to-r from-slate-800 to-slate-600">
+                 <h2 className="text-lg md:text-xl font-black text-transparent bg-clip-text bg-gradient-to-r from-slate-800 to-slate-600 truncate flex-1 min-w-0 mr-4" title={project.title || '未命名项目'}>
                     {project.title || '未命名项目'}
                  </h2>
                  <div className="flex items-center gap-2">
