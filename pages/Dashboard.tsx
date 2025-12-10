@@ -276,8 +276,8 @@ const Dashboard: React.FC = () => {
                                             {serial}
                                         </span>
                                     </td>
-                                    <td className="py-2.5 px-3 border border-slate-200 align-middle">
-                                        <div className="font-bold text-slate-800 text-sm md:text-base group-hover:text-violet-700 transition-colors whitespace-normal break-all block h-auto leading-normal">
+                                    <td className="py-2.5 px-3 border border-slate-200 align-middle max-w-[300px]">
+                                        <div className="font-bold text-slate-800 text-sm md:text-base group-hover:text-violet-700 transition-colors truncate" title={project.title || '未命名项目'}>
                                             {project.title || '未命名项目'}
                                         </div>
                                     </td>
