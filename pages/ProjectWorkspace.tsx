@@ -136,12 +136,12 @@ const NODE_HEIGHT = 180;
 // Workflow Layout Definition
 const NODES_CONFIG = [
   { id: 'input', label: '项目输入', panelTitle: '项目基础信息', icon: Layout, color: 'blue', description: '选题与基本信息', x: 50, y: 300 },
-  { id: 'script', label: '视频脚本', panelTitle: '视频文案脚本编辑器', icon: FileText, color: 'violet', promptKey: 'SCRIPT', description: '生成分章节的详细脚本', x: 450, y: 300 },
+  { id: 'script', label: '视频脚本', panelTitle: '视频文案脚本编辑器', icon: FileText, color: 'violet', promptKey: 'SCRIPT', description: '生成分章节的详细脚本', model: 'Gemini 2.5 Flash Preview', x: 450, y: 300 },
   // Column 2: Outputs from Script
-  { id: 'titles', label: '爆款标题', panelTitle: '爆款标题方案', icon: Type, color: 'amber', promptKey: 'TITLES', description: '生成高点击率标题', x: 850, y: 100 },
-  { id: 'sb_text', label: '分镜文案', panelTitle: '分镜画面描述', icon: Film, color: 'fuchsia', promptKey: 'STORYBOARD_TEXT', description: '拆解为可视化画面描述', x: 850, y: 300 },
-  { id: 'summary', label: '简介与标签', panelTitle: '视频简介与标签', icon: List, color: 'emerald', promptKey: 'SUMMARY', description: '生成简介和Hashtags', x: 850, y: 500 },
-  { id: 'cover', label: '封面策划', panelTitle: '封面视觉与文案策划', icon: Palette, color: 'rose', promptKey: 'COVER_GEN', description: '策划封面视觉与文案', x: 850, y: 700 },
+  { id: 'titles', label: '爆款标题', panelTitle: '爆款标题方案', icon: Type, color: 'amber', promptKey: 'TITLES', description: '生成高点击率标题', model: 'Gemini 2.5 Flash', x: 850, y: 100 },
+  { id: 'sb_text', label: '分镜文案', panelTitle: '分镜画面描述', icon: Film, color: 'fuchsia', promptKey: 'STORYBOARD_TEXT', description: '拆解为可视化画面描述', model: 'Gemini 2.5 Flash', x: 850, y: 300 },
+  { id: 'summary', label: '简介与标签', panelTitle: '视频简介与标签', icon: List, color: 'emerald', promptKey: 'SUMMARY', description: '生成简介和Hashtags', model: 'Gemini 2.5 Flash', x: 850, y: 500 },
+  { id: 'cover', label: '封面策划', panelTitle: '封面视觉与文案策划', icon: Palette, color: 'rose', promptKey: 'COVER_GEN', description: '策划封面视觉与文案', model: 'Gemini 2.5 Flash', x: 850, y: 700 },
 ];
 
 const CONNECTIONS = [
@@ -748,6 +748,14 @@ const ProjectWorkspace: React.FC = () => {
                                 <div className="pr-2 mb-8">
                                     <h3 className="text-base font-bold text-slate-800 mb-1">{node.label}</h3>
                                     <p className="text-[10px] text-slate-400 font-medium leading-snug line-clamp-2">{node.description}</p>
+                                    
+                                    {/* ADD MODEL DISPLAY HERE */}
+                                    {(node as any).model && (
+                                        <div className="mt-2 inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-slate-50 border border-slate-100 text-[9px] font-mono text-slate-400">
+                                            <Sparkles className="w-2.5 h-2.5 text-indigo-500" />
+                                            {(node as any).model}
+                                        </div>
+                                    )}
                                 </div>
 
                                 {/* Action Button - Positioned Bottom Right */}
