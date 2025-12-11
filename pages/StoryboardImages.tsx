@@ -120,7 +120,7 @@ const StoryboardImages: React.FC = () => {
 
   // Update busy ref based on state
   useEffect(() => {
-      // Busy if generating, uploading, downloading, identifying, or config modal is open
+      // Busy if generating, uploading, downloading, downloadingSequential, isIdentifying, or showConfigModal
       isBusyRef.current = generating || uploading || downloading || downloadingSequential || isIdentifying || showConfigModal;
   }, [generating, uploading, downloading, downloadingSequential, isIdentifying, showConfigModal]);
 
@@ -269,17 +269,21 @@ const StoryboardImages: React.FC = () => {
 
   const handleReimportPrompts = async () => {
     if (!project || !project.storyboard) return;
-    if (!window.confirm(`确定要基于“${style_mode === 'IMAGE_GEN_A' ? '方案A' : '方案B'}”重新生成所有图片的提示词吗？`)) return;
+    
+    if (!window.confirm(`确定要基于“${style_mode === 'IMAGE_GEN_A' ? '方案A' : '方案B'}”重新导入吗？\n\n注意：这将把项目的【分镜画面描述】内容覆盖到当前列表的【原文】和【AI 绘图提示词】中。`)) return;
 
     const templateKey = style_mode; 
     const template = prompts[templateKey] ? prompts[templateKey].template : '';
 
     const updatedStoryboard = project.storyboard.map(frame => {
-         // Only clean description for generating prompt, do NOT overwrite original description
+         // Clean description for generating prompt
          const cleanedDesc = cleanDescription(frame.description);
          const newPrompt = template.replace(/\{\{description\}\}/g, cleanedDesc);
+         
          return {
              ...frame,
+             // Overwrite originalText with the current description (assuming user wants to sync)
+             originalText: frame.description,
              imagePrompt: newPrompt,
          };
     });
@@ -287,7 +291,7 @@ const StoryboardImages: React.FC = () => {
     const updatedProject = { ...project, storyboard: updatedStoryboard };
     await saveProjectAndSync(updatedProject);
     
-    setMessage("提示词已重新导入成功！");
+    setMessage("数据已从画面描述重新导入成功！");
     setMessageType('success');
     setTimeout(() => setMessage(null), 3000);
   };
