@@ -3,11 +3,20 @@ interface Env {
   DB: any;
 }
 
+const ensureTable = async (db: any) => {
+  await db.prepare("CREATE TABLE IF NOT EXISTS tools (id TEXT PRIMARY KEY, data TEXT)").run();
+};
+
 export const onRequestGet = async (context: any) => {
   const id = context.params.id;
   
   try {
-    const result = await context.env.DB.prepare(
+    const db = context.env.DB;
+    if (!db) throw new Error("Database binding 'DB' not found.");
+
+    await ensureTable(db);
+
+    const result = await db.prepare(
       "SELECT data FROM tools WHERE id = ?"
     ).bind(id).first();
 
