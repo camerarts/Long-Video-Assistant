@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { ProjectData, TitleItem, StoryboardFrame, CoverOption, PromptTemplate, ProjectStatus } from '../types';
@@ -220,12 +219,17 @@ const ProjectWorkspace: React.FC = () => {
 
           setSyncStatus('saving');
           try {
-              await storage.downloadAllData();
-              const freshP = await storage.getProject(id);
-              if (freshP && mountedRef.current) {
-                  setProject(freshP);
+              // Instead of heavy downloadAllData, just sync this specific project
+              const remoteP = await storage.syncProject(id);
+              if (remoteP && mountedRef.current) {
+                  // Only update if remote is newer
+                  if (!project || remoteP.updatedAt > project.updatedAt) {
+                      setProject(remoteP);
+                  }
                   setSyncStatus('synced');
                   setLastSyncTime(new Date().toLocaleTimeString());
+              } else {
+                  if (mountedRef.current) setSyncStatus('synced');
               }
           } catch (e) {
               console.warn("Auto-sync failed", e);
@@ -240,38 +244,51 @@ const ProjectWorkspace: React.FC = () => {
       timeoutId = setTimeout(performSync, 5 * 60 * 1000);
 
       return () => clearTimeout(timeoutId);
-  }, [id]);
+  }, [id, project]);
 
   useEffect(() => {
     mountedRef.current = true;
     const init = async () => {
         if (id) {
-            // 1. Local Load
+            // 1. Local Load (Instant)
             const p = await storage.getProject(id);
             if (p) {
-                if (mountedRef.current) setProject(p);
+                if (mountedRef.current) {
+                    setProject(p);
+                    setLoading(false); // Unblock UI immediately
+                }
             } else {
-                if (mountedRef.current) navigate('/');
-                return;
+                // If local project not found, try fetching once from cloud before giving up
+                // But don't navigate away yet
             }
 
-            // 2. Cloud Sync (Pull)
+            // 2. Cloud Sync (Background Pull - Single Project)
             if (mountedRef.current) setSyncStatus('saving');
             try {
-                await storage.downloadAllData();
-                const freshP = await storage.getProject(id);
+                // Use lightweight syncProject instead of heavy downloadAllData
+                const freshP = await storage.syncProject(id);
                 if (freshP && mountedRef.current) {
-                    setProject(freshP);
+                    // Update if we didn't have local data OR remote is newer
+                    if (!p || freshP.updatedAt > p.updatedAt) {
+                        setProject(freshP);
+                    }
                     setSyncStatus('synced');
                     setLastSyncTime(new Date().toLocaleTimeString());
+                } else if (!p) {
+                    // No local, no remote -> 404
+                    if (mountedRef.current) navigate('/');
+                    return;
                 }
             } catch (e) {
                 console.warn("Auto-sync failed", e);
                 if (mountedRef.current) setSyncStatus('error');
             }
         }
+        
         const loadedPrompts = await storage.getPrompts();
         if (mountedRef.current) setPrompts(loadedPrompts);
+        
+        // Ensure loading is off if we haven't turned it off yet (e.g., waiting for remote only)
         if (mountedRef.current) setLoading(false);
     };
     init();
