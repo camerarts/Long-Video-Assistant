@@ -1,4 +1,5 @@
 
+
 interface Env {
   DB: any;
 }
@@ -81,7 +82,9 @@ export const onRequestPost = async (context: any) => {
     }
 
     // Execute batch (chunked to avoid limits)
-    const chunkSize = 5; // Conservative chunk size
+    // Cloudflare D1 has a limit on batch size and statement size.
+    // We execute sequentially in chunks to be safe.
+    const chunkSize = 5; 
     for (let i = 0; i < statements.length; i += chunkSize) {
         const chunk = statements.slice(i, i + chunkSize);
         if (chunk.length > 0) {
