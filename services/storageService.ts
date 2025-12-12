@@ -1,4 +1,5 @@
 
+
 import { ProjectData, PromptTemplate, DEFAULT_PROMPTS, ProjectStatus, Inspiration } from '../types';
 
 // API Endpoints
@@ -255,6 +256,31 @@ export const downloadAllData = async (): Promise<void> => {
   updateLastUploadTime();
   // Also sync the local change time so it doesn't show as dirty immediately
   localStorage.setItem(KEY_LAST_LOCAL_CHANGE, Date.now().toString());
+};
+
+// New Method: Fetch and update a SINGLE project from cloud (Lightweight)
+export const syncProject = async (id: string): Promise<ProjectData | null> => {
+  try {
+      // Fetch specifically just one project to save bandwidth/time
+      const res = await fetch(`${API_BASE}/projects/${id}`);
+      
+      if (res.status === 404) {
+          // Project might be deleted on cloud, do nothing or handle
+          return null; 
+      }
+      
+      if (!res.ok) throw new Error('Failed to fetch project');
+      
+      const project = await res.json();
+      
+      // Update Local DB
+      await dbPut(STORE_PROJECTS, project);
+      
+      return project as ProjectData;
+  } catch (e) {
+      console.warn("Single project sync failed", e);
+      return null;
+  }
 };
 
 // --- Image Operations (R2) ---
