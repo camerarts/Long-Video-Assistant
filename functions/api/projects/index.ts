@@ -10,17 +10,21 @@ const ensureTable = async (db: any) => {
 export const onRequestGet = async (context: any) => {
   try {
     const db = context.env.DB;
+    if (!db) throw new Error("Database binding 'DB' not found.");
+    
     await ensureTable(db);
 
     const { results } = await db.prepare(
       "SELECT * FROM projects ORDER BY updated_at DESC"
     ).all();
     
-    // Parse the JSON data string back into objects
     const projects = results.map((row: any) => {
-      const data = JSON.parse(row.data);
-      return data;
-    });
+      try {
+        return JSON.parse(row.data);
+      } catch {
+        return null;
+      }
+    }).filter((p: any) => p !== null);
 
     return Response.json(projects);
   } catch (err: any) {
@@ -31,11 +35,12 @@ export const onRequestGet = async (context: any) => {
 export const onRequestPost = async (context: any) => {
   try {
     const db = context.env.DB;
+    if (!db) throw new Error("Database binding 'DB' not found.");
+
     await ensureTable(db);
 
     const project = await context.request.json() as any;
     
-    // We store metadata in columns for querying, and the full object in 'data' column
     await db.prepare(
       `INSERT INTO projects (id, title, status, created_at, updated_at, data) 
        VALUES (?, ?, ?, ?, ?, ?)
