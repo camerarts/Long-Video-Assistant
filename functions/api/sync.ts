@@ -1,23 +1,34 @@
 
-
 interface Env {
   DB: any;
 }
 
+// Helper to ensure tables exist. 
+// We run these sequentially to avoid batch transaction quirks during schema creation on D1.
 const ensureTables = async (db: any) => {
-  await db.batch([
-    db.prepare("CREATE TABLE IF NOT EXISTS projects (id TEXT PRIMARY KEY, title TEXT, status TEXT, created_at INTEGER, updated_at INTEGER, data TEXT)"),
-    db.prepare("CREATE TABLE IF NOT EXISTS inspirations (id TEXT PRIMARY KEY, category TEXT, created_at INTEGER, data TEXT)"),
-    db.prepare("CREATE TABLE IF NOT EXISTS prompts (id TEXT PRIMARY KEY, data TEXT)"),
-    db.prepare("CREATE TABLE IF NOT EXISTS tools (id TEXT PRIMARY KEY, data TEXT)")
-  ]);
+  const statements = [
+    "CREATE TABLE IF NOT EXISTS projects (id TEXT PRIMARY KEY, title TEXT, status TEXT, created_at INTEGER, updated_at INTEGER, data TEXT)",
+    "CREATE TABLE IF NOT EXISTS inspirations (id TEXT PRIMARY KEY, category TEXT, created_at INTEGER, data TEXT)",
+    "CREATE TABLE IF NOT EXISTS prompts (id TEXT PRIMARY KEY, data TEXT)",
+    "CREATE TABLE IF NOT EXISTS tools (id TEXT PRIMARY KEY, data TEXT)"
+  ];
+
+  for (const stmt of statements) {
+    try {
+      await db.prepare(stmt).run();
+    } catch (e) {
+      console.error("Table creation failed for stmt:", stmt, e);
+      // We continue, as the table might already exist or other harmless errors
+    }
+  }
 };
 
 export const onRequestPost = async (context: any) => {
   try {
     const db = context.env.DB;
-    
-    // Auto-migration: Ensure tables exist
+    if (!db) throw new Error("Database binding 'DB' not found. Please check Cloudflare Pages Settings.");
+
+    // Auto-migration
     await ensureTables(db);
 
     const data = await context.request.json();
@@ -59,7 +70,7 @@ export const onRequestPost = async (context: any) => {
       ).bind('global_prompts', JSON.stringify(data.prompts)));
     }
     
-    // Tools (New)
+    // Tools
     if (data.tools && Array.isArray(data.tools)) {
       for (const t of data.tools) {
         statements.push(db.prepare(
@@ -70,7 +81,7 @@ export const onRequestPost = async (context: any) => {
     }
 
     // Execute batch (chunked to avoid limits)
-    const chunkSize = 10; // Reduced chunk size for safety
+    const chunkSize = 5; // Conservative chunk size
     for (let i = 0; i < statements.length; i += chunkSize) {
         const chunk = statements.slice(i, i + chunkSize);
         if (chunk.length > 0) {
@@ -80,15 +91,17 @@ export const onRequestPost = async (context: any) => {
 
     return Response.json({ success: true, timestamp: Date.now() });
   } catch (err: any) {
-    return Response.json({ error: err.message }, { status: 500 });
+    console.error("Sync POST Error:", err);
+    return Response.json({ error: err.message || "Unknown error" }, { status: 500 });
   }
 };
 
 export const onRequestGet = async (context: any) => {
   try {
     const db = context.env.DB;
+    if (!db) throw new Error("Database binding 'DB' not found.");
     
-    // Auto-migration: Ensure tables exist before reading
+    // Auto-migration on read as well, to be safe
     await ensureTables(db);
 
     // Fetch all
@@ -97,13 +110,14 @@ export const onRequestGet = async (context: any) => {
     const prRes = await db.prepare("SELECT * FROM prompts WHERE id = ?").bind('global_prompts').first();
     const tRes = await db.prepare("SELECT * FROM tools").all();
 
-    const projects = pRes.results.map((r: any) => JSON.parse(r.data));
-    const inspirations = iRes.results.map((r: any) => JSON.parse(r.data));
+    const projects = pRes.results ? pRes.results.map((r: any) => JSON.parse(r.data)) : [];
+    const inspirations = iRes.results ? iRes.results.map((r: any) => JSON.parse(r.data)) : [];
     const prompts = prRes ? JSON.parse(prRes.data as string) : null;
-    const tools = tRes.results.map((r: any) => ({ id: r.id, data: JSON.parse(r.data) }));
+    const tools = tRes.results ? tRes.results.map((r: any) => ({ id: r.id, data: JSON.parse(r.data) })) : [];
 
     return Response.json({ projects, inspirations, prompts, tools });
   } catch (err: any) {
-    return Response.json({ error: err.message }, { status: 500 });
+    console.error("Sync GET Error:", err);
+    return Response.json({ error: err.message || "Unknown error" }, { status: 500 });
   }
 };
