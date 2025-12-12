@@ -12,6 +12,8 @@ const ensureTable = async (db: any) => {
 export const onRequestGet = async (context: any) => {
   try {
     const db = context.env.DB;
+    if (!db) throw new Error("Database binding 'DB' not found.");
+
     await ensureTable(db);
 
     const result = await db.prepare(
@@ -19,7 +21,7 @@ export const onRequestGet = async (context: any) => {
     ).bind(KEY).first();
 
     if (!result) {
-      return Response.json(null); // Return null to let frontend use defaults
+      return Response.json(null);
     }
 
     return Response.json(JSON.parse(result.data as string));
@@ -31,6 +33,8 @@ export const onRequestGet = async (context: any) => {
 export const onRequestPost = async (context: any) => {
   try {
     const db = context.env.DB;
+    if (!db) throw new Error("Database binding 'DB' not found.");
+
     await ensureTable(db);
 
     const prompts = await context.request.json();
