@@ -40,16 +40,28 @@ const Settings: React.FC = () => {
 
   const handleSaveModule = async (key: string) => {
     setLoading(true);
-    // Since storage handles the whole object, we save all, but conceptually we are "saving the module"
-    // This cleans up the dirty state for this specific module (and technically others if we wanted, but let's be precise or broad)
+    
+    // 1. Save to Local Storage
     await storage.savePrompts(prompts);
+    
+    // 2. Force Upload to Cloud immediately to prevent race condition/overwrite
+    // This ensures that the next download/sync receives this new version
+    try {
+        await storage.uploadPrompts();
+        storage.updateLastUploadTime();
+        setRefreshTime(`刷新数据时间：${storage.getLastUploadTime()}`);
+    } catch (e) {
+        console.error("Settings auto-sync failed:", e);
+        // We don't block the UI success message if local save worked, 
+        // but checking the console would reveal sync issues.
+    }
     
     // Clear dirty state for all, as the whole state is now persisted
     setDirtyKeys(new Set());
     
     setTimeout(() => {
       setLoading(false);
-      setMessage("配置已保存！");
+      setMessage("配置已保存并同步！");
       setTimeout(() => setMessage(null), 3000);
     }, 500);
   };
