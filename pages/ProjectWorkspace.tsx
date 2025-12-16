@@ -10,7 +10,7 @@ import {
   List, PanelRightClose, Sparkles, Loader2, Copy, 
   Check, Images, ArrowRight, Palette, Film, Maximize2, Play,
   ZoomIn, ZoomOut, Move, RefreshCw, Rocket, AlertCircle, Archive,
-  Cloud, CloudCheck, ArrowLeftRight
+  Cloud, CloudCheck, ArrowLeftRight, Settings2, X, Key
 } from 'lucide-react';
 
 // --- Sub-Components ---
@@ -143,8 +143,8 @@ const NODES_CONFIG = [
   { id: 'titles', label: '爆款标题', panelTitle: '爆款标题方案', icon: Type, color: 'amber', promptKey: 'TITLES', description: '生成高点击率标题', model: 'Gemini 2.5 Flash', x: 850, y: 100 },
   { id: 'sb_text', label: '分镜文案', panelTitle: '分镜画面描述', icon: Film, color: 'fuchsia', promptKey: 'STORYBOARD_TEXT', description: '拆解为可视化画面描述', model: 'Gemini 2.5 Flash', x: 850, y: 300 },
   { id: 'summary', label: '简介与标签', panelTitle: '视频简介与标签', icon: List, color: 'emerald', promptKey: 'SUMMARY', description: '生成简介和Hashtags', model: 'Gemini 2.5 Flash', x: 850, y: 500 },
-  { id: 'cover', label: '封面策划A-4行字', panelTitle: '封面文字策划A-4行字', icon: Palette, color: 'rose', promptKey: 'COVER_GEN', description: '方案A：信息量丰富型封面文案', model: 'Gemini 2.5 Flash', x: 850, y: 700 },
-  { id: 'cover_b', label: '封面策划B-2行字', panelTitle: '封面文字策划B-2行字', icon: Palette, color: 'orange', promptKey: 'COVER_GEN_B', description: '方案B：极简冲击型封面文案', model: 'Gemini 2.5 Flash', x: 850, y: 900 },
+  { id: 'cover', label: '封面文字策划A-4行字', panelTitle: '封面文字策划A-4行字', icon: Palette, color: 'rose', promptKey: 'COVER_GEN', description: '方案A：信息量丰富型封面文案', model: 'Gemini 2.5 Flash', x: 850, y: 700 },
+  { id: 'cover_b', label: '封面文字策划B-2行字', panelTitle: '封面文字策划B-2行字', icon: Palette, color: 'orange', promptKey: 'COVER_GEN_B', description: '方案B：极简冲击型封面文案', model: 'Gemini 2.5 Flash', x: 850, y: 900 },
 ];
 
 const CONNECTIONS = [
@@ -170,6 +170,10 @@ const ProjectWorkspace: React.FC = () => {
   const [failedNodes, setFailedNodes] = useState<Set<string>>(new Set());
   const [prompts, setPrompts] = useState<Record<string, PromptTemplate>>({});
   
+  // API Configuration
+  const [showConfigModal, setShowConfigModal] = useState(false);
+  const [customKey, setCustomKey] = useState('');
+
   // Canvas State
   const [transform, setTransform] = useState({ x: 0, y: 0, scale: 1 });
   const [isDragging, setIsDragging] = useState(false);
@@ -189,9 +193,9 @@ const ProjectWorkspace: React.FC = () => {
 
   // Update busy ref based on state
   useEffect(() => {
-      // Busy if loading, generating, dragging canvas, or user has a panel open (likely editing)
-      isBusyRef.current = loading || generatingNodes.size > 0 || isDragging || selectedNodeId !== null;
-  }, [loading, generatingNodes, isDragging, selectedNodeId]);
+      // Busy if loading, generating, dragging canvas, or user has a panel open (likely editing), or config modal open
+      isBusyRef.current = loading || generatingNodes.size > 0 || isDragging || selectedNodeId !== null || showConfigModal;
+  }, [loading, generatingNodes, isDragging, selectedNodeId, showConfigModal]);
 
   // Activity Listeners
   useEffect(() => {
@@ -292,12 +296,26 @@ const ProjectWorkspace: React.FC = () => {
         const loadedPrompts = await storage.getPrompts();
         if (mountedRef.current) setPrompts(loadedPrompts);
         
+        const storedKey = localStorage.getItem('lva_custom_api_key');
+        if (storedKey && mountedRef.current) setCustomKey(storedKey);
+
         // Ensure loading is off if we haven't turned it off yet (e.g., waiting for remote only)
         if (mountedRef.current) setLoading(false);
     };
     init();
     return () => { mountedRef.current = false; };
   }, [id, navigate]);
+
+  const saveSettings = () => {
+      localStorage.setItem('lva_custom_api_key', customKey);
+      setShowConfigModal(false);
+      // Optional: Add toast notification here
+  };
+
+  const getMaskedKey = (key: string) => {
+      if (!key || key.length < 8) return '';
+      return `${key.substring(0, 4)}...${key.substring(key.length - 4)}`;
+  };
 
   // Canvas Interactions
   const handleWheel = (e: React.WheelEvent) => {
@@ -433,7 +451,7 @@ const ProjectWorkspace: React.FC = () => {
       const prompt = interpolate(template, contextData);
 
       if (nodeId === 'script') {
-          const text = await gemini.generateText(prompt, 'gemini-2.5-flash-preview-09-2025'); 
+          const text = await gemini.generateText(prompt, 'gemini-2.5-flash-preview-09-2025', customKey); 
           await saveProjectUpdate(p => ({ 
               ...p, 
               script: text, 
@@ -441,7 +459,7 @@ const ProjectWorkspace: React.FC = () => {
           }));
       } 
       else if (nodeId === 'summary') {
-          const text = await gemini.generateText(prompt);
+          const text = await gemini.generateText(prompt, 'gemini-2.5-flash', customKey);
           await saveProjectUpdate(p => ({ ...p, summary: text }));
       }
       else if (nodeId === 'titles') {
@@ -453,7 +471,7 @@ const ProjectWorkspace: React.FC = () => {
                       score: {type: "NUMBER"}
                   }
               }
-          });
+          }, customKey);
           await saveProjectUpdate(p => ({ ...p, titles: data }));
       }
       else if (nodeId === 'cover') {
@@ -465,7 +483,7 @@ const ProjectWorkspace: React.FC = () => {
                       score: {type: "NUMBER"}
                   }
               }
-          });
+          }, customKey);
           await saveProjectUpdate(p => ({ ...p, coverOptions: data }));
       }
       else if (nodeId === 'cover_b') {
@@ -477,7 +495,7 @@ const ProjectWorkspace: React.FC = () => {
                       score: {type: "NUMBER"}
                   }
               }
-          });
+          }, customKey);
           await saveProjectUpdate(p => ({ ...p, coverOptionsB: data }));
       }
       else if (nodeId === 'sb_text') {
@@ -488,7 +506,7 @@ const ProjectWorkspace: React.FC = () => {
                       description: {type: "STRING"}
                   }
               }
-          });
+          }, customKey);
           
           // Map extracted JSON to StoryboardFrame structure
           // Ensure correct mapping based on the prompt instructions:
@@ -629,6 +647,16 @@ const ProjectWorkspace: React.FC = () => {
              </div>
 
              <div className="pointer-events-auto flex gap-3">
+                 {/* API Config Button */}
+                 <button
+                    onClick={() => setShowConfigModal(true)}
+                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all shadow-sm h-10 border ${customKey ? 'bg-indigo-50 text-indigo-600 border-indigo-200' : 'bg-white text-slate-500 border-slate-100 hover:border-slate-200'}`}
+                    title="配置自定义 API Key"
+                 >
+                    <Settings2 className="w-4 h-4" />
+                    <span className="hidden lg:inline">API 配置</span>
+                 </button>
+
                  {/* Sync Status Badge */}
                  <div className={`flex items-center gap-1.5 text-[10px] font-bold px-2 py-1 rounded-md border animate-in fade-in transition-colors bg-white/90 backdrop-blur shadow-sm h-10 ${
                     syncStatus === 'synced' ? 'bg-emerald-50 text-emerald-600 border-emerald-100' :
@@ -1040,6 +1068,61 @@ const ProjectWorkspace: React.FC = () => {
                  )}
             </div>
         </div>
+
+        {/* API Config Modal */}
+        {showConfigModal && (
+          <div className="fixed inset-0 z-[60] bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in duration-200">
+              <div className="bg-white rounded-3xl shadow-2xl w-full max-w-md overflow-hidden animate-in zoom-in-95 duration-200">
+                  <div className="px-8 py-6 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
+                      <h3 className="text-xl font-extrabold text-slate-800 flex items-center gap-2">
+                          <Settings2 className="w-6 h-6 text-indigo-600" />
+                          API 配置
+                      </h3>
+                      <button onClick={() => setShowConfigModal(false)} className="text-slate-400 hover:text-slate-600 transition-colors">
+                          <X className="w-6 h-6" />
+                      </button>
+                  </div>
+                  
+                  <div className="p-8 space-y-6">
+                      {/* API Key Input */}
+                      <div>
+                          <label className="text-sm font-bold text-slate-700 mb-2 flex items-center justify-between">
+                              <span>自定义 API Key (可选)</span>
+                              {customKey && <span className="text-[10px] bg-emerald-100 text-emerald-600 px-1.5 py-0.5 rounded font-mono">{getMaskedKey(customKey)}</span>}
+                          </label>
+                          <div className="relative">
+                              <Key className="absolute left-3 top-3 w-5 h-5 text-slate-400" />
+                              <input 
+                                  type="password"
+                                  value={customKey}
+                                  onChange={(e) => setCustomKey(e.target.value)}
+                                  placeholder="sk-..."
+                                  className="w-full bg-slate-50 border border-slate-200 rounded-xl pl-10 pr-4 py-3 text-sm focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none transition-all"
+                              />
+                          </div>
+                          <p className="text-xs text-slate-400 mt-2">
+                              如果不填，将使用系统默认的环境变量 Key。填入后将优先使用此 Key 进行文本生成和数据处理。
+                          </p>
+                      </div>
+                  </div>
+
+                  <div className="px-8 py-5 border-t border-slate-100 bg-slate-50/50 flex justify-end gap-3">
+                      <button 
+                          onClick={() => setCustomKey('')}
+                          className="px-4 py-2 text-slate-500 font-bold text-sm hover:text-rose-600 transition-colors"
+                      >
+                          恢复默认
+                      </button>
+                      <button 
+                          onClick={saveSettings}
+                          className="bg-slate-900 text-white px-6 py-2.5 rounded-xl font-bold shadow-lg hover:bg-slate-800 transition-all text-sm"
+                      >
+                          保存配置
+                      </button>
+                  </div>
+              </div>
+          </div>
+        )}
     </div>
   );
 };
