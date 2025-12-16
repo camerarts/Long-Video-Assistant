@@ -1,3 +1,5 @@
+
+
 import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { ProjectData, TitleItem, StoryboardFrame, CoverOption, PromptTemplate, ProjectStatus } from '../types';
@@ -141,7 +143,8 @@ const NODES_CONFIG = [
   { id: 'titles', label: '爆款标题', panelTitle: '爆款标题方案', icon: Type, color: 'amber', promptKey: 'TITLES', description: '生成高点击率标题', model: 'Gemini 2.5 Flash', x: 850, y: 100 },
   { id: 'sb_text', label: '分镜文案', panelTitle: '分镜画面描述', icon: Film, color: 'fuchsia', promptKey: 'STORYBOARD_TEXT', description: '拆解为可视化画面描述', model: 'Gemini 2.5 Flash', x: 850, y: 300 },
   { id: 'summary', label: '简介与标签', panelTitle: '视频简介与标签', icon: List, color: 'emerald', promptKey: 'SUMMARY', description: '生成简介和Hashtags', model: 'Gemini 2.5 Flash', x: 850, y: 500 },
-  { id: 'cover', label: '封面策划', panelTitle: '封面视觉与文案策划', icon: Palette, color: 'rose', promptKey: 'COVER_GEN', description: '策划封面视觉与文案', model: 'Gemini 2.5 Flash', x: 850, y: 700 },
+  { id: 'cover', label: '封面策划A-4行字', panelTitle: '封面文字策划A-4行字', icon: Palette, color: 'rose', promptKey: 'COVER_GEN', description: '方案A：信息量丰富型封面文案', model: 'Gemini 2.5 Flash', x: 850, y: 700 },
+  { id: 'cover_b', label: '封面策划B-2行字', panelTitle: '封面文字策划B-2行字', icon: Palette, color: 'orange', promptKey: 'COVER_GEN_B', description: '方案B：极简冲击型封面文案', model: 'Gemini 2.5 Flash', x: 850, y: 900 },
 ];
 
 const CONNECTIONS = [
@@ -150,6 +153,7 @@ const CONNECTIONS = [
   { from: 'script', to: 'titles' },
   { from: 'script', to: 'summary' },
   { from: 'script', to: 'cover' },
+  { from: 'script', to: 'cover_b' },
 ];
 
 // --- Main Component ---
@@ -464,6 +468,18 @@ const ProjectWorkspace: React.FC = () => {
           });
           await saveProjectUpdate(p => ({ ...p, coverOptions: data }));
       }
+      else if (nodeId === 'cover_b') {
+          const data = await gemini.generateJSON<CoverOption[]>(prompt, {
+              type: "ARRAY", items: {
+                  type: "OBJECT", properties: {
+                      visual: {type: "STRING"},
+                      copy: {type: "STRING"},
+                      score: {type: "NUMBER"}
+                  }
+              }
+          });
+          await saveProjectUpdate(p => ({ ...p, coverOptionsB: data }));
+      }
       else if (nodeId === 'sb_text') {
           const data = await gemini.generateJSON<{original: string, description: string}[]>(prompt, {
               type: "ARRAY", items: {
@@ -494,7 +510,7 @@ const ProjectWorkspace: React.FC = () => {
     if (generatingNodes.has(nodeId)) return;
     
     // Check dependencies
-    if (['sb_text', 'titles', 'summary', 'cover'].includes(nodeId) && !project.script) {
+    if (['sb_text', 'titles', 'summary', 'cover', 'cover_b'].includes(nodeId) && !project.script) {
         alert("请先生成视频脚本 (Script)，然后再执行此步骤。");
         return;
     }
@@ -529,7 +545,7 @@ const ProjectWorkspace: React.FC = () => {
           return;
       }
 
-      const targets = ['titles', 'sb_text', 'summary', 'cover'];
+      const targets = ['titles', 'sb_text', 'summary', 'cover', 'cover_b'];
       
       // Mark all as generating
       setGeneratingNodes(prev => {
@@ -643,7 +659,7 @@ const ProjectWorkspace: React.FC = () => {
                         className="flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-violet-600 to-indigo-600 text-white rounded-xl font-bold shadow-lg shadow-violet-500/20 hover:shadow-violet-500/40 hover:-translate-y-0.5 transition-all disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none disabled:shadow-none"
                         title={!project.script ? "请先生成视频脚本" : "一键生成标题、分镜、简介与封面 (自动失败重试)"}
                     >
-                        {generatingNodes.size > 0 && ['titles', 'sb_text', 'summary', 'cover'].some(id => generatingNodes.has(id)) ? <Loader2 className="w-4 h-4 animate-spin" /> : <Rocket className="w-4 h-4" />}
+                        {generatingNodes.size > 0 && ['titles', 'sb_text', 'summary', 'cover', 'cover_b'].some(id => generatingNodes.has(id)) ? <Loader2 className="w-4 h-4 animate-spin" /> : <Rocket className="w-4 h-4" />}
                         一键启动
                     </button>
                  )}
@@ -726,10 +742,11 @@ const ProjectWorkspace: React.FC = () => {
                      if (node.id === 'titles') hasData = !!project.titles && project.titles.length > 0;
                      if (node.id === 'summary') hasData = !!project.summary;
                      if (node.id === 'cover') hasData = !!project.coverOptions && project.coverOptions.length > 0;
+                     if (node.id === 'cover_b') hasData = !!project.coverOptionsB && project.coverOptionsB.length > 0;
 
                      // Visual Feedback Logic for Titles, Storyboard, Summary, Cover
                      let bgClass = 'bg-white';
-                     if (['titles', 'sb_text', 'summary', 'cover'].includes(node.id)) {
+                     if (['titles', 'sb_text', 'summary', 'cover', 'cover_b'].includes(node.id)) {
                         if (hasData) {
                             bgClass = 'bg-emerald-50';
                         } else if (isFailed) {
@@ -924,41 +941,46 @@ const ProjectWorkspace: React.FC = () => {
                      />
                  )}
 
-                 {selectedNodeId === 'cover' && (
+                 {(selectedNodeId === 'cover' || selectedNodeId === 'cover_b') && (
                      <div className="space-y-6">
-                        {project.coverOptions && project.coverOptions.length > 0 ? (
-                            <div className="space-y-4">
-                                {project.coverOptions.map((opt, i) => (
-                                    <div key={i} className="bg-white border border-slate-200 rounded-xl p-5 shadow-sm hover:shadow-md transition-shadow">
-                                        <div className="flex justify-between items-center mb-4 border-b border-slate-50 pb-3">
-                                            <span className="bg-rose-50 text-rose-600 text-xs font-bold px-2.5 py-1 rounded-lg border border-rose-100">方案 {i+1}</span>
-                                            <div className="flex items-baseline gap-1">
-                                                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">推荐指数</span>
-                                                <span className="text-3xl font-black text-transparent bg-clip-text bg-gradient-to-r from-rose-600 to-orange-600 italic tracking-tighter">
-                                                    {formatScore(opt.score)}
-                                                </span>
+                        {/* Determine which data to show based on node ID */}
+                        {(() => {
+                            const data = selectedNodeId === 'cover' ? project.coverOptions : project.coverOptionsB;
+                            
+                            return data && data.length > 0 ? (
+                                <div className="space-y-4">
+                                    {data.map((opt, i) => (
+                                        <div key={i} className="bg-white border border-slate-200 rounded-xl p-5 shadow-sm hover:shadow-md transition-shadow">
+                                            <div className="flex justify-between items-center mb-4 border-b border-slate-50 pb-3">
+                                                <span className={`${selectedNodeId === 'cover' ? 'bg-rose-50 text-rose-600 border-rose-100' : 'bg-orange-50 text-orange-600 border-orange-100'} text-xs font-bold px-2.5 py-1 rounded-lg border`}>方案 {i+1}</span>
+                                                <div className="flex items-baseline gap-1">
+                                                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">推荐指数</span>
+                                                    <span className="text-3xl font-black text-transparent bg-clip-text bg-gradient-to-r from-rose-600 to-orange-600 italic tracking-tighter">
+                                                        {formatScore(opt.score)}
+                                                    </span>
+                                                </div>
+                                            </div>
+                                            <div className="mb-4">
+                                                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">画面描述</p>
+                                                <p className="text-xs text-slate-600 leading-relaxed">{opt.visual}</p>
+                                            </div>
+                                            <div className="bg-slate-50 rounded-lg p-3 border border-slate-100 relative group">
+                                                <p className="text-sm font-bold text-slate-800 whitespace-pre-line leading-relaxed text-center font-serif">
+                                                    {(opt.copy || '').replace(/\|/g, '\n')}
+                                                </p>
+                                                <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                                                    <RowCopyButton text={(opt.copy || '').replace(/\|/g, '\n')} />
+                                                </div>
                                             </div>
                                         </div>
-                                        <div className="mb-4">
-                                            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">画面描述</p>
-                                            <p className="text-xs text-slate-600 leading-relaxed">{opt.visual}</p>
-                                        </div>
-                                        <div className="bg-slate-50 rounded-lg p-3 border border-slate-100 relative group">
-                                            <p className="text-sm font-bold text-slate-800 whitespace-pre-line leading-relaxed text-center font-serif">
-                                                {(opt.copy || '').replace(/\|/g, '\n')}
-                                            </p>
-                                            <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                                                <RowCopyButton text={(opt.copy || '').replace(/\|/g, '\n')} />
-                                            </div>
-                                        </div>
-                                    </div>
-                                ))}
-                            </div>
-                        ) : (
-                             <div className="text-center py-12 text-slate-400 border-2 border-dashed border-slate-200 rounded-2xl bg-slate-50/30">
-                                <p>暂无封面方案，点击生成按钮开始策划。</p>
-                            </div>
-                        )}
+                                    ))}
+                                </div>
+                            ) : (
+                                 <div className="text-center py-12 text-slate-400 border-2 border-dashed border-slate-200 rounded-2xl bg-slate-50/30">
+                                    <p>暂无方案，点击生成按钮开始策划。</p>
+                                </div>
+                            );
+                        })()}
                      </div>
                  )}
 
