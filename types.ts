@@ -1,5 +1,4 @@
 
-
 export enum ProjectStatus {
   DRAFT = 'DRAFT',
   IN_PROGRESS = 'IN_PROGRESS',
@@ -60,6 +59,9 @@ export interface ProjectData {
     title: string;
     prompt: string;
   };
+
+  // NEW: Track when each module was last successfully generated or updated
+  moduleTimestamps?: Record<string, number>;
 }
 
 export interface Inspiration {
@@ -297,3 +299,4 @@ export const DEFAULT_PROMPTS: Record<string, PromptTemplate> = {
 `
   }
 };
+
