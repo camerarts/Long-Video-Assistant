@@ -1,5 +1,4 @@
 
-
 import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { ProjectData, TitleItem, StoryboardFrame, CoverOption, PromptTemplate, ProjectStatus } from '../types';
@@ -10,7 +9,7 @@ import {
   List, PanelRightClose, Sparkles, Loader2, Copy, 
   Check, Images, ArrowRight, Palette, Film, Maximize2, Play,
   ZoomIn, ZoomOut, Move, RefreshCw, Rocket, AlertCircle, Archive,
-  Cloud, CloudCheck, ArrowLeftRight, Settings2, X, Key
+  Cloud, CloudCheck, ArrowLeftRight, Settings2, X, Key, Clock
 } from 'lucide-react';
 
 // --- Sub-Components ---
@@ -155,6 +154,18 @@ const CONNECTIONS = [
   { from: 'script', to: 'cover' },
   { from: 'script', to: 'cover_b' },
 ];
+
+// Helper to format timestamp
+const formatTimestamp = (ts?: number) => {
+    if (!ts) return null;
+    const date = new Date(ts);
+    // Format: MM-DD HH:mm
+    const m = String(date.getMonth() + 1).padStart(2, '0');
+    const d = String(date.getDate()).padStart(2, '0');
+    const h = String(date.getHours()).padStart(2, '0');
+    const min = String(date.getMinutes()).padStart(2, '0');
+    return `${m}-${d} ${h}:${min}`;
+};
 
 // --- Main Component ---
 
@@ -449,18 +460,24 @@ const ProjectWorkspace: React.FC = () => {
       };
 
       const prompt = interpolate(template, contextData);
+      const now = Date.now();
 
       if (nodeId === 'script') {
           const text = await gemini.generateText(prompt, 'gemini-2.5-flash-preview-09-2025', customKey); 
           await saveProjectUpdate(p => ({ 
               ...p, 
               script: text, 
-              status: p.status === ProjectStatus.DRAFT ? ProjectStatus.IN_PROGRESS : p.status 
+              status: p.status === ProjectStatus.DRAFT ? ProjectStatus.IN_PROGRESS : p.status,
+              moduleTimestamps: { ...p.moduleTimestamps, [nodeId]: now }
           }));
       } 
       else if (nodeId === 'summary') {
           const text = await gemini.generateText(prompt, 'gemini-2.5-flash', customKey);
-          await saveProjectUpdate(p => ({ ...p, summary: text }));
+          await saveProjectUpdate(p => ({ 
+              ...p, 
+              summary: text,
+              moduleTimestamps: { ...p.moduleTimestamps, [nodeId]: now }
+          }));
       }
       else if (nodeId === 'titles') {
           const data = await gemini.generateJSON<TitleItem[]>(prompt, {
@@ -472,7 +489,11 @@ const ProjectWorkspace: React.FC = () => {
                   }
               }
           }, customKey);
-          await saveProjectUpdate(p => ({ ...p, titles: data }));
+          await saveProjectUpdate(p => ({ 
+              ...p, 
+              titles: data,
+              moduleTimestamps: { ...p.moduleTimestamps, [nodeId]: now }
+          }));
       }
       else if (nodeId === 'cover') {
           const data = await gemini.generateJSON<CoverOption[]>(prompt, {
@@ -484,7 +505,11 @@ const ProjectWorkspace: React.FC = () => {
                   }
               }
           }, customKey);
-          await saveProjectUpdate(p => ({ ...p, coverOptions: data }));
+          await saveProjectUpdate(p => ({ 
+              ...p, 
+              coverOptions: data,
+              moduleTimestamps: { ...p.moduleTimestamps, [nodeId]: now }
+          }));
       }
       else if (nodeId === 'cover_b') {
           const data = await gemini.generateJSON<CoverOption[]>(prompt, {
@@ -496,7 +521,11 @@ const ProjectWorkspace: React.FC = () => {
                   }
               }
           }, customKey);
-          await saveProjectUpdate(p => ({ ...p, coverOptionsB: data }));
+          await saveProjectUpdate(p => ({ 
+              ...p, 
+              coverOptionsB: data,
+              moduleTimestamps: { ...p.moduleTimestamps, [nodeId]: now }
+          }));
       }
       else if (nodeId === 'sb_text') {
           const data = await gemini.generateJSON<{original: string, description: string}[]>(prompt, {
@@ -519,7 +548,11 @@ const ProjectWorkspace: React.FC = () => {
               description: item.description,
               imagePrompt: item.description // Fix: Auto-fill imagePrompt with description
           }));
-          await saveProjectUpdate(p => ({ ...p, storyboard: frames }));
+          await saveProjectUpdate(p => ({ 
+              ...p, 
+              storyboard: frames,
+              moduleTimestamps: { ...p.moduleTimestamps, [nodeId]: now }
+          }));
       }
   };
 
@@ -772,6 +805,9 @@ const ProjectWorkspace: React.FC = () => {
                      if (node.id === 'cover') hasData = !!project.coverOptions && project.coverOptions.length > 0;
                      if (node.id === 'cover_b') hasData = !!project.coverOptionsB && project.coverOptionsB.length > 0;
 
+                     // Get last timestamp
+                     const lastTime = project.moduleTimestamps?.[node.id];
+
                      // Visual Feedback Logic for Titles, Storyboard, Summary, Cover
                      let bgClass = 'bg-white';
                      if (['titles', 'sb_text', 'summary', 'cover', 'cover_b'].includes(node.id)) {
@@ -807,8 +843,18 @@ const ProjectWorkspace: React.FC = () => {
                          >
                              {/* Content Wrapper */}
                              <div className="p-5 h-full relative flex flex-col justify-between">
+                                {/* Timestamp Display */}
+                                {lastTime && (
+                                    <div className="absolute top-2 left-0 right-0 flex justify-center pointer-events-none">
+                                        <span className="text-[9px] font-mono text-slate-400 bg-white/50 backdrop-blur px-1.5 py-0.5 rounded border border-slate-100/50 shadow-sm flex items-center gap-1">
+                                            <Clock className="w-2.5 h-2.5" />
+                                            {formatTimestamp(lastTime)}
+                                        </span>
+                                    </div>
+                                )}
+
                                 {/* Header: Icon & Status */}
-                                <div className="flex items-start justify-between mb-2">
+                                <div className="flex items-start justify-between mb-2 mt-1">
                                     <div className={`w-10 h-10 rounded-xl bg-${node.color}-100 text-${node.color}-600 flex items-center justify-center shadow-sm`}>
                                         <node.icon className="w-5 h-5" />
                                     </div>
@@ -927,14 +973,28 @@ const ProjectWorkspace: React.FC = () => {
                         content={project.script || ''} 
                         title="视频文案脚本" 
                         placeholder="在此输入或粘贴视频脚本内容。输入完成后点击右上角保存，即可作为后续步骤的依据。"
-                        onSave={(val) => saveProjectUpdate(p => ({ ...p, script: val, status: p.status === ProjectStatus.DRAFT ? ProjectStatus.IN_PROGRESS : p.status }))}
+                        onSave={(val) => saveProjectUpdate(p => ({ 
+                            ...p, 
+                            script: val, 
+                            status: p.status === ProjectStatus.DRAFT ? ProjectStatus.IN_PROGRESS : p.status,
+                            moduleTimestamps: { ...p.moduleTimestamps, script: Date.now() }
+                        }))}
                         showStats={true}
                         readOnly={isArchived}
                     />
                  )}
 
                  {selectedNodeId === 'summary' && (
-                    <TextResultBox content={project.summary || ''} title="简介与标签" />
+                    <TextResultBox 
+                        content={project.summary || ''} 
+                        title="简介与标签" 
+                        onSave={(val) => saveProjectUpdate(p => ({ 
+                            ...p, 
+                            summary: val,
+                            moduleTimestamps: { ...p.moduleTimestamps, summary: Date.now() }
+                        }))}
+                        readOnly={isArchived}
+                    />
                  )}
 
                  {selectedNodeId === 'titles' && (
@@ -1128,3 +1188,4 @@ const ProjectWorkspace: React.FC = () => {
 };
 
 export default ProjectWorkspace;
+
