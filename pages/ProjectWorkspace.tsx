@@ -144,6 +144,7 @@ const NODES_CONFIG = [
   { id: 'summary', label: '简介与标签', panelTitle: '视频简介与标签', icon: List, color: 'emerald', promptKey: 'SUMMARY', description: '生成简介和Hashtags', model: 'Gemini 2.5 Flash', x: 850, y: 500 },
   { id: 'cover', label: '封面文字策划A-4行字', panelTitle: '封面文字策划A-4行字', icon: Palette, color: 'rose', promptKey: 'COVER_GEN', description: '方案A：信息量丰富型封面文案', model: 'Gemini 2.5 Flash', x: 850, y: 700 },
   { id: 'cover_b', label: '封面文字策划B-2行字', panelTitle: '封面文字策划B-2行字', icon: Palette, color: 'orange', promptKey: 'COVER_GEN_B', description: '方案B：极简冲击型封面文案', model: 'Gemini 2.5 Flash', x: 850, y: 900 },
+  { id: 'cover_bg', label: '封面背景图', panelTitle: '封面背景画面描述', icon: Images, color: 'cyan', promptKey: 'COVER_BG_IMAGE', description: '生成无文字的封面背景图描述', model: 'Gemini 2.5 Flash', x: 850, y: 1100 },
 ];
 
 const CONNECTIONS = [
@@ -153,6 +154,7 @@ const CONNECTIONS = [
   { from: 'script', to: 'summary' },
   { from: 'script', to: 'cover' },
   { from: 'script', to: 'cover_b' },
+  { from: 'script', to: 'cover_bg' },
 ];
 
 // Helper to format timestamp
@@ -527,6 +529,14 @@ const ProjectWorkspace: React.FC = () => {
               moduleTimestamps: { ...p.moduleTimestamps, [nodeId]: now }
           }));
       }
+      else if (nodeId === 'cover_bg') {
+          const text = await gemini.generateText(prompt, 'gemini-2.5-flash', customKey);
+          await saveProjectUpdate(p => ({ 
+              ...p, 
+              coverBgImageDescription: text,
+              moduleTimestamps: { ...p.moduleTimestamps, [nodeId]: now }
+          }));
+      }
       else if (nodeId === 'sb_text') {
           const data = await gemini.generateJSON<{original: string, description: string}[]>(prompt, {
               type: "ARRAY", items: {
@@ -561,7 +571,7 @@ const ProjectWorkspace: React.FC = () => {
     if (generatingNodes.has(nodeId)) return;
     
     // Check dependencies
-    if (['sb_text', 'titles', 'summary', 'cover', 'cover_b'].includes(nodeId) && !project.script) {
+    if (['sb_text', 'titles', 'summary', 'cover', 'cover_b', 'cover_bg'].includes(nodeId) && !project.script) {
         alert("请先生成视频脚本 (Script)，然后再执行此步骤。");
         return;
     }
@@ -596,7 +606,7 @@ const ProjectWorkspace: React.FC = () => {
           return;
       }
 
-      const targets = ['titles', 'sb_text', 'summary', 'cover', 'cover_b'];
+      const targets = ['titles', 'sb_text', 'summary', 'cover', 'cover_b', 'cover_bg'];
       
       // Mark all as generating
       setGeneratingNodes(prev => {
@@ -720,7 +730,7 @@ const ProjectWorkspace: React.FC = () => {
                         className="flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-violet-600 to-indigo-600 text-white rounded-xl font-bold shadow-lg shadow-violet-500/20 hover:shadow-violet-500/40 hover:-translate-y-0.5 transition-all disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none disabled:shadow-none"
                         title={!project.script ? "请先生成视频脚本" : "一键生成标题、分镜、简介与封面 (自动失败重试)"}
                     >
-                        {generatingNodes.size > 0 && ['titles', 'sb_text', 'summary', 'cover', 'cover_b'].some(id => generatingNodes.has(id)) ? <Loader2 className="w-4 h-4 animate-spin" /> : <Rocket className="w-4 h-4" />}
+                        {generatingNodes.size > 0 && ['titles', 'sb_text', 'summary', 'cover', 'cover_b', 'cover_bg'].some(id => generatingNodes.has(id)) ? <Loader2 className="w-4 h-4 animate-spin" /> : <Rocket className="w-4 h-4" />}
                         一键启动
                     </button>
                  )}
@@ -804,13 +814,14 @@ const ProjectWorkspace: React.FC = () => {
                      if (node.id === 'summary') hasData = !!project.summary;
                      if (node.id === 'cover') hasData = !!project.coverOptions && project.coverOptions.length > 0;
                      if (node.id === 'cover_b') hasData = !!project.coverOptionsB && project.coverOptionsB.length > 0;
+                     if (node.id === 'cover_bg') hasData = !!project.coverBgImageDescription;
 
                      // Get last timestamp
                      const lastTime = project.moduleTimestamps?.[node.id];
 
                      // Visual Feedback Logic for Titles, Storyboard, Summary, Cover
                      let bgClass = 'bg-white';
-                     if (['titles', 'sb_text', 'summary', 'cover', 'cover_b'].includes(node.id)) {
+                     if (['titles', 'sb_text', 'summary', 'cover', 'cover_b', 'cover_bg'].includes(node.id)) {
                         if (hasData) {
                             bgClass = 'bg-emerald-50';
                         } else if (isFailed) {
@@ -1070,6 +1081,20 @@ const ProjectWorkspace: React.FC = () => {
                             );
                         })()}
                      </div>
+                 )}
+
+                 {selectedNodeId === 'cover_bg' && (
+                    <TextResultBox 
+                        content={project.coverBgImageDescription || ''} 
+                        title="封面背景画面描述" 
+                        onSave={(val) => saveProjectUpdate(p => ({ 
+                            ...p, 
+                            coverBgImageDescription: val,
+                            moduleTimestamps: { ...p.moduleTimestamps, cover_bg: Date.now() }
+                        }))}
+                        placeholder="此处将生成封面背景图的详细画面描述..."
+                        readOnly={isArchived}
+                    />
                  )}
 
                  {selectedNodeId === 'sb_text' && (
