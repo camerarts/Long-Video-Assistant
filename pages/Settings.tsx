@@ -24,6 +24,7 @@ const Settings: React.FC = () => {
     'IMAGE_GEN_B',
     'SUMMARY',
     'COVER_GEN',
+    'COVER_GEN_B',
     'AI_TITLES_GENERATOR'
   ];
 
