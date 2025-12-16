@@ -77,10 +77,10 @@ const handleApiError = (error: any, defaultMsg: string): never => {
   throw new Error(msg || defaultMsg);
 };
 
-export const generateText = async (prompt: string, modelName: string = 'gemini-2.5-flash'): Promise<string> => {
+export const generateText = async (prompt: string, modelName: string = 'gemini-2.5-flash', customApiKey?: string): Promise<string> => {
   try {
     return await retryWithBackoff(async () => {
-        const ai = getClient();
+        const ai = getClient(customApiKey);
         const response = await ai.models.generateContent({
           model: modelName,
           contents: prompt,
@@ -93,10 +93,10 @@ export const generateText = async (prompt: string, modelName: string = 'gemini-2
   return ''; // Should be unreachable
 };
 
-export const generateJSON = async <T>(prompt: string, schema?: any): Promise<T> => {
+export const generateJSON = async <T>(prompt: string, schema?: any, customApiKey?: string): Promise<T> => {
   try {
     return await retryWithBackoff(async () => {
-        const ai = getClient();
+        const ai = getClient(customApiKey);
         const response = await ai.models.generateContent({
           model: 'gemini-2.5-flash',
           contents: prompt,
@@ -168,3 +168,4 @@ export const generateImage = async (prompt: string, customApiKey?: string, model
   }
   return ''; // Should be unreachable
 };
+
