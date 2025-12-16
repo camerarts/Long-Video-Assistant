@@ -53,7 +53,8 @@ export interface ProjectData {
   titles?: TitleItem[]; // Structured titles
   summary?: string;
   coverText?: string; // Legacy field
-  coverOptions?: CoverOption[]; // New structured cover options
+  coverOptions?: CoverOption[]; // New structured cover options (Plan A)
+  coverOptionsB?: CoverOption[]; // New structured cover options (Plan B)
   coverImage?: {
     imageUrl: string;
     title: string;
@@ -182,8 +183,8 @@ export const DEFAULT_PROMPTS: Record<string, PromptTemplate> = {
   },
   COVER_GEN: {
     id: 'cover_gen',
-    name: '封面文字策划',
-    description: '基于脚本内容生成封面方案',
+    name: '封面文字策划A-4行字',
+    description: '基于脚本内容生成封面方案 (信息量丰富型)',
     template: `请基于以下视频脚本，策划 3 个高点击率的封面（Thumbnail）方案。
     
 主题: {{title}}
@@ -206,6 +207,36 @@ export const DEFAULT_PROMPTS: Record<string, PromptTemplate> = {
     "visual": "左右分屏对比...", 
     "copy": "月薪三千怎么存钱？\\n別再只會省吃儉用\\n學會這招資產翻倍\\n【親測有效】", 
     "score": 88
+  }
+]
+`
+  },
+  COVER_GEN_B: {
+    id: 'cover_gen_b',
+    name: '封面文字策划B-2行字',
+    description: '基于脚本内容生成短小精悍的2行封面文案',
+    template: `请基于以下视频脚本，策划 3 个极简、冲击力强的封面（Thumbnail）方案。
+    
+主题: {{title}}
+脚本内容:
+{{script}}
+
+请返回一个纯 JSON 数组（不要Markdown格式），数组中每个对象包含三个字段：
+- "visual": 详细的画面描述（画面要留白，适合放超大文字）。
+- "copy": 封面上的文案（Copywriting）。**必须严格仅包含2行文字**（使用换行符分隔）。字数要极少，冲击力要极强，主打一个核心痛点或反差。
+- "score": 推荐指数（1-100分）。
+
+示例：
+[
+  {
+    "visual": "极简背景，一个人在奔跑的剪影", 
+    "copy": "逃离\\n平庸", 
+    "score": 98
+  },
+  {
+    "visual": "破碎的存钱罐特写", 
+    "copy": "存钱\\n是骗局？", 
+    "score": 92
   }
 ]
 `
