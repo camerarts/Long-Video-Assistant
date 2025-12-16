@@ -54,6 +54,7 @@ export interface ProjectData {
   coverText?: string; // Legacy field
   coverOptions?: CoverOption[]; // New structured cover options (Plan A)
   coverOptionsB?: CoverOption[]; // New structured cover options (Plan B)
+  coverBgImageDescription?: string; // New: Description for cover background image
   coverImage?: {
     imageUrl: string;
     title: string;
@@ -242,6 +243,27 @@ export const DEFAULT_PROMPTS: Record<string, PromptTemplate> = {
   }
 ]
 `
+  },
+  COVER_BG_IMAGE: {
+    id: 'cover_bg_image',
+    name: '封面背景图',
+    description: '生成无文字的封面背景图画面描述',
+    template: `请基于以下视频脚本，构思一张极具吸引力的视频封面背景图（无文字）。
+
+主题: {{title}}
+脚本内容:
+{{script}}
+
+请提供一段详细的画面描述（Prompt），包含：
+1. 主体元素（人物、物体）
+2. 环境背景
+3. 光影氛围
+4. 构图方式
+5. 艺术风格（建议：电影感、高清晰度、吸睛）
+
+**重要：** 画面中不要包含任何文字，只描述视觉元素。
+
+请直接输出画面描述内容，无需Markdown格式。`
   },
   INSPIRATION_EXTRACT: {
     id: 'insp_extract',
