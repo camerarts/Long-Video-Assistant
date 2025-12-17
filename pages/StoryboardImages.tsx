@@ -7,7 +7,7 @@ import JSZip from 'jszip';
 import { 
   ArrowLeft, Image as ImageIcon, Sparkles, Loader2, Trash2, RefreshCw, 
   Download, AlertCircle, Ban, CheckCircle2, Play, Cloud, CloudCheck, StopCircle,
-  ExternalLink, ZoomIn, X, Wand2, Package, Settings2, Key, ClipboardPaste, Check
+  ExternalLink, ZoomIn, X, Wand2, Package, Settings2, Key, ClipboardPaste, Check, Zap, Crown
 } from 'lucide-react';
 
 const StoryboardImages: React.FC = () => {
@@ -26,6 +26,7 @@ const StoryboardImages: React.FC = () => {
   const [prompts, setPrompts] = useState<Record<string, PromptTemplate>>({});
   const [customKey, setCustomKey] = useState('');
   const [showConfigModal, setShowConfigModal] = useState(false);
+  const [imageModel, setImageModel] = useState<string>('gemini-2.5-flash-image');
   // Default to 'A' (Cinematic), removed UI toggle as requested
   const [styleMode] = useState<'A' | 'B'>('A');
 
@@ -68,6 +69,9 @@ const StoryboardImages: React.FC = () => {
       
       const k = localStorage.getItem('lva_custom_api_key');
       if (k && mountedRef.current) setCustomKey(k);
+
+      const m = localStorage.getItem('lva_image_model');
+      if (m && mountedRef.current) setImageModel(m);
       
       if (mountedRef.current) setLoading(false);
     };
@@ -80,6 +84,7 @@ const StoryboardImages: React.FC = () => {
 
   const saveSettings = () => {
       localStorage.setItem('lva_custom_api_key', customKey);
+      localStorage.setItem('lva_image_model', imageModel);
       setShowConfigModal(false);
   };
 
@@ -131,8 +136,8 @@ const StoryboardImages: React.FC = () => {
       try {
           const prompt = constructPrompt(frame.imagePrompt || frame.description);
           
-          // 1. Generate (returns base64)
-          const base64 = await gemini.generateImage(prompt, customKey);
+          // 1. Generate (returns base64) - Pass selected model
+          const base64 = await gemini.generateImage(prompt, customKey, imageModel);
 
           // 2. Upload to R2 (if configured) or keep base64
           let finalUrl = base64;
@@ -148,7 +153,7 @@ const StoryboardImages: React.FC = () => {
           await saveProjectUpdate(p => ({
               ...p,
               storyboard: p.storyboard?.map(f => 
-                  f.id === frame.id ? { ...f, imageUrl: finalUrl, imageModel: 'gemini-2.5-flash-image' } : f
+                  f.id === frame.id ? { ...f, imageUrl: finalUrl, imageModel: imageModel } : f
               )
           }));
 
@@ -358,10 +363,10 @@ const StoryboardImages: React.FC = () => {
               <button
                 onClick={() => setShowConfigModal(true)}
                 className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold transition-all shadow-sm border ${customKey ? 'bg-indigo-50 text-indigo-600 border-indigo-200' : 'bg-white text-slate-500 border-slate-200 hover:border-slate-300'}`}
-                title="配置自定义 API Key"
+                title="配置 API 和模型"
               >
                 <Settings2 className="w-4 h-4" />
-                <span className="hidden lg:inline">API</span>
+                <span className="hidden lg:inline">API & 模型</span>
               </button>
 
               <button
@@ -486,15 +491,20 @@ const StoryboardImages: React.FC = () => {
                                                     <div className={`relative w-full h-full rounded-[9px] overflow-hidden ${isGenerating ? 'bg-slate-50' : ''}`}>
                                                         {hasImage ? (
                                                             <>
-                                                                <img 
-                                                                    src={frame.imageUrl} 
-                                                                    alt={`Scene ${frame.sceneNumber}`} 
-                                                                    className="w-full h-full object-cover" 
-                                                                />
+                                                                <div 
+                                                                    onClick={() => setPreviewImage(frame.imageUrl!)}
+                                                                    className="w-full h-full cursor-zoom-in group/img-zoom"
+                                                                >
+                                                                    <img 
+                                                                        src={frame.imageUrl} 
+                                                                        alt={`Scene ${frame.sceneNumber}`} 
+                                                                        className="w-full h-full object-cover transition-transform duration-700 group-hover/img-zoom:scale-105" 
+                                                                    />
+                                                                </div>
 
                                                                 {/* Sync Status - Top Left */}
                                                                 {!frame.imageUrl?.startsWith('data:') && (
-                                                                    <div className="absolute top-2 left-2 z-20" title="已同步云端">
+                                                                    <div className="absolute top-2 left-2 z-20 pointer-events-none" title="已同步云端">
                                                                          <div className="bg-emerald-500 text-white p-0.5 rounded-full shadow-md border border-white/20">
                                                                             <Check className="w-3 h-3" strokeWidth={4} />
                                                                          </div>
@@ -512,7 +522,7 @@ const StoryboardImages: React.FC = () => {
                                                                 
                                                                 {/* Floating Regenerate Button - Top Right */}
                                                                 <button 
-                                                                    onClick={() => handleGenerateImage(frame)}
+                                                                    onClick={(e) => { e.stopPropagation(); handleGenerateImage(frame); }}
                                                                     disabled={isGenerating || frame.skipGeneration}
                                                                     className="absolute top-2 right-2 p-2 bg-white/80 hover:bg-white text-slate-600 hover:text-fuchsia-600 rounded-lg backdrop-blur-sm shadow-sm opacity-0 group-hover/image:opacity-100 transition-all z-20"
                                                                     title="重新生成"
@@ -520,30 +530,14 @@ const StoryboardImages: React.FC = () => {
                                                                     <RefreshCw className={`w-4 h-4 ${isGenerating ? 'animate-spin' : ''}`} />
                                                                 </button>
 
-                                                                {/* Overlay Actions */}
-                                                                <div className="absolute inset-0 bg-black/40 opacity-0 group-hover/image:opacity-100 transition-opacity flex items-center justify-center gap-3 backdrop-blur-[1px]">
-                                                                    <button 
-                                                                        onClick={() => setPreviewImage(frame.imageUrl!)}
-                                                                        className="p-2 bg-white/20 hover:bg-white text-white hover:text-slate-900 rounded-full backdrop-blur-md transition-all transform hover:scale-110"
-                                                                        title="预览"
-                                                                    >
-                                                                        <ZoomIn className="w-4 h-4" />
-                                                                    </button>
-                                                                    <button 
-                                                                        onClick={() => handleDownload(frame)}
-                                                                        className="p-2 bg-white/20 hover:bg-white text-white hover:text-emerald-600 rounded-full backdrop-blur-md transition-all transform hover:scale-110"
-                                                                        title="下载"
-                                                                    >
-                                                                        <Download className="w-4 h-4" />
-                                                                    </button>
-                                                                    <button 
-                                                                        onClick={() => handleDeleteImage(frame)}
-                                                                        className="p-2 bg-white/20 hover:bg-white text-white hover:text-rose-600 rounded-full backdrop-blur-md transition-all transform hover:scale-110"
-                                                                        title="删除"
-                                                                    >
-                                                                        <Trash2 className="w-4 h-4" />
-                                                                    </button>
-                                                                </div>
+                                                                {/* Download Button - Bottom Right - Fixed Display */}
+                                                                <button 
+                                                                    onClick={(e) => { e.stopPropagation(); handleDownload(frame); }}
+                                                                    className="absolute bottom-2 right-2 p-1.5 bg-black/50 hover:bg-black/80 text-white rounded-lg backdrop-blur-sm shadow-sm transition-all z-20"
+                                                                    title="下载图片"
+                                                                >
+                                                                    <Download className="w-3.5 h-3.5" />
+                                                                </button>
                                                             </>
                                                         ) : (
                                                             <div className="absolute inset-0 flex flex-col items-center justify-center p-4 text-center">
@@ -614,6 +608,55 @@ const StoryboardImages: React.FC = () => {
                   </div>
                   
                   <div className="p-8 space-y-6">
+                      
+                      {/* Model Selection */}
+                      <div>
+                          <label className="text-sm font-bold text-slate-700 mb-2 block">绘图模型</label>
+                          <div className="grid grid-cols-2 gap-3">
+                              <button
+                                  onClick={() => setImageModel('gemini-2.5-flash-image')}
+                                  className={`p-3 rounded-xl border text-left transition-all relative overflow-hidden group ${
+                                      imageModel === 'gemini-2.5-flash-image'
+                                      ? 'bg-fuchsia-50 border-fuchsia-500 text-fuchsia-700 ring-1 ring-fuchsia-500 shadow-sm'
+                                      : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'
+                                  }`}
+                              >
+                                  <div className="flex items-center gap-1.5 mb-1 relative z-10">
+                                      <Zap className="w-3.5 h-3.5" />
+                                      <span className="font-bold text-xs">Flash 2.5</span>
+                                  </div>
+                                  <div className="text-[10px] opacity-70 relative z-10">快速 · 免费</div>
+                                  {imageModel === 'gemini-2.5-flash-image' && (
+                                      <div className="absolute top-2 right-2 text-fuchsia-500">
+                                          <CheckCircle2 className="w-4 h-4" />
+                                      </div>
+                                  )}
+                              </button>
+                              <button
+                                  onClick={() => setImageModel('gemini-3-pro-image-preview')}
+                                  className={`p-3 rounded-xl border text-left transition-all relative overflow-hidden group ${
+                                      imageModel === 'gemini-3-pro-image-preview'
+                                      ? 'bg-indigo-50 border-indigo-500 text-indigo-700 ring-1 ring-indigo-500 shadow-sm'
+                                      : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'
+                                  }`}
+                              >
+                                  <div className="flex items-center gap-1.5 mb-1 relative z-10">
+                                      <Crown className="w-3.5 h-3.5" />
+                                      <span className="font-bold text-xs">Pro 3.0</span>
+                                  </div>
+                                  <div className="text-[10px] opacity-70 relative z-10">高清 · 预览版</div>
+                                  {imageModel === 'gemini-3-pro-image-preview' && (
+                                      <div className="absolute top-2 right-2 text-indigo-500">
+                                          <CheckCircle2 className="w-4 h-4" />
+                                      </div>
+                                  )}
+                              </button>
+                          </div>
+                          <p className="text-[10px] text-slate-400 mt-2">
+                              Flash 模型速度快且免费；Pro 模型画质更好（1K/2K），但生成时间较长且可能有配额限制。
+                          </p>
+                      </div>
+
                       {/* API Key Input */}
                       <div>
                           <label className="text-sm font-bold text-slate-700 mb-2 flex items-center justify-between">
@@ -638,15 +681,15 @@ const StoryboardImages: React.FC = () => {
                                   粘贴
                               </button>
                           </div>
-                          <p className="text-xs text-slate-400 mt-2">
-                              如果不填，将使用系统默认的环境变量 Key。填入后将优先使用此 Key 进行文本生成和数据处理。
+                          <p className="text-[10px] text-slate-400 mt-2">
+                              如果不填，默认使用系统配置的 Key。填入后将优先使用此 Key。建议在使用 Pro 模型时配置自己的 Key 以避免配额竞争。
                           </p>
                       </div>
                   </div>
 
                   <div className="px-8 py-5 border-t border-slate-100 bg-slate-50/50 flex justify-end gap-3">
                       <button 
-                          onClick={() => setCustomKey('')}
+                          onClick={() => { setCustomKey(''); setImageModel('gemini-2.5-flash-image'); }}
                           className="px-4 py-2 text-slate-500 font-bold text-sm hover:text-rose-600 transition-colors"
                       >
                           恢复默认
