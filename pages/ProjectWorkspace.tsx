@@ -8,7 +8,7 @@ import {
   List, PanelRightClose, Sparkles, Loader2, Copy, 
   Check, Images, ArrowRight, Palette, Film, Maximize2, Play,
   ZoomIn, ZoomOut, Move, RefreshCw, Rocket, AlertCircle, Archive,
-  Cloud, CloudCheck, ArrowLeftRight, Settings2, X, Key, Clock
+  Cloud, CloudCheck, ArrowLeftRight, Settings2, X, Key, Clock, Eraser
 } from 'lucide-react';
 
 // --- Sub-Components ---
@@ -440,6 +440,40 @@ const ProjectWorkspace: React.FC = () => {
         await saveProjectUpdate(p => ({ ...p, storyboard: updatedStoryboard }));
   };
 
+  const handleReset = async (nodeId: string) => {
+      if (project?.status === ProjectStatus.ARCHIVED) return;
+      if (!window.confirm("确定要重置此模块吗？\n这将清空当前已生成的内容，状态将恢复为未开始。")) return;
+
+      // Remove from failed/generating states
+      setFailedNodes(prev => {
+          const next = new Set(prev);
+          next.delete(nodeId);
+          return next;
+      });
+      setGeneratingNodes(prev => {
+          const next = new Set(prev);
+          next.delete(nodeId);
+          return next;
+      });
+
+      await saveProjectUpdate(p => {
+          const updates: any = {};
+          const timestamps = { ...p.moduleTimestamps };
+          delete timestamps[nodeId];
+
+          switch(nodeId) {
+              case 'titles': updates.titles = []; break;
+              case 'sb_text': updates.storyboard = []; break;
+              case 'summary': updates.summary = ''; break;
+              case 'cover': updates.coverOptions = []; break;
+              case 'cover_b': updates.coverOptionsB = []; break;
+              case 'cover_bg': updates.coverBgImageDescription = ''; break;
+          }
+          
+          return { ...p, ...updates, moduleTimestamps: timestamps };
+      });
+  };
+
   const generateNodeContent = async (nodeId: string) => {
       if (!project) throw new Error("项目数据未加载");
 
@@ -819,6 +853,7 @@ const ProjectWorkspace: React.FC = () => {
                      // Check if this specific node is currently regenerating
                      const isGenerating = generatingNodes.has(node.id);
                      const isFailed = failedNodes.has(node.id);
+                     const isResetable = ['titles', 'sb_text', 'summary', 'cover', 'cover_b', 'cover_bg'].includes(node.id);
                      
                      // Determine status of data
                      let hasData = false;
@@ -889,16 +924,27 @@ const ProjectWorkspace: React.FC = () => {
                                             </div>
                                         </div>
                                     </div>
-                                    {hasData && (
-                                        <div className="bg-emerald-100 text-emerald-600 p-1 rounded-full shadow-sm">
-                                            <Check className="w-3.5 h-3.5" />
-                                        </div>
-                                    )}
-                                    {!hasData && isFailed && (
-                                         <div className="bg-rose-100 text-rose-600 p-1 rounded-full shadow-sm">
-                                            <AlertCircle className="w-3.5 h-3.5" />
-                                        </div>
-                                    )}
+                                    <div className="flex items-center gap-1">
+                                        {isResetable && hasData && !isArchived && (
+                                             <button
+                                                onClick={(e) => { e.stopPropagation(); handleReset(node.id); }}
+                                                className="p-1 text-slate-300 hover:text-rose-500 hover:bg-rose-50 rounded-full transition-colors"
+                                                title="重置 (清空)"
+                                            >
+                                                <Eraser className="w-3.5 h-3.5" />
+                                            </button>
+                                        )}
+                                        {hasData && (
+                                            <div className="bg-emerald-100 text-emerald-600 p-1 rounded-full shadow-sm">
+                                                <Check className="w-3.5 h-3.5" />
+                                            </div>
+                                        )}
+                                        {!hasData && isFailed && (
+                                             <div className="bg-rose-100 text-rose-600 p-1 rounded-full shadow-sm">
+                                                <AlertCircle className="w-3.5 h-3.5" />
+                                            </div>
+                                        )}
+                                    </div>
                                 </div>
                                 
                                 {/* Text Content */}
@@ -1236,4 +1282,3 @@ const ProjectWorkspace: React.FC = () => {
 };
 
 export default ProjectWorkspace;
-
