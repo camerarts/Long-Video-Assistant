@@ -31,6 +31,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
     settings: 'idle'
   });
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
+  const [unsavedSources, setUnsavedSources] = useState<string[]>([]);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   // New Project Modal State
@@ -46,7 +47,9 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
   // Poll for unsaved changes status
   useEffect(() => {
     const checkStatus = () => {
-        setHasUnsavedChanges(storage.hasUnsavedChanges());
+        const pending = storage.getPendingChanges();
+        setHasUnsavedChanges(pending.length > 0);
+        setUnsavedSources(pending);
     };
     checkStatus();
     const interval = setInterval(checkStatus, 1000); // Check every second
@@ -160,6 +163,21 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
           case 'error': return <XCircle className="w-5 h-5 text-rose-500" />;
           default: return <Circle className="w-5 h-5 text-slate-200" />;
       }
+  };
+
+  // Helper to format tooltip
+  const getUnsavedTooltip = () => {
+      if (unsavedSources.length === 0) return "数据已同步到云端";
+      
+      const map: Record<string, string> = {
+          'projects': '项目列表',
+          'inspirations': '灵感仓库',
+          'settings': '系统设置',
+          'tools': 'AI工具数据'
+      };
+      
+      const names = unsavedSources.map(s => map[s] || s);
+      return `未保存数据: ${names.join(', ')}，请点击上传`;
   };
 
   return (
@@ -296,7 +314,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
                     ? 'bg-rose-500 hover:bg-rose-600 shadow-lg shadow-rose-500/30 animate-pulse'
                     : 'bg-emerald-500 hover:bg-emerald-600 shadow-lg shadow-emerald-500/30'
                 }`}
-                title={hasUnsavedChanges ? "有未保存的本地数据，请点击上传" : "数据已同步到云端"}
+                title={getUnsavedTooltip()}
             >
                 {syncing === 'upload' ? <Loader2 className="w-5 h-5 animate-spin text-white" /> : <CloudUpload className="w-5 h-5 stroke-2" />}
                 <span className="text-[10px] font-bold tracking-wide">上传</span>
@@ -437,3 +455,4 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
 };
 
 export default Layout;
+
