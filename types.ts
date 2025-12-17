@@ -54,7 +54,8 @@ export interface ProjectData {
   coverText?: string; // Legacy field
   coverOptions?: CoverOption[]; // New structured cover options (Plan A)
   coverOptionsB?: CoverOption[]; // New structured cover options (Plan B)
-  coverBgImageDescription?: string; // New: Description for cover background image
+  coverBgImageDescription?: string; // Legacy: Description for cover background image
+  coverBgOptions?: { visual?: string; leftPrompt?: string; rightPrompt?: string; score: number }[]; // New: Structured background options with split
   coverImage?: {
     imageUrl: string;
     title: string;
@@ -203,7 +204,7 @@ export const DEFAULT_PROMPTS: Record<string, PromptTemplate> = {
 [
   {
     "visual": "极度震惊的表情特写，背景是燃烧的红色火焰", 
-    "copy": "學習要從基礎打起？\\n大錯特錯的舊觀念\\n高手都從頂層學起\\n【想考高分必看！】", 
+    "copy": "學習要從基礎打起？\\n大錯特錯的舊觀念\\n學會這招資產翻倍\\n【想考高分必看！】", 
     "score": 95
   },
   {
@@ -246,24 +247,28 @@ export const DEFAULT_PROMPTS: Record<string, PromptTemplate> = {
   },
   COVER_BG_IMAGE: {
     id: 'cover_bg_image',
-    name: '封面背景图',
-    description: '生成无文字的封面背景图画面描述',
-    template: `请基于以下视频脚本，构思一张极具吸引力的视频封面背景图（无文字）。
+    name: '封面背景图 (左右分屏)',
+    description: '生成左右分屏的封面背景图画面描述 (Midjourney风格)',
+    template: `请基于以下视频脚本，构思 3 组极具吸引力的视频封面背景图方案，建议采用左右分屏对比的构图逻辑。
 
 主题: {{title}}
 脚本内容:
 {{script}}
 
-请提供一段详细的画面描述（Prompt），包含：
-1. 主体元素（人物、物体）
-2. 环境背景
-3. 光影氛围
-4. 构图方式
-5. 艺术风格（建议：电影感、高清晰度、吸睛）
+请返回一个纯 JSON 数组（不要Markdown格式），包含 3 个方案。每个对象包含：
+- "leftPrompt": 左侧画面的英文提示词 (Midjourney V5.2 格式)。
+- "rightPrompt": 右侧画面的英文提示词 (Midjourney V5.2 格式)。
+- "score": 推荐指数（1-100）。
 
-**重要：** 画面中不要包含任何文字，只描述视觉元素。
-
-请直接输出画面描述内容，无需Markdown格式。`
+示例：
+[
+  { 
+    "leftPrompt": "ultra-close-up of a grilled fish... --ar 16:9 --v 5.2", 
+    "rightPrompt": "serene pond surface... --ar 16:9 --v 5.2",
+    "score": 95 
+  }
+]
+`
   },
   INSPIRATION_EXTRACT: {
     id: 'insp_extract',
