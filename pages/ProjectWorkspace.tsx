@@ -136,15 +136,15 @@ const NODE_HEIGHT = 180;
 
 // Workflow Layout Definition
 const NODES_CONFIG = [
-  { id: 'input', label: '项目输入', panelTitle: '项目基础信息', icon: Layout, color: 'blue', description: '选题与基本信息', x: 50, y: 300 },
-  { id: 'script', label: '视频脚本', panelTitle: '视频文案脚本编辑器', icon: FileText, color: 'violet', promptKey: 'SCRIPT', description: '生成分章节的详细脚本', model: 'Gemini 2.5 Flash Preview', x: 450, y: 300 },
+  { id: 'input', step: 1, label: '项目输入', panelTitle: '项目基础信息', icon: Layout, color: 'blue', description: '选题与基本信息', x: 50, y: 300 },
+  { id: 'script', step: 2, label: '视频脚本', panelTitle: '视频文案脚本编辑器', icon: FileText, color: 'violet', promptKey: 'SCRIPT', description: '生成分章节的详细脚本', model: 'Gemini 2.5 Flash Preview', x: 450, y: 300 },
   // Column 2: Outputs from Script
-  { id: 'titles', label: '爆款标题', panelTitle: '爆款标题方案', icon: Type, color: 'amber', promptKey: 'TITLES', description: '生成高点击率标题', model: 'Gemini 2.5 Flash', x: 850, y: 100 },
-  { id: 'sb_text', label: '分镜文案', panelTitle: '分镜画面描述', icon: Film, color: 'fuchsia', promptKey: 'STORYBOARD_TEXT', description: '拆解为可视化画面描述', model: 'Gemini 2.5 Flash', x: 850, y: 300 },
-  { id: 'summary', label: '简介与标签', panelTitle: '视频简介与标签', icon: List, color: 'emerald', promptKey: 'SUMMARY', description: '生成简介和Hashtags', model: 'Gemini 2.5 Flash', x: 850, y: 500 },
-  { id: 'cover', label: '封面文字策划A-4行字', panelTitle: '封面文字策划A-4行字', icon: Palette, color: 'rose', promptKey: 'COVER_GEN', description: '方案A：信息量丰富型封面文案', model: 'Gemini 2.5 Flash', x: 850, y: 700 },
-  { id: 'cover_b', label: '封面文字策划B-2行字', panelTitle: '封面文字策划B-2行字', icon: Palette, color: 'orange', promptKey: 'COVER_GEN_B', description: '方案B：极简冲击型封面文案', model: 'Gemini 2.5 Flash', x: 850, y: 900 },
-  { id: 'cover_bg', label: '封面背景图', panelTitle: '封面背景画面描述', icon: Images, color: 'cyan', promptKey: 'COVER_BG_IMAGE', description: '生成无文字的封面背景图描述', model: 'Gemini 2.5 Flash', x: 850, y: 1100 },
+  { id: 'titles', step: 3, label: '爆款标题', panelTitle: '爆款标题方案', icon: Type, color: 'amber', promptKey: 'TITLES', description: '生成高点击率标题', model: 'Gemini 2.5 Flash', x: 850, y: 100 },
+  { id: 'sb_text', step: 4, label: '分镜文案', panelTitle: '分镜画面描述', icon: Film, color: 'fuchsia', promptKey: 'STORYBOARD_TEXT', description: '拆解为可视化画面描述', model: 'Gemini 2.5 Flash', x: 850, y: 300 },
+  { id: 'summary', step: 5, label: '简介与标签', panelTitle: '视频简介与标签', icon: List, color: 'emerald', promptKey: 'SUMMARY', description: '生成简介和Hashtags', model: 'Gemini 2.5 Flash', x: 850, y: 500 },
+  { id: 'cover', step: 6, label: '封面文字策划A-4行字', panelTitle: '封面文字策划A-4行字', icon: Palette, color: 'rose', promptKey: 'COVER_GEN', description: '方案A：信息量丰富型封面文案', model: 'Gemini 2.5 Flash', x: 850, y: 700 },
+  { id: 'cover_b', step: 7, label: '封面文字策划B-2行字', panelTitle: '封面文字策划B-2行字', icon: Palette, color: 'orange', promptKey: 'COVER_GEN_B', description: '方案B：极简冲击型封面文案', model: 'Gemini 2.5 Flash', x: 850, y: 900 },
+  { id: 'cover_bg', step: 8, label: '封面背景图', panelTitle: '封面背景画面描述', icon: Images, color: 'cyan', promptKey: 'COVER_BG_IMAGE', description: '生成无文字的封面背景图描述', model: 'Gemini 2.5 Flash', x: 850, y: 1100 },
 ];
 
 const CONNECTIONS = [
@@ -866,8 +866,13 @@ const ProjectWorkspace: React.FC = () => {
 
                                 {/* Header: Icon & Status */}
                                 <div className="flex items-start justify-between mb-2 mt-1">
-                                    <div className={`w-10 h-10 rounded-xl bg-${node.color}-100 text-${node.color}-600 flex items-center justify-center shadow-sm`}>
-                                        <node.icon className="w-5 h-5" />
+                                    <div className="flex items-center gap-3">
+                                        <div className={`w-10 h-10 rounded-xl bg-${node.color}-100 text-${node.color}-600 flex items-center justify-center shadow-sm relative group-hover:scale-110 transition-transform`}>
+                                            <node.icon className="w-5 h-5" />
+                                            <div className="absolute -top-2 -left-2 w-5 h-5 bg-slate-800 text-white rounded-full flex items-center justify-center text-[10px] font-bold border-2 border-white shadow-sm">
+                                                {node.step}
+                                            </div>
+                                        </div>
                                     </div>
                                     {hasData && (
                                         <div className="bg-emerald-100 text-emerald-600 p-1 rounded-full shadow-sm">
@@ -939,8 +944,11 @@ const ProjectWorkspace: React.FC = () => {
                         const node = NODES_CONFIG.find(n => n.id === selectedNodeId);
                         return (
                             <div className="flex items-center gap-3 animate-in slide-in-from-left-2 duration-200">
-                                <div className={`w-8 h-8 rounded-lg bg-${node?.color}-100 text-${node?.color}-600 flex items-center justify-center`}>
+                                <div className={`w-8 h-8 rounded-lg bg-${node?.color}-100 text-${node?.color}-600 flex items-center justify-center relative`}>
                                     {node?.icon && <node.icon className="w-4 h-4" />}
+                                    <div className="absolute -top-1.5 -left-1.5 w-4 h-4 bg-slate-800 text-white rounded-full flex items-center justify-center text-[9px] font-bold border border-white">
+                                        {node?.step}
+                                    </div>
                                 </div>
                                 <h3 className="font-bold text-slate-800 text-base">{node?.panelTitle}</h3>
                             </div>
