@@ -8,7 +8,7 @@ import {
   List, PanelRightClose, Sparkles, Loader2, Copy, 
   Check, Images, ArrowRight, Palette, Film, Maximize2, Play,
   ZoomIn, ZoomOut, Move, RefreshCw, Rocket, AlertCircle, Archive,
-  Cloud, CloudCheck, ArrowLeftRight, Settings2, X, Key, Clock, Eraser
+  Cloud, CloudCheck, ArrowLeftRight, Settings2, X, Key, Clock, Eraser, ClipboardPaste
 } from 'lucide-react';
 
 // --- Sub-Components ---
@@ -326,6 +326,15 @@ const ProjectWorkspace: React.FC = () => {
   const getMaskedKey = (key: string) => {
       if (!key || key.length < 8) return '';
       return `${key.substring(0, 4)}...${key.substring(key.length - 4)}`;
+  };
+
+  const handlePasteKey = async () => {
+      try {
+          const text = await navigator.clipboard.readText();
+          if (text) setCustomKey(text);
+      } catch (err) {
+          console.error('Failed to read clipboard', err);
+      }
   };
 
   // Canvas Interactions
@@ -1258,8 +1267,16 @@ const ProjectWorkspace: React.FC = () => {
                                   value={customKey}
                                   onChange={(e) => setCustomKey(e.target.value)}
                                   placeholder="sk-..."
-                                  className="w-full bg-slate-50 border border-slate-200 rounded-xl pl-10 pr-4 py-3 text-sm focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none transition-all"
+                                  className="w-full bg-slate-50 border border-slate-200 rounded-xl pl-10 pr-20 py-3 text-sm focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none transition-all"
                               />
+                              <button 
+                                  onClick={handlePasteKey}
+                                  className="absolute right-2 top-2 bottom-2 px-3 flex items-center gap-1.5 bg-white hover:bg-slate-50 border border-slate-200 rounded-lg text-xs font-bold text-slate-500 transition-colors shadow-sm"
+                                  title="从剪贴板粘贴"
+                              >
+                                  <ClipboardPaste className="w-3.5 h-3.5" />
+                                  粘贴
+                              </button>
                           </div>
                           <p className="text-xs text-slate-400 mt-2">
                               如果不填，将使用系统默认的环境变量 Key。填入后将优先使用此 Key 进行文本生成和数据处理。
