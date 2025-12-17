@@ -410,8 +410,8 @@ const StoryboardImages: React.FC = () => {
                         <tr>
                             <th className="py-4 px-6 text-xs font-bold uppercase tracking-wider w-24 text-center">序号</th>
                             <th className="py-4 px-6 text-xs font-bold uppercase tracking-wider w-[25%]">原文 (Original)</th>
-                            <th className="py-4 px-6 text-xs font-bold uppercase tracking-wider w-[35%]">画面描述 (Prompt)</th>
-                            <th className="py-4 px-6 text-xs font-bold uppercase tracking-wider w-[30%] text-center">当前画面</th>
+                            <th className="py-4 px-6 text-xs font-bold uppercase tracking-wider w-[25%]">画面描述 (Prompt)</th>
+                            <th className="py-4 px-6 text-xs font-bold uppercase tracking-wider w-[40%] text-center">当前画面</th>
                         </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-100">
@@ -454,8 +454,13 @@ const StoryboardImages: React.FC = () => {
 
                                         {/* Original Text */}
                                         <td className="py-4 px-6 align-top pt-6">
-                                            <p className={`text-sm leading-relaxed whitespace-pre-wrap ${frame.skipGeneration ? 'text-slate-400' : 'text-slate-800'}`}>
-                                                {frame.originalText || <span className="text-slate-400 italic">--</span>}
+                                            <p className={`leading-relaxed whitespace-pre-wrap ${frame.skipGeneration ? 'text-slate-400' : 'text-slate-800'}`}>
+                                                {frame.originalText ? (
+                                                    <>
+                                                        <span className={`text-lg font-extrabold ${frame.skipGeneration ? 'text-slate-400' : 'text-slate-900'}`}>{frame.originalText.substring(0, 8)}</span>
+                                                        <span className={`text-sm ${frame.skipGeneration ? 'text-slate-400' : 'text-slate-800'}`}>{frame.originalText.substring(8)}</span>
+                                                    </>
+                                                ) : <span className="text-slate-400 italic text-sm">--</span>}
                                             </p>
                                         </td>
 
@@ -486,7 +491,7 @@ const StoryboardImages: React.FC = () => {
 
                                         {/* Image Area */}
                                         <td className="py-4 px-6 align-top">
-                                            <div className="w-full max-w-[320px] mx-auto">
+                                            <div className="w-full max-w-[400px] mx-auto">
                                                 <div className={`aspect-video rounded-xl relative overflow-hidden shadow-sm group/image ${isGenerating ? 'p-[3px]' : 'border border-slate-200 bg-slate-100'}`}>
                                                     
                                                     {/* Rotating Fluorescent Border for Generating State */}
