@@ -6,7 +6,7 @@ import * as gemini from '../services/geminiService';
 import { 
   ArrowLeft, Image as ImageIcon, Sparkles, Loader2, Trash2, RefreshCw, 
   Download, AlertCircle, Ban, CheckCircle2, Play, Cloud, CloudCheck, StopCircle,
-  ExternalLink, ZoomIn, X, Wand2
+  ExternalLink, ZoomIn, X, Wand2, MoreHorizontal
 } from 'lucide-react';
 
 const StoryboardImages: React.FC = () => {
@@ -82,7 +82,7 @@ const StoryboardImages: React.FC = () => {
         // Background Cloud Push
         setSyncStatus('saving');
         try {
-            await storage.uploadProjects(); // Pushes stripped JSON (images should be uploaded to R2 separately)
+            await storage.uploadProjects();
             if (mountedRef.current) {
                 setSyncStatus('synced');
                 setLastSyncTime(new Date().toLocaleTimeString());
@@ -109,7 +109,6 @@ const StoryboardImages: React.FC = () => {
           const prompt = constructPrompt(frame.imagePrompt || frame.description);
           
           // 1. Generate (returns base64)
-          // Default to 'gemini-2.5-flash-image' as per service
           const base64 = await gemini.generateImage(prompt, customKey);
 
           // 2. Upload to R2 (if configured) or keep base64
@@ -158,11 +157,10 @@ const StoryboardImages: React.FC = () => {
       // Mark all as generating
       setGeneratingIds(new Set(targetFrames.map(f => f.id)));
 
-      // Execute sequentially to avoid rate limits
+      // Execute sequentially
       for (const frame of targetFrames) {
           if (abortControllerRef.current?.signal.aborted) break;
           await handleGenerateImage(frame);
-          // Small delay between requests
           await new Promise(r => setTimeout(r, 500));
       }
 
@@ -177,14 +175,13 @@ const StoryboardImages: React.FC = () => {
       if (abortControllerRef.current) {
           abortControllerRef.current.abort();
           setIsBatchRunning(false);
-          setGeneratingIds(new Set()); // Clear indicators
+          setGeneratingIds(new Set()); 
       }
   };
 
   const handleDeleteImage = async (frame: StoryboardFrame) => {
       if (!window.confirm('确定要删除这张图片吗？')) return;
       
-      // If it's an R2 URL, try to delete remotely
       if (frame.imageUrl && !frame.imageUrl.startsWith('data:')) {
           await storage.deleteImage(frame.imageUrl);
       }
@@ -220,20 +217,15 @@ const StoryboardImages: React.FC = () => {
     return <div className="flex items-center justify-center h-screen"><Loader2 className="w-8 h-8 animate-spin text-fuchsia-500" /></div>;
   }
 
-  // Real-time Stats Calculation based on current project state
+  // Real-time Stats
   const stats = {
       total: project.storyboard?.length || 0,
       generated: project.storyboard?.filter(f => !!f.imageUrl).length || 0,
-      // Modified: Pending = No Image AND Not Skipped
+      // Pending = No Image AND Not Skipped
       pending: project.storyboard?.filter(f => !f.imageUrl && !f.skipGeneration).length || 0,
-      // Uploaded check: exists AND does not start with data:
       uploaded: project.storyboard?.filter(f => f.imageUrl && !f.imageUrl.startsWith('data:')).length || 0
   };
 
-  // Progress logic: If skipped frames exist, they reduce the total "effective" target or just count as done?
-  // Usually progress bar should reflect "work done vs work to do". 
-  // Let's treat skipped as "processed" for the bar visually, or just ignore them.
-  // Standard Approach: generated / total. Skipped ones stay ungenerated.
   const progressPercent = stats.total > 0 ? (stats.generated / stats.total) * 100 : 0;
 
   return (
@@ -316,138 +308,165 @@ const StoryboardImages: React.FC = () => {
           />
       </div>
 
-      {/* Main Grid */}
+      {/* Main Table Content */}
       <div className="flex-1 overflow-y-auto p-4 md:p-8 bg-[#F8F9FC]">
-          {!project.storyboard || project.storyboard.length === 0 ? (
-              <div className="flex flex-col items-center justify-center h-64 text-slate-400">
-                  <ImageIcon className="w-12 h-12 mb-4 opacity-20" />
-                  <p>暂无分镜数据，请先在脚本编辑中生成分镜文案。</p>
-              </div>
-          ) : (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 pb-20">
-                  {project.storyboard.map((frame) => {
-                      const isGenerating = generatingIds.has(frame.id);
-                      const hasImage = !!frame.imageUrl;
+          <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+             <div className="overflow-x-auto">
+                <table className="w-full text-left border-collapse">
+                    <thead className="bg-slate-50 text-slate-600 border-b border-slate-200 sticky top-0 z-10 shadow-sm">
+                        <tr>
+                            <th className="py-4 px-6 text-xs font-bold uppercase tracking-wider w-20 text-center">序号</th>
+                            <th className="py-4 px-6 text-xs font-bold uppercase tracking-wider min-w-[300px]">画面描述 (Prompt)</th>
+                            <th className="py-4 px-6 text-xs font-bold uppercase tracking-wider w-80 text-center">当前画面</th>
+                            <th className="py-4 px-6 text-xs font-bold uppercase tracking-wider w-32 text-center">操作</th>
+                        </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100">
+                        {(!project.storyboard || project.storyboard.length === 0) ? (
+                             <tr>
+                                 <td colSpan={4} className="py-12 text-center text-slate-400">
+                                     暂无分镜数据
+                                 </td>
+                             </tr>
+                        ) : (
+                            project.storyboard.map((frame) => {
+                                const isGenerating = generatingIds.has(frame.id);
+                                const hasImage = !!frame.imageUrl;
+                                
+                                return (
+                                    <tr key={frame.id} className={`group hover:bg-slate-50/80 transition-colors ${frame.skipGeneration ? 'bg-slate-50/50' : ''}`}>
+                                        {/* Scene Number */}
+                                        <td className="py-4 px-6 text-center align-top pt-6">
+                                            <div className="inline-flex items-center justify-center w-8 h-8 rounded-full bg-slate-100 text-slate-500 text-xs font-bold">
+                                                #{frame.sceneNumber}
+                                            </div>
+                                            {frame.skipGeneration && (
+                                                <div className="mt-2 text-[10px] text-rose-500 font-medium bg-rose-50 px-1 py-0.5 rounded border border-rose-100">
+                                                    已跳过
+                                                </div>
+                                            )}
+                                        </td>
 
-                      return (
-                          <div key={frame.id} className={`bg-white rounded-2xl border transition-all duration-300 flex flex-col overflow-hidden group ${
-                              hasImage ? 'border-slate-200 shadow-sm hover:shadow-md' : 
-                              frame.skipGeneration ? 'border-slate-100 opacity-60 bg-slate-50' :
-                              'border-fuchsia-100 shadow-sm ring-1 ring-fuchsia-50 hover:shadow-fuchsia-500/10'
-                          }`}>
-                              {/* Header */}
-                              <div className="px-4 py-3 border-b border-slate-50 flex justify-between items-center bg-white/50">
-                                  <span className="text-xs font-bold text-slate-500 flex items-center gap-1">
-                                      #{frame.sceneNumber} 
-                                      {hasImage && <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500" />}
-                                  </span>
-                                  <div className="flex items-center gap-1 opacity-100 md:opacity-0 group-hover:opacity-100 transition-opacity">
-                                      <button 
-                                        onClick={() => handleToggleSkip(frame)}
-                                        className={`p-1.5 rounded-md transition-colors ${frame.skipGeneration ? 'text-rose-500 bg-rose-50' : 'text-slate-300 hover:text-slate-600 hover:bg-slate-50'}`}
-                                        title={frame.skipGeneration ? "恢复生成" : "跳过此镜头"}
-                                      >
-                                          <Ban className="w-3.5 h-3.5" />
-                                      </button>
-                                  </div>
-                              </div>
+                                        {/* Prompt Description */}
+                                        <td className="py-4 px-6 align-top pt-6">
+                                            <div className="space-y-2">
+                                                <p className={`text-sm leading-relaxed whitespace-pre-wrap ${frame.skipGeneration ? 'text-slate-400 line-through decoration-slate-300' : 'text-slate-700'}`}>
+                                                    {frame.description}
+                                                </p>
+                                                <div className="flex items-center gap-2">
+                                                    {frame.imageModel ? (
+                                                        <span className="text-[10px] px-2 py-0.5 bg-slate-100 text-slate-500 rounded border border-slate-200 font-mono">
+                                                            {frame.imageModel.replace('gemini-', '')}
+                                                        </span>
+                                                    ) : (
+                                                        <span className="text-[10px] px-2 py-0.5 bg-slate-50 text-slate-300 rounded border border-slate-100 font-mono">
+                                                            Pending
+                                                        </span>
+                                                    )}
+                                                    {hasImage && !frame.imageUrl?.startsWith('data:') && (
+                                                        <span className="text-[10px] px-2 py-0.5 bg-emerald-50 text-emerald-600 rounded border border-emerald-100 flex items-center gap-1">
+                                                            <CloudCheck className="w-3 h-3" /> 已同步
+                                                        </span>
+                                                    )}
+                                                </div>
+                                            </div>
+                                        </td>
 
-                              {/* Image Area */}
-                              <div className="aspect-video bg-slate-100 relative overflow-hidden group/image">
-                                  {hasImage ? (
-                                      <>
-                                          <img 
-                                            src={frame.imageUrl} 
-                                            alt={`Scene ${frame.sceneNumber}`} 
-                                            className="w-full h-full object-cover transition-transform duration-700 group-hover/image:scale-105" 
-                                          />
-                                          {/* Overlay Actions */}
-                                          <div className="absolute inset-0 bg-black/40 opacity-0 group-hover/image:opacity-100 transition-opacity flex items-center justify-center gap-3 backdrop-blur-[2px]">
-                                              <button 
-                                                onClick={() => setPreviewImage(frame.imageUrl!)}
-                                                className="p-2 bg-white/20 hover:bg-white text-white hover:text-slate-900 rounded-full backdrop-blur-md transition-all transform hover:scale-110"
-                                                title="预览大图"
-                                              >
-                                                  <ZoomIn className="w-4 h-4" />
-                                              </button>
-                                              <button 
-                                                onClick={() => handleDownload(frame)}
-                                                className="p-2 bg-white/20 hover:bg-white text-white hover:text-emerald-600 rounded-full backdrop-blur-md transition-all transform hover:scale-110"
-                                                title="下载图片"
-                                              >
-                                                  <Download className="w-4 h-4" />
-                                              </button>
-                                              <button 
-                                                onClick={() => handleGenerateImage(frame)}
-                                                className="p-2 bg-white/20 hover:bg-white text-white hover:text-fuchsia-600 rounded-full backdrop-blur-md transition-all transform hover:scale-110"
-                                                title="重新生成"
-                                              >
-                                                  <RefreshCw className="w-4 h-4" />
-                                              </button>
-                                              <button 
-                                                onClick={() => handleDeleteImage(frame)}
-                                                className="p-2 bg-white/20 hover:bg-white text-white hover:text-rose-600 rounded-full backdrop-blur-md transition-all transform hover:scale-110"
-                                                title="删除图片"
-                                              >
-                                                  <Trash2 className="w-4 h-4" />
-                                              </button>
-                                          </div>
-                                      </>
-                                  ) : (
-                                      <div className="absolute inset-0 flex flex-col items-center justify-center p-6 text-center">
-                                          {isGenerating ? (
-                                              <>
-                                                  <Loader2 className="w-8 h-8 text-fuchsia-500 animate-spin mb-2" />
-                                                  <span className="text-xs font-bold text-fuchsia-600 animate-pulse">AI 正在绘制...</span>
-                                              </>
-                                          ) : frame.skipGeneration ? (
-                                              <>
-                                                  <Ban className="w-8 h-8 text-slate-300 mb-2" />
-                                                  <span className="text-xs text-slate-400">已跳过生成</span>
-                                              </>
-                                          ) : (
-                                              <button 
-                                                onClick={() => handleGenerateImage(frame)}
-                                                className="group/btn flex flex-col items-center gap-2"
-                                              >
-                                                  <div className="w-10 h-10 rounded-full bg-white shadow-sm flex items-center justify-center group-hover/btn:scale-110 transition-transform">
-                                                      <Wand2 className="w-5 h-5 text-fuchsia-500" />
-                                                  </div>
-                                                  <span className="text-xs font-bold text-slate-400 group-hover/btn:text-fuchsia-600 transition-colors">点击生成</span>
-                                              </button>
-                                          )}
-                                      </div>
-                                  )}
-                              </div>
+                                        {/* Image Area */}
+                                        <td className="py-4 px-6 align-top">
+                                            <div className="aspect-video bg-slate-100 rounded-xl border border-slate-200 overflow-hidden relative group/image w-full max-w-[320px] mx-auto shadow-sm">
+                                                {hasImage ? (
+                                                    <>
+                                                        <img 
+                                                            src={frame.imageUrl} 
+                                                            alt={`Scene ${frame.sceneNumber}`} 
+                                                            className="w-full h-full object-cover" 
+                                                        />
+                                                        {/* Overlay Actions */}
+                                                        <div className="absolute inset-0 bg-black/50 opacity-0 group-hover/image:opacity-100 transition-opacity flex items-center justify-center gap-2 backdrop-blur-[1px]">
+                                                            <button 
+                                                                onClick={() => setPreviewImage(frame.imageUrl!)}
+                                                                className="p-2 bg-white/20 hover:bg-white text-white hover:text-slate-900 rounded-full backdrop-blur-md transition-all transform hover:scale-110"
+                                                                title="预览"
+                                                            >
+                                                                <ZoomIn className="w-4 h-4" />
+                                                            </button>
+                                                            <button 
+                                                                onClick={() => handleDownload(frame)}
+                                                                className="p-2 bg-white/20 hover:bg-white text-white hover:text-emerald-600 rounded-full backdrop-blur-md transition-all transform hover:scale-110"
+                                                                title="下载"
+                                                            >
+                                                                <Download className="w-4 h-4" />
+                                                            </button>
+                                                            <button 
+                                                                onClick={() => handleDeleteImage(frame)}
+                                                                className="p-2 bg-white/20 hover:bg-white text-white hover:text-rose-600 rounded-full backdrop-blur-md transition-all transform hover:scale-110"
+                                                                title="删除"
+                                                            >
+                                                                <Trash2 className="w-4 h-4" />
+                                                            </button>
+                                                        </div>
+                                                    </>
+                                                ) : (
+                                                    <div className="absolute inset-0 flex flex-col items-center justify-center p-4 text-center">
+                                                        {isGenerating ? (
+                                                            <>
+                                                                <Loader2 className="w-6 h-6 text-fuchsia-500 animate-spin mb-2" />
+                                                                <span className="text-[10px] font-bold text-fuchsia-600 animate-pulse">AI 绘制中...</span>
+                                                            </>
+                                                        ) : frame.skipGeneration ? (
+                                                            <>
+                                                                <Ban className="w-6 h-6 text-slate-300 mb-2" />
+                                                                <span className="text-[10px] text-slate-400">已跳过</span>
+                                                            </>
+                                                        ) : (
+                                                            <button 
+                                                                onClick={() => handleGenerateImage(frame)}
+                                                                className="group/btn flex flex-col items-center gap-1.5 opacity-60 hover:opacity-100 transition-opacity"
+                                                            >
+                                                                <div className="w-8 h-8 rounded-full bg-white shadow-sm flex items-center justify-center group-hover/btn:scale-110 transition-transform">
+                                                                    <Wand2 className="w-4 h-4 text-fuchsia-500" />
+                                                                </div>
+                                                                <span className="text-[10px] font-bold text-slate-500 group-hover/btn:text-fuchsia-600">点击生成</span>
+                                                            </button>
+                                                        )}
+                                                    </div>
+                                                )}
+                                            </div>
+                                        </td>
 
-                              {/* Text Content */}
-                              <div className="p-4 flex-1 flex flex-col gap-2 bg-white">
-                                  <div className="flex-1">
-                                      <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1 block">画面描述</span>
-                                      <p className="text-xs text-slate-700 leading-relaxed line-clamp-3 hover:line-clamp-none transition-all duration-300 cursor-help" title={frame.description}>
-                                          {frame.description}
-                                      </p>
-                                  </div>
-                                  <div className="pt-3 border-t border-slate-50 flex justify-between items-center mt-auto">
-                                       <span className="text-[9px] text-slate-400 font-mono">
-                                           {frame.imageModel ? frame.imageModel.replace('gemini-', '') : 'Pending'}
-                                       </span>
-                                       {hasImage && (
-                                           <div className="flex gap-2">
-                                               {frame.imageUrl && !frame.imageUrl.startsWith('data:') && (
-                                                   <div title="已同步云端">
-                                                       <CloudCheck className="w-3 h-3 text-emerald-400" />
-                                                   </div>
-                                               )}
-                                           </div>
-                                       )}
-                                  </div>
-                              </div>
-                          </div>
-                      );
-                  })}
-              </div>
-          )}
+                                        {/* Row Actions */}
+                                        <td className="py-4 px-6 align-middle text-center">
+                                            <div className="flex flex-col items-center gap-2">
+                                                <button 
+                                                    onClick={() => handleGenerateImage(frame)}
+                                                    disabled={isGenerating || frame.skipGeneration}
+                                                    className="p-2 rounded-lg text-slate-400 hover:text-fuchsia-600 hover:bg-fuchsia-50 disabled:opacity-30 disabled:hover:bg-transparent transition-all"
+                                                    title="重新生成"
+                                                >
+                                                    {isGenerating ? <Loader2 className="w-4 h-4 animate-spin" /> : <RefreshCw className="w-4 h-4" />}
+                                                </button>
+                                                <button 
+                                                    onClick={() => handleToggleSkip(frame)}
+                                                    className={`p-2 rounded-lg transition-all ${
+                                                        frame.skipGeneration 
+                                                        ? 'text-rose-500 bg-rose-50 hover:bg-rose-100' 
+                                                        : 'text-slate-400 hover:text-slate-600 hover:bg-slate-100'
+                                                    }`}
+                                                    title={frame.skipGeneration ? "恢复生成" : "跳过此镜头"}
+                                                >
+                                                    <Ban className="w-4 h-4" />
+                                                </button>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                );
+                            })
+                        )}
+                    </tbody>
+                </table>
+             </div>
+          </div>
       </div>
 
       {/* Preview Modal */}
