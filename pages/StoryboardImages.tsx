@@ -303,22 +303,13 @@ const StoryboardImages: React.FC = () => {
                       </span>
                   </h1>
                   <div className="flex items-center gap-3 mt-1 text-xs text-slate-500 font-medium">
-                      <span>总计: {stats.total}</span>
+                      <span>总计: {stats.total}张</span>
                       <span className="text-slate-300">|</span>
-                      <span className="text-emerald-600">已完成: {stats.generated}</span>
+                      <span className="text-emerald-600">已完成: {stats.generated}张</span>
                       <span className="text-slate-300">|</span>
-                      <span className="text-amber-600">待生成: {stats.pending}</span>
-                      
-                      {syncStatus && (
-                         <div className={`ml-2 flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] ${
-                             syncStatus === 'synced' ? 'bg-emerald-50 text-emerald-600' : 
-                             syncStatus === 'saving' ? 'bg-blue-50 text-blue-600' :
-                             'bg-rose-50 text-rose-600'
-                         }`}>
-                             {syncStatus === 'saving' ? <Loader2 className="w-3 h-3 animate-spin" /> : <CloudCheck className="w-3 h-3" />}
-                             {syncStatus === 'synced' ? '已同步' : syncStatus === 'saving' ? '同步中' : '同步失败'}
-                         </div>
-                      )}
+                      <span className="text-amber-600">待生成: {stats.pending}张</span>
+                      <span className="text-slate-300">|</span>
+                      <span className="text-blue-600">已上传云端: {stats.uploaded}张</span>
                   </div>
               </div>
           </div>
@@ -383,17 +374,16 @@ const StoryboardImages: React.FC = () => {
                 <table className="w-full text-left border-collapse">
                     <thead className="bg-slate-50 text-slate-600 border-b border-slate-200 sticky top-0 z-10 shadow-sm">
                         <tr>
-                            <th className="py-4 px-6 text-xs font-bold uppercase tracking-wider w-20 text-center">序号</th>
+                            <th className="py-4 px-6 text-xs font-bold uppercase tracking-wider w-24 text-center">序号</th>
                             <th className="py-4 px-6 text-xs font-bold uppercase tracking-wider w-[25%]">原文 (Original)</th>
-                            <th className="py-4 px-6 text-xs font-bold uppercase tracking-wider w-[30%]">画面描述 (Prompt)</th>
+                            <th className="py-4 px-6 text-xs font-bold uppercase tracking-wider w-[35%]">画面描述 (Prompt)</th>
                             <th className="py-4 px-6 text-xs font-bold uppercase tracking-wider w-[30%] text-center">当前画面</th>
-                            <th className="py-4 px-6 text-xs font-bold uppercase tracking-wider w-[15%] text-center">操作</th>
                         </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-100">
                         {(!project.storyboard || project.storyboard.length === 0) ? (
                              <tr>
-                                 <td colSpan={5} className="py-12 text-center text-slate-400">
+                                 <td colSpan={4} className="py-12 text-center text-slate-400">
                                      暂无分镜数据
                                  </td>
                              </tr>
@@ -404,16 +394,27 @@ const StoryboardImages: React.FC = () => {
                                 
                                 return (
                                     <tr key={frame.id} className={`group hover:bg-slate-50/80 transition-colors ${frame.skipGeneration ? 'bg-slate-50/50' : ''}`}>
-                                        {/* Scene Number */}
+                                        {/* Scene Number & Skip Button */}
                                         <td className="py-4 px-6 text-center align-top pt-6">
-                                            <div className="inline-flex items-center justify-center w-8 h-8 rounded-full bg-slate-100 text-slate-500 text-xs font-bold">
-                                                #{frame.sceneNumber}
-                                            </div>
-                                            {frame.skipGeneration && (
-                                                <div className="mt-2 text-[10px] text-rose-500 font-medium bg-rose-50 px-1 py-0.5 rounded border border-rose-100">
-                                                    已跳过
+                                            <div className="flex flex-col items-center gap-3">
+                                                <div className="inline-flex items-center justify-center w-8 h-8 rounded-full bg-slate-100 text-slate-500 text-xs font-bold">
+                                                    #{frame.sceneNumber}
                                                 </div>
-                                            )}
+                                                <button 
+                                                    onClick={() => handleToggleSkip(frame)}
+                                                    className={`p-1.5 rounded-md transition-all ${
+                                                        frame.skipGeneration 
+                                                        ? 'text-rose-500 bg-rose-50 hover:bg-rose-100 ring-1 ring-rose-200' 
+                                                        : 'text-slate-300 hover:text-slate-500 hover:bg-slate-100'
+                                                    }`}
+                                                    title={frame.skipGeneration ? "恢复生成" : "跳过此镜头"}
+                                                >
+                                                    <Ban className="w-4 h-4" />
+                                                </button>
+                                                {frame.skipGeneration && (
+                                                    <span className="text-[10px] text-rose-500 font-medium">已跳过</span>
+                                                )}
+                                            </div>
                                         </td>
 
                                         {/* Original Text */}
@@ -458,8 +459,19 @@ const StoryboardImages: React.FC = () => {
                                                             alt={`Scene ${frame.sceneNumber}`} 
                                                             className="w-full h-full object-cover" 
                                                         />
+                                                        
+                                                        {/* Floating Regenerate Button - Top Right */}
+                                                        <button 
+                                                            onClick={() => handleGenerateImage(frame)}
+                                                            disabled={isGenerating || frame.skipGeneration}
+                                                            className="absolute top-2 right-2 p-2 bg-white/80 hover:bg-white text-slate-600 hover:text-fuchsia-600 rounded-lg backdrop-blur-sm shadow-sm opacity-0 group-hover/image:opacity-100 transition-all z-20"
+                                                            title="重新生成"
+                                                        >
+                                                            <RefreshCw className={`w-4 h-4 ${isGenerating ? 'animate-spin' : ''}`} />
+                                                        </button>
+
                                                         {/* Overlay Actions */}
-                                                        <div className="absolute inset-0 bg-black/50 opacity-0 group-hover/image:opacity-100 transition-opacity flex items-center justify-center gap-2 backdrop-blur-[1px]">
+                                                        <div className="absolute inset-0 bg-black/40 opacity-0 group-hover/image:opacity-100 transition-opacity flex items-center justify-center gap-3 backdrop-blur-[1px]">
                                                             <button 
                                                                 onClick={() => setPreviewImage(frame.imageUrl!)}
                                                                 className="p-2 bg-white/20 hover:bg-white text-white hover:text-slate-900 rounded-full backdrop-blur-md transition-all transform hover:scale-110"
@@ -508,31 +520,6 @@ const StoryboardImages: React.FC = () => {
                                                         )}
                                                     </div>
                                                 )}
-                                            </div>
-                                        </td>
-
-                                        {/* Row Actions */}
-                                        <td className="py-4 px-6 align-middle text-center">
-                                            <div className="flex flex-col items-center gap-2">
-                                                <button 
-                                                    onClick={() => handleGenerateImage(frame)}
-                                                    disabled={isGenerating || frame.skipGeneration}
-                                                    className="p-2 rounded-lg text-slate-400 hover:text-fuchsia-600 hover:bg-fuchsia-50 disabled:opacity-30 disabled:hover:bg-transparent transition-all"
-                                                    title="重新生成"
-                                                >
-                                                    {isGenerating ? <Loader2 className="w-4 h-4 animate-spin" /> : <RefreshCw className="w-4 h-4" />}
-                                                </button>
-                                                <button 
-                                                    onClick={() => handleToggleSkip(frame)}
-                                                    className={`p-2 rounded-lg transition-all ${
-                                                        frame.skipGeneration 
-                                                        ? 'text-rose-500 bg-rose-50 hover:bg-rose-100' 
-                                                        : 'text-slate-400 hover:text-slate-600 hover:bg-slate-100'
-                                                    }`}
-                                                    title={frame.skipGeneration ? "恢复生成" : "跳过此镜头"}
-                                                >
-                                                    <Ban className="w-4 h-4" />
-                                                </button>
                                             </div>
                                         </td>
                                     </tr>
