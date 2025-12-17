@@ -7,7 +7,7 @@ import JSZip from 'jszip';
 import { 
   ArrowLeft, Image as ImageIcon, Sparkles, Loader2, Trash2, RefreshCw, 
   Download, AlertCircle, Ban, CheckCircle2, Play, Cloud, CloudCheck, StopCircle,
-  ExternalLink, ZoomIn, X, Wand2, Package
+  ExternalLink, ZoomIn, X, Wand2, Package, Settings2, Key, ClipboardPaste
 } from 'lucide-react';
 
 const StoryboardImages: React.FC = () => {
@@ -25,6 +25,7 @@ const StoryboardImages: React.FC = () => {
   // Config State
   const [prompts, setPrompts] = useState<Record<string, PromptTemplate>>({});
   const [customKey, setCustomKey] = useState('');
+  const [showConfigModal, setShowConfigModal] = useState(false);
   // Default to 'A' (Cinematic), removed UI toggle as requested
   const [styleMode] = useState<'A' | 'B'>('A');
 
@@ -76,6 +77,25 @@ const StoryboardImages: React.FC = () => {
         if (abortControllerRef.current) abortControllerRef.current.abort();
     };
   }, [id]);
+
+  const saveSettings = () => {
+      localStorage.setItem('lva_custom_api_key', customKey);
+      setShowConfigModal(false);
+  };
+
+  const getMaskedKey = (key: string) => {
+      if (!key || key.length < 8) return '';
+      return `${key.substring(0, 4)}...${key.substring(key.length - 4)}`;
+  };
+
+  const handlePasteKey = async () => {
+      try {
+          const text = await navigator.clipboard.readText();
+          if (text) setCustomKey(text);
+      } catch (err) {
+          console.error('Failed to read clipboard', err);
+      }
+  };
 
   const saveProjectUpdate = async (updater: (p: ProjectData) => ProjectData) => {
     if (!id) return;
@@ -289,6 +309,34 @@ const StoryboardImages: React.FC = () => {
 
   return (
     <div className="flex flex-col h-full bg-[#F8F9FC]">
+      
+      {/* Top Black Stats Bar */}
+      <div className="bg-slate-900 text-white px-8 py-3 flex items-center justify-center gap-8 md:gap-12 text-xs md:text-sm font-bold tracking-wide shadow-md z-20 flex-shrink-0 border-b border-slate-800">
+          <div className="flex items-baseline gap-2 group cursor-default">
+             <span className="text-slate-400 uppercase tracking-wider text-[10px]">总计</span>
+             <span className="text-white text-lg md:text-xl font-mono">{stats.total}</span>
+             <span className="text-slate-600 text-[10px]">张</span>
+          </div>
+          <div className="w-px h-4 bg-slate-700/50"></div>
+          <div className="flex items-baseline gap-2 group cursor-default">
+             <span className="text-emerald-400 uppercase tracking-wider text-[10px]">已完成</span>
+             <span className="text-white text-lg md:text-xl font-mono">{stats.generated}</span>
+             <span className="text-slate-600 text-[10px]">张</span>
+          </div>
+          <div className="w-px h-4 bg-slate-700/50"></div>
+          <div className="flex items-baseline gap-2 group cursor-default">
+             <span className="text-amber-400 uppercase tracking-wider text-[10px]">待生成</span>
+             <span className="text-white text-lg md:text-xl font-mono">{stats.pending}</span>
+             <span className="text-slate-600 text-[10px]">张</span>
+          </div>
+          <div className="w-px h-4 bg-slate-700/50"></div>
+          <div className="flex items-baseline gap-2 group cursor-default">
+             <span className="text-blue-400 uppercase tracking-wider text-[10px]">已上传云端</span>
+             <span className="text-white text-lg md:text-xl font-mono">{stats.uploaded}</span>
+             <span className="text-slate-600 text-[10px]">张</span>
+          </div>
+      </div>
+
       {/* Header */}
       <div className="bg-white border-b border-slate-200 px-6 py-4 flex flex-col md:flex-row justify-between items-center gap-4 flex-shrink-0 z-10 shadow-sm">
           <div className="flex items-center gap-4 w-full md:w-auto">
@@ -303,19 +351,19 @@ const StoryboardImages: React.FC = () => {
                           {project.title}
                       </span>
                   </h1>
-                  <div className="flex items-center gap-3 mt-1 text-xs text-slate-500 font-medium">
-                      <span>总计: {stats.total}张</span>
-                      <span className="text-slate-300">|</span>
-                      <span className="text-emerald-600">已完成: {stats.generated}张</span>
-                      <span className="text-slate-300">|</span>
-                      <span className="text-amber-600">待生成: {stats.pending}张</span>
-                      <span className="text-slate-300">|</span>
-                      <span className="text-blue-600">已上传云端: {stats.uploaded}张</span>
-                  </div>
               </div>
           </div>
 
           <div className="flex items-center gap-3 w-full md:w-auto justify-end">
+              <button
+                onClick={() => setShowConfigModal(true)}
+                className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold transition-all shadow-sm border ${customKey ? 'bg-indigo-50 text-indigo-600 border-indigo-200' : 'bg-white text-slate-500 border-slate-200 hover:border-slate-300'}`}
+                title="配置自定义 API Key"
+              >
+                <Settings2 className="w-4 h-4" />
+                <span className="hidden lg:inline">API</span>
+              </button>
+
               <button
                  onClick={handleDownloadAll}
                  disabled={isZipping || stats.generated === 0}
@@ -388,18 +436,19 @@ const StoryboardImages: React.FC = () => {
                                                 </div>
                                                 <button 
                                                     onClick={() => handleToggleSkip(frame)}
-                                                    className={`p-1.5 rounded-md transition-all ${
-                                                        frame.skipGeneration 
-                                                        ? 'text-rose-500 bg-rose-50 hover:bg-rose-100 ring-1 ring-rose-200' 
-                                                        : 'text-slate-300 hover:text-slate-500 hover:bg-slate-100'
-                                                    }`}
+                                                    className="group transition-all focus:outline-none"
                                                     title={frame.skipGeneration ? "恢复生成" : "跳过此镜头"}
                                                 >
-                                                    <Ban className="w-4 h-4" />
+                                                    {frame.skipGeneration ? (
+                                                        // Checked (Skipped) State - Box with X
+                                                        <div className="w-5 h-5 border-2 border-rose-400 bg-rose-50 rounded flex items-center justify-center shadow-sm">
+                                                            <X className="w-3.5 h-3.5 text-rose-500" strokeWidth={3} />
+                                                        </div>
+                                                    ) : (
+                                                        // Unchecked (Active) State - Empty Box
+                                                        <div className="w-5 h-5 border-2 border-slate-300 rounded bg-white hover:border-fuchsia-400 hover:shadow-sm transition-colors"></div>
+                                                    )}
                                                 </button>
-                                                {frame.skipGeneration && (
-                                                    <span className="text-[10px] text-rose-500 font-medium">已跳过</span>
-                                                )}
                                             </div>
                                         </td>
 
@@ -542,6 +591,69 @@ const StoryboardImages: React.FC = () => {
               </div>
           </div>
       )}
+
+      {/* API Config Modal */}
+      {showConfigModal && (
+          <div className="fixed inset-0 z-[60] bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in duration-200">
+              <div className="bg-white rounded-3xl shadow-2xl w-full max-w-md overflow-hidden animate-in zoom-in-95 duration-200">
+                  <div className="px-8 py-6 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
+                      <h3 className="text-xl font-extrabold text-slate-800 flex items-center gap-2">
+                          <Settings2 className="w-6 h-6 text-indigo-600" />
+                          API 配置
+                      </h3>
+                      <button onClick={() => setShowConfigModal(false)} className="text-slate-400 hover:text-slate-600 transition-colors">
+                          <X className="w-6 h-6" />
+                      </button>
+                  </div>
+                  
+                  <div className="p-8 space-y-6">
+                      {/* API Key Input */}
+                      <div>
+                          <label className="text-sm font-bold text-slate-700 mb-2 flex items-center justify-between">
+                              <span>自定义 API Key (可选)</span>
+                              {customKey && <span className="text-[10px] bg-emerald-100 text-emerald-600 px-1.5 py-0.5 rounded font-mono">{getMaskedKey(customKey)}</span>}
+                          </label>
+                          <div className="relative">
+                              <Key className="absolute left-3 top-3 w-5 h-5 text-slate-400" />
+                              <input 
+                                  type="password"
+                                  value={customKey}
+                                  onChange={(e) => setCustomKey(e.target.value)}
+                                  placeholder="sk-..."
+                                  className="w-full bg-slate-50 border border-slate-200 rounded-xl pl-10 pr-20 py-3 text-sm focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none transition-all"
+                              />
+                              <button 
+                                  onClick={handlePasteKey}
+                                  className="absolute right-2 top-2 bottom-2 px-3 flex items-center gap-1.5 bg-white hover:bg-slate-50 border border-slate-200 rounded-lg text-xs font-bold text-slate-500 transition-colors shadow-sm"
+                                  title="从剪贴板粘贴"
+                              >
+                                  <ClipboardPaste className="w-3.5 h-3.5" />
+                                  粘贴
+                              </button>
+                          </div>
+                          <p className="text-xs text-slate-400 mt-2">
+                              如果不填，将使用系统默认的环境变量 Key。填入后将优先使用此 Key 进行文本生成和数据处理。
+                          </p>
+                      </div>
+                  </div>
+
+                  <div className="px-8 py-5 border-t border-slate-100 bg-slate-50/50 flex justify-end gap-3">
+                      <button 
+                          onClick={() => setCustomKey('')}
+                          className="px-4 py-2 text-slate-500 font-bold text-sm hover:text-rose-600 transition-colors"
+                      >
+                          恢复默认
+                      </button>
+                      <button 
+                          onClick={saveSettings}
+                          className="bg-slate-900 text-white px-6 py-2.5 rounded-xl font-bold shadow-lg hover:bg-slate-800 transition-all text-sm"
+                      >
+                          保存配置
+                      </button>
+                  </div>
+              </div>
+          </div>
+        )}
     </div>
   );
 };
