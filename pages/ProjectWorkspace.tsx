@@ -129,37 +129,44 @@ const TableResultBox = <T extends any>({ headers, data, renderRow }: TableResult
   </div>
 );
 
-// --- Parsing Helper for Cover BG ---
-const parseBgItem = (item: any) => {
-    let left = item.leftPrompt || item.visual || '';
-    let right = item.rightPrompt || '';
+// --- Advanced Parsing Logic for Cover BG ---
+const normalizeBgOptions = (options: any[]) => {
+    if (!options || options.length === 0) return [];
 
-    // Advanced Parser: Check if "Left" column actually contains both parts mixed up
-    // Regex matches patterns like "左画面提示词：... 右画面提示词：..." or "Left Prompt: ... Right Prompt: ..."
-    // The [\s\S]*? handles multiline content.
-    const splitRegex = /(?:左画面(?:提示词)?|Left Prompt)[:：]\s*([\s\S]*?)\s*(?:右画面(?:提示词)?|Right Prompt)[:：]\s*([\s\S]*)/i;
+    // Heuristic: Check if the first item contains mixed/bulk text
+    // Matches if we see multiple occurrences of "Left..." or "左画面..."
+    const firstItemText = (options[0].leftPrompt || '') + (options[0].visual || '');
+    const keywordCount = (firstItemText.match(/左画面|Left Prompt/gi) || []).length;
+
+    // If we have >1 items already, assume it's structured correctly.
+    // If keyword count is small (<=1), it's likely a single proper item.
+    // Only process if we detect multiple sets in a single item OR if the array has only 1 item but lots of text.
+    if (options.length > 1 && keywordCount <= 1) return options;
+
+    // --- Bulk Extraction Mode ---
+    // Combine all potential text fields to handle cases where AI dumped everything into one field or spread loosely
+    let fullText = options.map(o => `${o.leftPrompt || ''} ${o.visual || ''} ${o.rightPrompt || ''}`).join('\n');
+
+    const normalized: any[] = [];
     
-    const match = left.match(splitRegex);
-    if (match) {
-        left = match[1].trim();
-        right = match[2].trim();
-    } 
-    // Fallback: If no explicit Left prefix but has Right prefix
-    else if (left.match(/(?:右画面(?:提示词)?|Right Prompt)[:：]/i)) {
-         const parts = left.split(/(?:右画面(?:提示词)?|Right Prompt)[:：]/i);
-         if (parts.length > 1) {
-             // Remove potential Left prefix from the first part if exists
-             left = parts[0].replace(/^(?:左画面(?:提示词)?|Left Prompt)[:：]\s*/i, '').trim();
-             right = parts[1].trim();
-         }
+    // Regex Logic:
+    // 1. Match "Left..." tag
+    // 2. Capture content until "Right..." tag (Group 1)
+    // 3. Match "Right..." tag
+    // 4. Capture content until next "Left..." tag OR end of string (Group 2)
+    const regex = /(?:左画面(?:提示词)?|Left Prompt)[:：]\s*([\s\S]*?)\s*(?:右画面(?:提示词)?|Right Prompt)[:：]\s*([\s\S]*?)(?=(?:左画面(?:提示词)?|Left Prompt)[:：]|$)/gi;
+
+    let match;
+    while ((match = regex.exec(fullText)) !== null) {
+        normalized.push({
+            leftPrompt: match[1].trim(),
+            rightPrompt: match[2].trim(),
+            score: options[0].score // Preserve score if available
+        });
     }
 
-    // Clean up prefixes if they exist inside the individual fields (Final Cleanup)
-    // This removes "左画面提示词：" if it wasn't caught by the split regex
-    left = left.replace(/^(?:左画面(?:提示词)?|Left Prompt)[:：]\s*/i, '').trim();
-    right = right.replace(/^(?:右画面(?:提示词)?|Right Prompt)[:：]\s*/i, '').trim();
-
-    return { left, right };
+    // If regex found matches, use them. Otherwise fallback to original data.
+    return normalized.length > 0 ? normalized : options;
 };
 
 // --- Configuration ---
@@ -1287,36 +1294,40 @@ const ProjectWorkspace: React.FC = () => {
 
                  {selectedNodeId === 'cover_bg' && (
                      <div className="h-full flex flex-col">
-                        <TableResultBox 
-                            headers={['序号', '左画面提示词', '右画面提示词', '操作']}
-                            // Support new left/right structure and legacy structure fallback
-                            data={project.coverBgOptions || (project.coverBgImageDescription ? [{ leftPrompt: project.coverBgImageDescription, rightPrompt: '', score: 0 }] : [])}
-                            renderRow={(item: any, i: number) => {
-                                // Apply smart parsing to clean up mixed content
-                                const { left, right } = parseBgItem(item);
-                                
-                                return (
-                                    <tr key={i} className="hover:bg-slate-50 group">
-                                        <td className="py-3 px-4 text-center text-xs font-bold text-slate-400 w-[5%] align-top pt-4">{i + 1}</td>
-                                        <td className="py-3 px-2 w-[45%] align-top">
-                                            <div className="text-[10px] text-slate-600 leading-relaxed font-mono bg-slate-50 p-2 rounded border border-slate-100 whitespace-pre-wrap">
-                                                <span className="font-bold text-slate-400 block mb-1 text-[9px] uppercase tracking-wider">Left</span>
-                                                {left || '-'}
-                                            </div>
-                                        </td>
-                                        <td className="py-3 px-2 w-[45%] align-top">
-                                            <div className="text-[10px] text-slate-600 leading-relaxed font-mono bg-slate-50 p-2 rounded border border-slate-100 whitespace-pre-wrap">
-                                                <span className="font-bold text-slate-400 block mb-1 text-[9px] uppercase tracking-wider">Right</span>
-                                                {right || '-'}
-                                            </div>
-                                        </td>
-                                        <td className="py-3 px-4 text-right w-[5%] align-top pt-4">
-                                            <RowCopyButton text={`Left: ${left}\nRight: ${right}`} />
-                                        </td>
-                                    </tr>
-                                );
-                            }}
-                        />
+                        {/* Calculate normalized data on the fly before rendering table */}
+                        {(() => {
+                            const rawData = project.coverBgOptions || (project.coverBgImageDescription ? [{ leftPrompt: project.coverBgImageDescription, rightPrompt: '', score: 0 }] : []);
+                            const tableData = normalizeBgOptions(rawData);
+
+                            return (
+                                <TableResultBox 
+                                    headers={['序号', '左画面提示词', '右画面提示词', '操作']}
+                                    data={tableData}
+                                    renderRow={(item: any, i: number) => (
+                                        <tr key={i} className="hover:bg-slate-50 group">
+                                            <td className="py-3 px-4 text-center text-xs font-bold text-slate-400 w-[5%] align-top pt-4">{i + 1}</td>
+                                            <td className="py-3 px-2 w-[45%] align-top">
+                                                <div className="text-[10px] text-slate-600 leading-relaxed font-mono bg-slate-50 p-2 rounded border border-slate-100 whitespace-pre-wrap">
+                                                    <span className="font-bold text-slate-400 block mb-1 text-[9px] uppercase tracking-wider">Left</span>
+                                                    {/* Clean potential leftover label if regex missed edge case */}
+                                                    {item.leftPrompt?.replace(/^(?:左画面(?:提示词)?|Left Prompt)[:：]\s*/i, '') || '-'}
+                                                </div>
+                                            </td>
+                                            <td className="py-3 px-2 w-[45%] align-top">
+                                                <div className="text-[10px] text-slate-600 leading-relaxed font-mono bg-slate-50 p-2 rounded border border-slate-100 whitespace-pre-wrap">
+                                                    <span className="font-bold text-slate-400 block mb-1 text-[9px] uppercase tracking-wider">Right</span>
+                                                    {/* Clean potential leftover label if regex missed edge case */}
+                                                    {item.rightPrompt?.replace(/^(?:右画面(?:提示词)?|Right Prompt)[:：]\s*/i, '') || '-'}
+                                                </div>
+                                            </td>
+                                            <td className="py-3 px-4 text-right w-[5%] align-top pt-4">
+                                                <RowCopyButton text={`Left: ${item.leftPrompt}\nRight: ${item.rightPrompt}`} />
+                                            </td>
+                                        </tr>
+                                    )}
+                                />
+                            );
+                        })()}
                      </div>
                  )}
 
