@@ -3,10 +3,11 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { ProjectData, StoryboardFrame, PromptTemplate } from '../types';
 import * as storage from '../services/storageService';
 import * as gemini from '../services/geminiService';
+import JSZip from 'jszip';
 import { 
   ArrowLeft, Image as ImageIcon, Sparkles, Loader2, Trash2, RefreshCw, 
   Download, AlertCircle, Ban, CheckCircle2, Play, Cloud, CloudCheck, StopCircle,
-  ExternalLink, ZoomIn, X, Wand2, MoreHorizontal
+  ExternalLink, ZoomIn, X, Wand2, Package
 } from 'lucide-react';
 
 const StoryboardImages: React.FC = () => {
@@ -18,6 +19,7 @@ const StoryboardImages: React.FC = () => {
   // Generation State
   const [generatingIds, setGeneratingIds] = useState<Set<string>>(new Set());
   const [isBatchRunning, setIsBatchRunning] = useState(false);
+  const [isZipping, setIsZipping] = useState(false);
   const abortControllerRef = useRef<AbortController | null>(null);
   
   // Config State
@@ -213,6 +215,62 @@ const StoryboardImages: React.FC = () => {
       document.body.removeChild(link);
   };
 
+  const handleDownloadAll = async () => {
+      if (!project?.storyboard) return;
+      const framesWithImages = project.storyboard.filter(f => !!f.imageUrl);
+      if (framesWithImages.length === 0) {
+          alert("没有可下载的图片");
+          return;
+      }
+
+      setIsZipping(true);
+      try {
+          const zip = new JSZip();
+          // Create a folder inside zip
+          const folderName = `${project.title || 'storyboard'}_images`;
+          const folder = zip.folder(folderName);
+
+          // Fetch all images
+          const promises = framesWithImages.map(async (frame) => {
+              if (!frame.imageUrl) return;
+              
+              const filename = `scene_${String(frame.sceneNumber).padStart(3, '0')}.png`;
+
+              if (frame.imageUrl.startsWith('data:')) {
+                  // Base64
+                  const base64Data = frame.imageUrl.split(',')[1];
+                  folder?.file(filename, base64Data, { base64: true });
+              } else {
+                  // URL - Fetch blob
+                  try {
+                    const response = await fetch(frame.imageUrl);
+                    const blob = await response.blob();
+                    folder?.file(filename, blob);
+                  } catch (e) {
+                      console.error(`Failed to download frame ${frame.sceneNumber}`, e);
+                  }
+              }
+          });
+
+          await Promise.all(promises);
+
+          const content = await zip.generateAsync({ type: "blob" });
+          const url = URL.createObjectURL(content);
+          const link = document.createElement("a");
+          link.href = url;
+          link.download = `${project.title}_storyboard.zip`;
+          document.body.appendChild(link);
+          link.click();
+          document.body.removeChild(link);
+
+      } catch (e: any) {
+          alert(`打包下载失败: ${e.message}`);
+          console.error(e);
+      } finally {
+          setIsZipping(false);
+      }
+  };
+
   if (loading || !project) {
     return <div className="flex items-center justify-center h-screen"><Loader2 className="w-8 h-8 animate-spin text-fuchsia-500" /></div>;
   }
@@ -239,7 +297,7 @@ const StoryboardImages: React.FC = () => {
               <div>
                   <h1 className="text-xl font-extrabold text-slate-800 flex items-center gap-2">
                       <ImageIcon className="w-5 h-5 text-fuchsia-600" />
-                      生图工坊
+                      分镜图片工坊
                       <span className="text-xs bg-slate-100 text-slate-500 px-2 py-0.5 rounded-md font-normal truncate max-w-[200px]">
                           {project.title}
                       </span>
@@ -281,6 +339,16 @@ const StoryboardImages: React.FC = () => {
                   </button>
               </div>
 
+              <button
+                 onClick={handleDownloadAll}
+                 disabled={isZipping || stats.generated === 0}
+                 className="flex items-center gap-2 px-4 py-2 bg-white border border-slate-200 hover:border-fuchsia-300 hover:bg-fuchsia-50 text-slate-600 hover:text-fuchsia-600 rounded-xl font-bold shadow-sm transition-all disabled:opacity-50 text-xs"
+                 title="打包下载所有生成的图片"
+              >
+                  {isZipping ? <Loader2 className="w-4 h-4 animate-spin" /> : <Package className="w-4 h-4" />}
+                  一键下载
+              </button>
+
               {isBatchRunning ? (
                   <button 
                     onClick={handleStopBatch}
@@ -316,15 +384,16 @@ const StoryboardImages: React.FC = () => {
                     <thead className="bg-slate-50 text-slate-600 border-b border-slate-200 sticky top-0 z-10 shadow-sm">
                         <tr>
                             <th className="py-4 px-6 text-xs font-bold uppercase tracking-wider w-20 text-center">序号</th>
-                            <th className="py-4 px-6 text-xs font-bold uppercase tracking-wider min-w-[300px]">画面描述 (Prompt)</th>
-                            <th className="py-4 px-6 text-xs font-bold uppercase tracking-wider w-80 text-center">当前画面</th>
-                            <th className="py-4 px-6 text-xs font-bold uppercase tracking-wider w-32 text-center">操作</th>
+                            <th className="py-4 px-6 text-xs font-bold uppercase tracking-wider w-[25%]">原文 (Original)</th>
+                            <th className="py-4 px-6 text-xs font-bold uppercase tracking-wider w-[30%]">画面描述 (Prompt)</th>
+                            <th className="py-4 px-6 text-xs font-bold uppercase tracking-wider w-[30%] text-center">当前画面</th>
+                            <th className="py-4 px-6 text-xs font-bold uppercase tracking-wider w-[15%] text-center">操作</th>
                         </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-100">
                         {(!project.storyboard || project.storyboard.length === 0) ? (
                              <tr>
-                                 <td colSpan={4} className="py-12 text-center text-slate-400">
+                                 <td colSpan={5} className="py-12 text-center text-slate-400">
                                      暂无分镜数据
                                  </td>
                              </tr>
@@ -347,10 +416,17 @@ const StoryboardImages: React.FC = () => {
                                             )}
                                         </td>
 
+                                        {/* Original Text */}
+                                        <td className="py-4 px-6 align-top pt-6">
+                                            <p className={`text-sm leading-relaxed whitespace-pre-wrap ${frame.skipGeneration ? 'text-slate-400' : 'text-slate-800'}`}>
+                                                {frame.originalText || <span className="text-slate-400 italic">--</span>}
+                                            </p>
+                                        </td>
+
                                         {/* Prompt Description */}
                                         <td className="py-4 px-6 align-top pt-6">
                                             <div className="space-y-2">
-                                                <p className={`text-sm leading-relaxed whitespace-pre-wrap ${frame.skipGeneration ? 'text-slate-400 line-through decoration-slate-300' : 'text-slate-700'}`}>
+                                                <p className={`text-xs leading-relaxed whitespace-pre-wrap font-mono ${frame.skipGeneration ? 'text-slate-400 line-through decoration-slate-300' : 'text-slate-600'}`}>
                                                     {frame.description}
                                                 </p>
                                                 <div className="flex items-center gap-2">
