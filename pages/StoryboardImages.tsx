@@ -7,7 +7,7 @@ import JSZip from 'jszip';
 import { 
   ArrowLeft, Image as ImageIcon, Sparkles, Loader2, Trash2, RefreshCw, 
   Download, AlertCircle, Ban, CheckCircle2, Play, Cloud, CloudCheck, StopCircle,
-  ExternalLink, ZoomIn, X, Wand2, Package, Settings2, Key, ClipboardPaste
+  ExternalLink, ZoomIn, X, Wand2, Package, Settings2, Key, ClipboardPaste, Check
 } from 'lucide-react';
 
 const StoryboardImages: React.FC = () => {
@@ -470,22 +470,6 @@ const StoryboardImages: React.FC = () => {
                                                 <p className={`text-xs leading-relaxed whitespace-pre-wrap font-mono ${frame.skipGeneration ? 'text-slate-400 line-through decoration-slate-300' : 'text-slate-600'}`}>
                                                     {frame.description}
                                                 </p>
-                                                <div className="flex items-center gap-2">
-                                                    {frame.imageModel ? (
-                                                        <span className="text-[10px] px-2 py-0.5 bg-slate-100 text-slate-500 rounded border border-slate-200 font-mono">
-                                                            {frame.imageModel.replace('gemini-', '')}
-                                                        </span>
-                                                    ) : (
-                                                        <span className="text-[10px] px-2 py-0.5 bg-slate-50 text-slate-300 rounded border border-slate-100 font-mono">
-                                                            Pending
-                                                        </span>
-                                                    )}
-                                                    {hasImage && !frame.imageUrl?.startsWith('data:') && (
-                                                        <span className="text-[10px] px-2 py-0.5 bg-emerald-50 text-emerald-600 rounded border border-emerald-100 flex items-center gap-1">
-                                                            <CloudCheck className="w-3 h-3" /> 已同步
-                                                        </span>
-                                                    )}
-                                                </div>
                                             </div>
                                         </td>
 
@@ -507,6 +491,24 @@ const StoryboardImages: React.FC = () => {
                                                                     alt={`Scene ${frame.sceneNumber}`} 
                                                                     className="w-full h-full object-cover" 
                                                                 />
+
+                                                                {/* Sync Status - Top Left */}
+                                                                {!frame.imageUrl?.startsWith('data:') && (
+                                                                    <div className="absolute top-2 left-2 z-20" title="已同步云端">
+                                                                         <div className="bg-emerald-500 text-white p-0.5 rounded-full shadow-md border border-white/20">
+                                                                            <Check className="w-3 h-3" strokeWidth={4} />
+                                                                         </div>
+                                                                    </div>
+                                                                )}
+
+                                                                {/* Model Tag - Top Center Strip */}
+                                                                {frame.imageModel && (
+                                                                    <div className="absolute top-2 left-1/2 -translate-x-1/2 z-20 pointer-events-none">
+                                                                        <span className="text-[9px] font-bold text-white bg-slate-900/80 backdrop-blur-sm px-2 py-0.5 rounded-full border border-white/10 shadow-sm">
+                                                                            {frame.imageModel.replace('gemini-', '')}
+                                                                        </span>
+                                                                    </div>
+                                                                )}
                                                                 
                                                                 {/* Floating Regenerate Button - Top Right */}
                                                                 <button 
