@@ -1148,10 +1148,12 @@ const ProjectWorkspace: React.FC = () => {
                                         href="https://app.heygen.com/home" 
                                         target="_blank" 
                                         rel="noopener noreferrer"
-                                        onClick={() => {
+                                        onClick={(e) => {
+                                            e.preventDefault();
                                             if (project?.script) {
                                                 navigator.clipboard.writeText(project.script);
                                             }
+                                            window.open("https://app.heygen.com/home", "_blank");
                                         }}
                                         className="flex items-center gap-1.5 px-2.5 py-1 bg-violet-50 text-violet-600 hover:bg-violet-100 hover:text-violet-700 border border-violet-200 rounded-lg text-xs font-bold transition-colors"
                                         title="复制脚本并打开 HeyGen"
