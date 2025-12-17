@@ -8,7 +8,8 @@ import {
   List, PanelRightClose, Sparkles, Loader2, Copy, 
   Check, Images, ArrowRight, Palette, Film, Maximize2, Play,
   ZoomIn, ZoomOut, Move, RefreshCw, Rocket, AlertCircle, Archive,
-  Cloud, CloudCheck, ArrowLeftRight, Settings2, X, Key, Clock, Eraser, ClipboardPaste
+  Cloud, CloudCheck, ArrowLeftRight, Settings2, X, Key, Clock, Eraser, ClipboardPaste,
+  Bot, ChevronDown
 } from 'lucide-react';
 
 // --- Sub-Components ---
@@ -138,7 +139,6 @@ const NODES_CONFIG = [
   { id: 'input', step: 1, label: '项目输入', panelTitle: '项目基础信息', icon: Layout, color: 'blue', description: '选题与基本信息', x: 50, y: 300 },
   { id: 'script', step: 2, label: '视频脚本', panelTitle: '视频文案脚本编辑器', icon: FileText, color: 'violet', promptKey: 'SCRIPT', description: '生成分章节的详细脚本', model: 'Gemini 2.5 Flash Preview', x: 450, y: 300 },
   // Column 2: Outputs from Script - Vertically Centered around y=300 (Script)
-  // Range: -200 to 800 (Height ~1200px)
   { id: 'titles', step: 3, label: '爆款标题', panelTitle: '爆款标题方案', icon: Type, color: 'amber', promptKey: 'TITLES', description: '生成高点击率标题', model: 'Gemini 2.5 Flash', x: 850, y: -200 },
   { id: 'sb_text', step: 4, label: '分镜文案', panelTitle: '分镜画面描述', icon: Film, color: 'fuchsia', promptKey: 'STORYBOARD_TEXT', description: '拆解为可视化画面描述', model: 'Gemini 2.5 Flash', x: 850, y: 0 },
   { id: 'summary', step: 5, label: '简介与标签', panelTitle: '视频简介与标签', icon: List, color: 'emerald', promptKey: 'SUMMARY', description: '生成简介和Hashtags', model: 'Gemini 2.5 Flash', x: 850, y: 200 },
@@ -186,6 +186,10 @@ const ProjectWorkspace: React.FC = () => {
   // API Configuration
   const [showConfigModal, setShowConfigModal] = useState(false);
   const [customKey, setCustomKey] = useState('');
+
+  // Model Selection
+  const [textModel, setTextModel] = useState<string>('gemini-2.5-flash-preview-09-2025');
+  const [showModelMenu, setShowModelMenu] = useState(false);
 
   // Canvas State - Adjusted initial view to see top nodes
   const [transform, setTransform] = useState({ x: 50, y: 300, scale: 0.85 });
@@ -310,6 +314,9 @@ const ProjectWorkspace: React.FC = () => {
         const storedKey = localStorage.getItem('lva_custom_api_key');
         if (storedKey && mountedRef.current) setCustomKey(storedKey);
 
+        const storedModel = localStorage.getItem('lva_text_model');
+        if (storedModel && mountedRef.current) setTextModel(storedModel);
+
         // Ensure loading is off if we haven't turned it off yet (e.g., waiting for remote only)
         if (mountedRef.current) setLoading(false);
     };
@@ -320,7 +327,12 @@ const ProjectWorkspace: React.FC = () => {
   const saveSettings = () => {
       localStorage.setItem('lva_custom_api_key', customKey);
       setShowConfigModal(false);
-      // Optional: Add toast notification here
+  };
+
+  const handleModelSelect = (model: string) => {
+      setTextModel(model);
+      localStorage.setItem('lva_text_model', model);
+      setShowModelMenu(false);
   };
 
   const getMaskedKey = (key: string) => {
@@ -355,6 +367,9 @@ const ProjectWorkspace: React.FC = () => {
       if (selectedNodeId) {
           setSelectedNodeId(null);
       }
+      
+      // Close model menu if open
+      if (showModelMenu) setShowModelMenu(false);
 
       // Allow drag on Space+Click OR Middle Click OR Left Click on empty space
       if (e.button === 1 || e.button === 0) { 
@@ -505,8 +520,11 @@ const ProjectWorkspace: React.FC = () => {
       const prompt = interpolate(template, contextData);
       const now = Date.now();
 
+      // Use the selected model from state
+      const modelToUse = textModel;
+
       if (nodeId === 'script') {
-          const text = await gemini.generateText(prompt, 'gemini-2.5-flash-preview-09-2025', customKey); 
+          const text = await gemini.generateText(prompt, modelToUse, customKey); 
           await saveProjectUpdate(p => ({ 
               ...p, 
               script: text, 
@@ -515,7 +533,7 @@ const ProjectWorkspace: React.FC = () => {
           }));
       } 
       else if (nodeId === 'summary') {
-          const text = await gemini.generateText(prompt, 'gemini-2.5-flash', customKey);
+          const text = await gemini.generateText(prompt, modelToUse, customKey);
           await saveProjectUpdate(p => ({ 
               ...p, 
               summary: text,
@@ -531,7 +549,7 @@ const ProjectWorkspace: React.FC = () => {
                       score: {type: "NUMBER"}
                   }
               }
-          }, customKey);
+          }, customKey, modelToUse);
           await saveProjectUpdate(p => ({ 
               ...p, 
               titles: data,
@@ -547,7 +565,7 @@ const ProjectWorkspace: React.FC = () => {
                       score: {type: "NUMBER"}
                   }
               }
-          }, customKey);
+          }, customKey, modelToUse);
           await saveProjectUpdate(p => ({ 
               ...p, 
               coverOptions: data,
@@ -563,7 +581,7 @@ const ProjectWorkspace: React.FC = () => {
                       score: {type: "NUMBER"}
                   }
               }
-          }, customKey);
+          }, customKey, modelToUse);
           await saveProjectUpdate(p => ({ 
               ...p, 
               coverOptionsB: data,
@@ -571,7 +589,7 @@ const ProjectWorkspace: React.FC = () => {
           }));
       }
       else if (nodeId === 'cover_bg') {
-          const text = await gemini.generateText(prompt, 'gemini-2.5-flash', customKey);
+          const text = await gemini.generateText(prompt, modelToUse, customKey);
           await saveProjectUpdate(p => ({ 
               ...p, 
               coverBgImageDescription: text,
@@ -586,12 +604,9 @@ const ProjectWorkspace: React.FC = () => {
                       description: {type: "STRING"}
                   }
               }
-          }, customKey);
+          }, customKey, modelToUse);
           
           // Map extracted JSON to StoryboardFrame structure
-          // Ensure correct mapping based on the prompt instructions:
-          // 'original' -> originalText (Script content)
-          // 'description' -> description (Visual description)
           const frames: StoryboardFrame[] = data.map((item, idx) => ({
               id: crypto.randomUUID(),
               sceneNumber: idx + 1,
@@ -755,6 +770,53 @@ const ProjectWorkspace: React.FC = () => {
              </div>
 
              <div className="pointer-events-auto flex gap-3">
+                 {/* Model Selector Button */}
+                 <div className="relative">
+                     <button
+                        onClick={() => setShowModelMenu(!showModelMenu)}
+                        className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all shadow-sm h-10 border bg-white text-slate-600 border-slate-200 hover:border-slate-300 hover:bg-slate-50`}
+                        title="选择推理模型"
+                     >
+                        <Bot className="w-4 h-4 text-violet-600" />
+                        <span className="hidden lg:inline">{textModel.includes('flash') ? 'Gemini Flash' : (textModel.includes('thinking') ? 'Flash Thinking' : 'Gemini Pro')}</span>
+                        <ChevronDown className="w-3 h-3 text-slate-400" />
+                     </button>
+                     
+                     {showModelMenu && (
+                         <>
+                            <div className="fixed inset-0 z-30" onClick={() => setShowModelMenu(false)} />
+                            <div className="absolute top-full right-0 mt-2 w-56 bg-white rounded-xl shadow-xl border border-slate-200 z-40 overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+                                <div className="p-2 space-y-1">
+                                    <button 
+                                        onClick={() => handleModelSelect('gemini-2.5-flash-preview-09-2025')}
+                                        className={`w-full text-left px-3 py-2 rounded-lg text-xs font-bold flex items-center justify-between ${textModel === 'gemini-2.5-flash-preview-09-2025' ? 'bg-violet-50 text-violet-700' : 'hover:bg-slate-50 text-slate-600'}`}
+                                    >
+                                        <span>Gemini 2.5 Flash</span>
+                                        {textModel === 'gemini-2.5-flash-preview-09-2025' && <Check className="w-3.5 h-3.5" />}
+                                    </button>
+                                    <button 
+                                        onClick={() => handleModelSelect('gemini-2.5-flash-thinking-preview-0121')}
+                                        className={`w-full text-left px-3 py-2 rounded-lg text-xs font-bold flex items-center justify-between ${textModel === 'gemini-2.5-flash-thinking-preview-0121' ? 'bg-violet-50 text-violet-700' : 'hover:bg-slate-50 text-slate-600'}`}
+                                    >
+                                        <span>Gemini 2.5 Thinking</span>
+                                        {textModel === 'gemini-2.5-flash-thinking-preview-0121' && <Check className="w-3.5 h-3.5" />}
+                                    </button>
+                                    <button 
+                                        onClick={() => handleModelSelect('gemini-3-pro-preview')}
+                                        className={`w-full text-left px-3 py-2 rounded-lg text-xs font-bold flex items-center justify-between ${textModel === 'gemini-3-pro-preview' ? 'bg-violet-50 text-violet-700' : 'hover:bg-slate-50 text-slate-600'}`}
+                                    >
+                                        <span>Gemini 3.0 Pro</span>
+                                        {textModel === 'gemini-3-pro-preview' && <Check className="w-3.5 h-3.5" />}
+                                    </button>
+                                </div>
+                                <div className="bg-slate-50 px-3 py-2 text-[10px] text-slate-400 border-t border-slate-100">
+                                    提示：Thinking/Pro 模型需要更长的生成时间。
+                                </div>
+                            </div>
+                         </>
+                     )}
+                 </div>
+
                  {/* API Config Button */}
                  <button
                     onClick={() => setShowConfigModal(true)}
@@ -1144,16 +1206,26 @@ const ProjectWorkspace: React.FC = () => {
                                                     </span>
                                                 </div>
                                             </div>
+                                            
+                                            {/* Visual Section */}
                                             <div className="mb-4">
-                                                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">画面描述</p>
+                                                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">封面画面</p>
                                                 <p className="text-xs text-slate-600 leading-relaxed">{opt.visual}</p>
                                             </div>
-                                            <div className="bg-slate-50 rounded-lg p-3 border border-slate-100 relative group">
-                                                <p className="text-sm font-bold text-slate-800 whitespace-pre-line leading-relaxed text-center font-serif">
-                                                    {(opt.copy || '').replace(/\|/g, '\n')}
-                                                </p>
-                                                <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                                                    <RowCopyButton text={(opt.copy || '').replace(/\|/g, '\n')} />
+
+                                            {/* Copy Section */}
+                                            <div>
+                                                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">封面文字</p>
+                                                <div className="bg-slate-50 rounded-lg p-3 border border-slate-100 relative group">
+                                                    <div className="text-sm font-bold text-slate-800 leading-relaxed text-center font-serif">
+                                                        {/* Split by Chinese/English semicolon, newline, or pipe */}
+                                                        {(opt.copy || '').split(/[:;；\n|]+/).filter(Boolean).map((line, lIdx) => (
+                                                            <div key={lIdx} className="py-0.5">{line.trim()}</div>
+                                                        ))}
+                                                    </div>
+                                                    <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                                                        <RowCopyButton text={(opt.copy || '').replace(/[:;；|]+/g, '\n')} />
+                                                    </div>
                                                 </div>
                                             </div>
                                         </div>
