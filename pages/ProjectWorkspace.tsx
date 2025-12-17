@@ -1143,6 +1143,18 @@ const ProjectWorkspace: React.FC = () => {
                                     </div>
                                 </div>
                                 <h3 className="font-bold text-slate-800 text-base">{node?.panelTitle}</h3>
+                                {node?.id === 'script' && (
+                                    <a 
+                                        href="https://app.heygen.com/home" 
+                                        target="_blank" 
+                                        rel="noopener noreferrer"
+                                        className="flex items-center gap-1.5 px-2.5 py-1 bg-violet-50 text-violet-600 hover:bg-violet-100 hover:text-violet-700 border border-violet-200 rounded-lg text-xs font-bold transition-colors"
+                                        title="打开 HeyGen"
+                                    >
+                                        <ExternalLink className="w-3.5 h-3.5" />
+                                        HeyGen
+                                    </a>
+                                )}
                             </div>
                         );
                     })()}
