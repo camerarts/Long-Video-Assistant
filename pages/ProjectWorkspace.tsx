@@ -1148,8 +1148,13 @@ const ProjectWorkspace: React.FC = () => {
                                         href="https://app.heygen.com/home" 
                                         target="_blank" 
                                         rel="noopener noreferrer"
+                                        onClick={() => {
+                                            if (project?.script) {
+                                                navigator.clipboard.writeText(project.script);
+                                            }
+                                        }}
                                         className="flex items-center gap-1.5 px-2.5 py-1 bg-violet-50 text-violet-600 hover:bg-violet-100 hover:text-violet-700 border border-violet-200 rounded-lg text-xs font-bold transition-colors"
-                                        title="打开 HeyGen"
+                                        title="复制脚本并打开 HeyGen"
                                     >
                                         <ExternalLink className="w-3.5 h-3.5" />
                                         HeyGen
