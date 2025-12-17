@@ -224,10 +224,16 @@ const StoryboardImages: React.FC = () => {
   const stats = {
       total: project.storyboard?.length || 0,
       generated: project.storyboard?.filter(f => !!f.imageUrl).length || 0,
+      // Modified: Pending = No Image AND Not Skipped
       pending: project.storyboard?.filter(f => !f.imageUrl && !f.skipGeneration).length || 0,
+      // Uploaded check: exists AND does not start with data:
       uploaded: project.storyboard?.filter(f => f.imageUrl && !f.imageUrl.startsWith('data:')).length || 0
   };
 
+  // Progress logic: If skipped frames exist, they reduce the total "effective" target or just count as done?
+  // Usually progress bar should reflect "work done vs work to do". 
+  // Let's treat skipped as "processed" for the bar visually, or just ignore them.
+  // Standard Approach: generated / total. Skipped ones stay ungenerated.
   const progressPercent = stats.total > 0 ? (stats.generated / stats.total) * 100 : 0;
 
   return (
@@ -429,7 +435,9 @@ const StoryboardImages: React.FC = () => {
                                        {hasImage && (
                                            <div className="flex gap-2">
                                                {frame.imageUrl && !frame.imageUrl.startsWith('data:') && (
-                                                   <CloudCheck className="w-3 h-3 text-emerald-400" title="已同步云端" />
+                                                   <div title="已同步云端">
+                                                       <CloudCheck className="w-3 h-3 text-emerald-400" />
+                                                   </div>
                                                )}
                                            </div>
                                        )}
