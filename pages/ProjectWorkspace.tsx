@@ -9,7 +9,7 @@ import {
   Check, Images, ArrowRight, Palette, Film, Maximize2, Play,
   ZoomIn, ZoomOut, Move, RefreshCw, Rocket, AlertCircle, Archive,
   Cloud, CloudCheck, ArrowLeftRight, Settings2, X, Key, Clock, Eraser, ClipboardPaste,
-  Bot, ChevronDown
+  Bot, ChevronDown, ExternalLink
 } from 'lucide-react';
 
 // --- Sub-Components ---
@@ -1333,6 +1333,15 @@ const ProjectWorkspace: React.FC = () => {
                                                             <span className="text-[9px] font-bold text-slate-300 uppercase tracking-wider">Right</span>
                                                             <RowCopyButton text={cleanRight} />
                                                         </div>
+                                                        <a 
+                                                            href="https://gemini.google.com/" 
+                                                            target="_blank" 
+                                                            rel="noopener noreferrer"
+                                                            className="mt-1 flex items-center gap-1 px-2 py-1 bg-indigo-50 text-indigo-600 hover:bg-indigo-100 hover:text-indigo-700 border border-indigo-100 rounded-md text-[10px] font-bold transition-colors"
+                                                            title="前往 Gemini 官网进行生图"
+                                                        >
+                                                            <ExternalLink className="w-3 h-3" /> 去生图
+                                                        </a>
                                                     </div>
                                                 </td>
                                             </tr>
