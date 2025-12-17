@@ -93,12 +93,12 @@ export const generateText = async (prompt: string, modelName: string = 'gemini-2
   return ''; // Should be unreachable
 };
 
-export const generateJSON = async <T>(prompt: string, schema?: any, customApiKey?: string): Promise<T> => {
+export const generateJSON = async <T>(prompt: string, schema?: any, customApiKey?: string, modelName: string = 'gemini-2.5-flash'): Promise<T> => {
   try {
     return await retryWithBackoff(async () => {
         const ai = getClient(customApiKey);
         const response = await ai.models.generateContent({
-          model: 'gemini-2.5-flash',
+          model: modelName,
           contents: prompt,
           config: {
             responseMimeType: "application/json",
