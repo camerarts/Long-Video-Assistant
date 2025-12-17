@@ -25,7 +25,8 @@ const StoryboardImages: React.FC = () => {
   // Config State
   const [prompts, setPrompts] = useState<Record<string, PromptTemplate>>({});
   const [customKey, setCustomKey] = useState('');
-  const [styleMode, setStyleMode] = useState<'A' | 'B'>('A');
+  // Default to 'A' (Cinematic), removed UI toggle as requested
+  const [styleMode] = useState<'A' | 'B'>('A');
 
   // UI State
   const [previewImage, setPreviewImage] = useState<string | null>(null);
@@ -315,21 +316,6 @@ const StoryboardImages: React.FC = () => {
           </div>
 
           <div className="flex items-center gap-3 w-full md:w-auto justify-end">
-              <div className="flex bg-slate-100 p-1 rounded-lg">
-                  <button 
-                    onClick={() => setStyleMode('A')}
-                    className={`px-3 py-1.5 rounded-md text-xs font-bold transition-all ${styleMode === 'A' ? 'bg-white text-fuchsia-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
-                  >
-                      电影质感
-                  </button>
-                  <button 
-                    onClick={() => setStyleMode('B')}
-                    className={`px-3 py-1.5 rounded-md text-xs font-bold transition-all ${styleMode === 'B' ? 'bg-white text-fuchsia-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
-                  >
-                      漫画风格
-                  </button>
-              </div>
-
               <button
                  onClick={handleDownloadAll}
                  disabled={isZipping || stats.generated === 0}
@@ -451,75 +437,85 @@ const StoryboardImages: React.FC = () => {
 
                                         {/* Image Area */}
                                         <td className="py-4 px-6 align-top">
-                                            <div className="aspect-video bg-slate-100 rounded-xl border border-slate-200 overflow-hidden relative group/image w-full max-w-[320px] mx-auto shadow-sm">
-                                                {hasImage ? (
-                                                    <>
-                                                        <img 
-                                                            src={frame.imageUrl} 
-                                                            alt={`Scene ${frame.sceneNumber}`} 
-                                                            className="w-full h-full object-cover" 
-                                                        />
-                                                        
-                                                        {/* Floating Regenerate Button - Top Right */}
-                                                        <button 
-                                                            onClick={() => handleGenerateImage(frame)}
-                                                            disabled={isGenerating || frame.skipGeneration}
-                                                            className="absolute top-2 right-2 p-2 bg-white/80 hover:bg-white text-slate-600 hover:text-fuchsia-600 rounded-lg backdrop-blur-sm shadow-sm opacity-0 group-hover/image:opacity-100 transition-all z-20"
-                                                            title="重新生成"
-                                                        >
-                                                            <RefreshCw className={`w-4 h-4 ${isGenerating ? 'animate-spin' : ''}`} />
-                                                        </button>
+                                            <div className="w-full max-w-[320px] mx-auto">
+                                                <div className={`aspect-video rounded-xl relative overflow-hidden shadow-sm group/image ${isGenerating ? 'p-[3px]' : 'border border-slate-200 bg-slate-100'}`}>
+                                                    
+                                                    {/* Rotating Fluorescent Border for Generating State */}
+                                                    {isGenerating && (
+                                                        <div className="absolute inset-[-50%] bg-[conic-gradient(transparent_0deg,transparent_340deg,#d946ef_360deg)] animate-[spin_2s_linear_infinite]" />
+                                                    )}
 
-                                                        {/* Overlay Actions */}
-                                                        <div className="absolute inset-0 bg-black/40 opacity-0 group-hover/image:opacity-100 transition-opacity flex items-center justify-center gap-3 backdrop-blur-[1px]">
-                                                            <button 
-                                                                onClick={() => setPreviewImage(frame.imageUrl!)}
-                                                                className="p-2 bg-white/20 hover:bg-white text-white hover:text-slate-900 rounded-full backdrop-blur-md transition-all transform hover:scale-110"
-                                                                title="预览"
-                                                            >
-                                                                <ZoomIn className="w-4 h-4" />
-                                                            </button>
-                                                            <button 
-                                                                onClick={() => handleDownload(frame)}
-                                                                className="p-2 bg-white/20 hover:bg-white text-white hover:text-emerald-600 rounded-full backdrop-blur-md transition-all transform hover:scale-110"
-                                                                title="下载"
-                                                            >
-                                                                <Download className="w-4 h-4" />
-                                                            </button>
-                                                            <button 
-                                                                onClick={() => handleDeleteImage(frame)}
-                                                                className="p-2 bg-white/20 hover:bg-white text-white hover:text-rose-600 rounded-full backdrop-blur-md transition-all transform hover:scale-110"
-                                                                title="删除"
-                                                            >
-                                                                <Trash2 className="w-4 h-4" />
-                                                            </button>
-                                                        </div>
-                                                    </>
-                                                ) : (
-                                                    <div className="absolute inset-0 flex flex-col items-center justify-center p-4 text-center">
-                                                        {isGenerating ? (
+                                                    <div className={`relative w-full h-full rounded-[9px] overflow-hidden ${isGenerating ? 'bg-slate-50' : ''}`}>
+                                                        {hasImage ? (
                                                             <>
-                                                                <Loader2 className="w-6 h-6 text-fuchsia-500 animate-spin mb-2" />
-                                                                <span className="text-[10px] font-bold text-fuchsia-600 animate-pulse">AI 绘制中...</span>
-                                                            </>
-                                                        ) : frame.skipGeneration ? (
-                                                            <>
-                                                                <Ban className="w-6 h-6 text-slate-300 mb-2" />
-                                                                <span className="text-[10px] text-slate-400">已跳过</span>
+                                                                <img 
+                                                                    src={frame.imageUrl} 
+                                                                    alt={`Scene ${frame.sceneNumber}`} 
+                                                                    className="w-full h-full object-cover" 
+                                                                />
+                                                                
+                                                                {/* Floating Regenerate Button - Top Right */}
+                                                                <button 
+                                                                    onClick={() => handleGenerateImage(frame)}
+                                                                    disabled={isGenerating || frame.skipGeneration}
+                                                                    className="absolute top-2 right-2 p-2 bg-white/80 hover:bg-white text-slate-600 hover:text-fuchsia-600 rounded-lg backdrop-blur-sm shadow-sm opacity-0 group-hover/image:opacity-100 transition-all z-20"
+                                                                    title="重新生成"
+                                                                >
+                                                                    <RefreshCw className={`w-4 h-4 ${isGenerating ? 'animate-spin' : ''}`} />
+                                                                </button>
+
+                                                                {/* Overlay Actions */}
+                                                                <div className="absolute inset-0 bg-black/40 opacity-0 group-hover/image:opacity-100 transition-opacity flex items-center justify-center gap-3 backdrop-blur-[1px]">
+                                                                    <button 
+                                                                        onClick={() => setPreviewImage(frame.imageUrl!)}
+                                                                        className="p-2 bg-white/20 hover:bg-white text-white hover:text-slate-900 rounded-full backdrop-blur-md transition-all transform hover:scale-110"
+                                                                        title="预览"
+                                                                    >
+                                                                        <ZoomIn className="w-4 h-4" />
+                                                                    </button>
+                                                                    <button 
+                                                                        onClick={() => handleDownload(frame)}
+                                                                        className="p-2 bg-white/20 hover:bg-white text-white hover:text-emerald-600 rounded-full backdrop-blur-md transition-all transform hover:scale-110"
+                                                                        title="下载"
+                                                                    >
+                                                                        <Download className="w-4 h-4" />
+                                                                    </button>
+                                                                    <button 
+                                                                        onClick={() => handleDeleteImage(frame)}
+                                                                        className="p-2 bg-white/20 hover:bg-white text-white hover:text-rose-600 rounded-full backdrop-blur-md transition-all transform hover:scale-110"
+                                                                        title="删除"
+                                                                    >
+                                                                        <Trash2 className="w-4 h-4" />
+                                                                    </button>
+                                                                </div>
                                                             </>
                                                         ) : (
-                                                            <button 
-                                                                onClick={() => handleGenerateImage(frame)}
-                                                                className="group/btn flex flex-col items-center gap-1.5 opacity-60 hover:opacity-100 transition-opacity"
-                                                            >
-                                                                <div className="w-8 h-8 rounded-full bg-white shadow-sm flex items-center justify-center group-hover/btn:scale-110 transition-transform">
-                                                                    <Wand2 className="w-4 h-4 text-fuchsia-500" />
-                                                                </div>
-                                                                <span className="text-[10px] font-bold text-slate-500 group-hover/btn:text-fuchsia-600">点击生成</span>
-                                                            </button>
+                                                            <div className="absolute inset-0 flex flex-col items-center justify-center p-4 text-center">
+                                                                {isGenerating ? (
+                                                                    <>
+                                                                        <Loader2 className="w-6 h-6 text-fuchsia-500 animate-spin mb-2" />
+                                                                        <span className="text-[10px] font-bold text-fuchsia-600 animate-pulse">AI 绘制中...</span>
+                                                                    </>
+                                                                ) : frame.skipGeneration ? (
+                                                                    <>
+                                                                        <Ban className="w-6 h-6 text-slate-300 mb-2" />
+                                                                        <span className="text-[10px] text-slate-400">已跳过</span>
+                                                                    </>
+                                                                ) : (
+                                                                    <button 
+                                                                        onClick={() => handleGenerateImage(frame)}
+                                                                        className="group/btn flex flex-col items-center gap-1.5 opacity-60 hover:opacity-100 transition-opacity"
+                                                                    >
+                                                                        <div className="w-8 h-8 rounded-full bg-white shadow-sm flex items-center justify-center group-hover/btn:scale-110 transition-transform">
+                                                                            <Wand2 className="w-4 h-4 text-fuchsia-500" />
+                                                                        </div>
+                                                                        <span className="text-[10px] font-bold text-slate-500 group-hover/btn:text-fuchsia-600">点击生成</span>
+                                                                    </button>
+                                                                )}
+                                                            </div>
                                                         )}
                                                     </div>
-                                                )}
+                                                </div>
                                             </div>
                                         </td>
                                     </tr>
