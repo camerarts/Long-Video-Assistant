@@ -129,6 +129,39 @@ const TableResultBox = <T extends any>({ headers, data, renderRow }: TableResult
   </div>
 );
 
+// --- Parsing Helper for Cover BG ---
+const parseBgItem = (item: any) => {
+    let left = item.leftPrompt || item.visual || '';
+    let right = item.rightPrompt || '';
+
+    // Advanced Parser: Check if "Left" column actually contains both parts mixed up
+    // Regex matches patterns like "左画面提示词：... 右画面提示词：..." or "Left Prompt: ... Right Prompt: ..."
+    // The [\s\S]*? handles multiline content.
+    const splitRegex = /(?:左画面(?:提示词)?|Left Prompt)[:：]\s*([\s\S]*?)\s*(?:右画面(?:提示词)?|Right Prompt)[:：]\s*([\s\S]*)/i;
+    
+    const match = left.match(splitRegex);
+    if (match) {
+        left = match[1].trim();
+        right = match[2].trim();
+    } 
+    // Fallback: If no explicit Left prefix but has Right prefix
+    else if (left.match(/(?:右画面(?:提示词)?|Right Prompt)[:：]/i)) {
+         const parts = left.split(/(?:右画面(?:提示词)?|Right Prompt)[:：]/i);
+         if (parts.length > 1) {
+             // Remove potential Left prefix from the first part if exists
+             left = parts[0].replace(/^(?:左画面(?:提示词)?|Left Prompt)[:：]\s*/i, '').trim();
+             right = parts[1].trim();
+         }
+    }
+
+    // Clean up prefixes if they exist inside the individual fields (Final Cleanup)
+    // This removes "左画面提示词：" if it wasn't caught by the split regex
+    left = left.replace(/^(?:左画面(?:提示词)?|Left Prompt)[:：]\s*/i, '').trim();
+    right = right.replace(/^(?:右画面(?:提示词)?|Right Prompt)[:：]\s*/i, '').trim();
+
+    return { left, right };
+};
+
 // --- Configuration ---
 
 const NODE_WIDTH = 280;
@@ -1255,36 +1288,34 @@ const ProjectWorkspace: React.FC = () => {
                  {selectedNodeId === 'cover_bg' && (
                      <div className="h-full flex flex-col">
                         <TableResultBox 
-                            headers={['序号', '左画面提示词', '右画面提示词', '推荐指数', '操作']}
+                            headers={['序号', '左画面提示词', '右画面提示词', '操作']}
                             // Support new left/right structure and legacy structure fallback
                             data={project.coverBgOptions || (project.coverBgImageDescription ? [{ leftPrompt: project.coverBgImageDescription, rightPrompt: '', score: 0 }] : [])}
-                            renderRow={(item: any, i: number) => (
-                                <tr key={i} className="hover:bg-slate-50 group">
-                                    <td className="py-3 px-4 text-center text-xs font-bold text-slate-400 w-[5%] align-top pt-4">{i + 1}</td>
-                                    <td className="py-3 px-2 w-[40%] align-top">
-                                        <div className="text-[10px] text-slate-600 leading-relaxed font-mono bg-slate-50 p-2 rounded border border-slate-100 whitespace-pre-wrap">
-                                            <span className="font-bold text-slate-400 block mb-1 text-[9px] uppercase tracking-wider">Left</span>
-                                            {item.leftPrompt || item.visual || '-'}
-                                        </div>
-                                    </td>
-                                    <td className="py-3 px-2 w-[40%] align-top">
-                                        <div className="text-[10px] text-slate-600 leading-relaxed font-mono bg-slate-50 p-2 rounded border border-slate-100 whitespace-pre-wrap">
-                                            <span className="font-bold text-slate-400 block mb-1 text-[9px] uppercase tracking-wider">Right</span>
-                                            {item.rightPrompt || '-'}
-                                        </div>
-                                    </td>
-                                    <td className="py-3 px-4 text-center w-[10%] align-middle">
-                                        {item.score > 0 && (
-                                            <span className="text-xl font-black text-transparent bg-clip-text bg-gradient-to-r from-cyan-500 to-blue-600 italic tracking-tighter">
-                                                {formatScore(item.score)}
-                                            </span>
-                                        )}
-                                    </td>
-                                    <td className="py-3 px-4 text-right w-[5%] align-top pt-4">
-                                        <RowCopyButton text={`Left: ${item.leftPrompt || item.visual}\nRight: ${item.rightPrompt}`} />
-                                    </td>
-                                </tr>
-                            )}
+                            renderRow={(item: any, i: number) => {
+                                // Apply smart parsing to clean up mixed content
+                                const { left, right } = parseBgItem(item);
+                                
+                                return (
+                                    <tr key={i} className="hover:bg-slate-50 group">
+                                        <td className="py-3 px-4 text-center text-xs font-bold text-slate-400 w-[5%] align-top pt-4">{i + 1}</td>
+                                        <td className="py-3 px-2 w-[45%] align-top">
+                                            <div className="text-[10px] text-slate-600 leading-relaxed font-mono bg-slate-50 p-2 rounded border border-slate-100 whitespace-pre-wrap">
+                                                <span className="font-bold text-slate-400 block mb-1 text-[9px] uppercase tracking-wider">Left</span>
+                                                {left || '-'}
+                                            </div>
+                                        </td>
+                                        <td className="py-3 px-2 w-[45%] align-top">
+                                            <div className="text-[10px] text-slate-600 leading-relaxed font-mono bg-slate-50 p-2 rounded border border-slate-100 whitespace-pre-wrap">
+                                                <span className="font-bold text-slate-400 block mb-1 text-[9px] uppercase tracking-wider">Right</span>
+                                                {right || '-'}
+                                            </div>
+                                        </td>
+                                        <td className="py-3 px-4 text-right w-[5%] align-top pt-4">
+                                            <RowCopyButton text={`Left: ${left}\nRight: ${right}`} />
+                                        </td>
+                                    </tr>
+                                );
+                            }}
                         />
                      </div>
                  )}
