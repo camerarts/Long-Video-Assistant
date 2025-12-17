@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { ProjectData, TitleItem, StoryboardFrame, CoverOption, PromptTemplate, ProjectStatus } from '../types';
@@ -138,13 +137,14 @@ const NODE_HEIGHT = 180;
 const NODES_CONFIG = [
   { id: 'input', step: 1, label: '项目输入', panelTitle: '项目基础信息', icon: Layout, color: 'blue', description: '选题与基本信息', x: 50, y: 300 },
   { id: 'script', step: 2, label: '视频脚本', panelTitle: '视频文案脚本编辑器', icon: FileText, color: 'violet', promptKey: 'SCRIPT', description: '生成分章节的详细脚本', model: 'Gemini 2.5 Flash Preview', x: 450, y: 300 },
-  // Column 2: Outputs from Script
-  { id: 'titles', step: 3, label: '爆款标题', panelTitle: '爆款标题方案', icon: Type, color: 'amber', promptKey: 'TITLES', description: '生成高点击率标题', model: 'Gemini 2.5 Flash', x: 850, y: 100 },
-  { id: 'sb_text', step: 4, label: '分镜文案', panelTitle: '分镜画面描述', icon: Film, color: 'fuchsia', promptKey: 'STORYBOARD_TEXT', description: '拆解为可视化画面描述', model: 'Gemini 2.5 Flash', x: 850, y: 300 },
-  { id: 'summary', step: 5, label: '简介与标签', panelTitle: '视频简介与标签', icon: List, color: 'emerald', promptKey: 'SUMMARY', description: '生成简介和Hashtags', model: 'Gemini 2.5 Flash', x: 850, y: 500 },
-  { id: 'cover', step: 6, label: '封面文字策划A-4行字', panelTitle: '封面文字策划A-4行字', icon: Palette, color: 'rose', promptKey: 'COVER_GEN', description: '方案A：信息量丰富型封面文案', model: 'Gemini 2.5 Flash', x: 850, y: 700 },
-  { id: 'cover_b', step: 7, label: '封面文字策划B-2行字', panelTitle: '封面文字策划B-2行字', icon: Palette, color: 'orange', promptKey: 'COVER_GEN_B', description: '方案B：极简冲击型封面文案', model: 'Gemini 2.5 Flash', x: 850, y: 900 },
-  { id: 'cover_bg', step: 8, label: '封面背景图', panelTitle: '封面背景画面描述', icon: Images, color: 'cyan', promptKey: 'COVER_BG_IMAGE', description: '生成无文字的封面背景图描述', model: 'Gemini 2.5 Flash', x: 850, y: 1100 },
+  // Column 2: Outputs from Script - Vertically Centered around y=300 (Script)
+  // Range: -200 to 800 (Height ~1200px)
+  { id: 'titles', step: 3, label: '爆款标题', panelTitle: '爆款标题方案', icon: Type, color: 'amber', promptKey: 'TITLES', description: '生成高点击率标题', model: 'Gemini 2.5 Flash', x: 850, y: -200 },
+  { id: 'sb_text', step: 4, label: '分镜文案', panelTitle: '分镜画面描述', icon: Film, color: 'fuchsia', promptKey: 'STORYBOARD_TEXT', description: '拆解为可视化画面描述', model: 'Gemini 2.5 Flash', x: 850, y: 0 },
+  { id: 'summary', step: 5, label: '简介与标签', panelTitle: '视频简介与标签', icon: List, color: 'emerald', promptKey: 'SUMMARY', description: '生成简介和Hashtags', model: 'Gemini 2.5 Flash', x: 850, y: 200 },
+  { id: 'cover', step: 6, label: '封面文字策划A-4行字', panelTitle: '封面文字策划A-4行字', icon: Palette, color: 'rose', promptKey: 'COVER_GEN', description: '方案A：信息量丰富型封面文案', model: 'Gemini 2.5 Flash', x: 850, y: 400 },
+  { id: 'cover_b', step: 7, label: '封面文字策划B-2行字', panelTitle: '封面文字策划B-2行字', icon: Palette, color: 'orange', promptKey: 'COVER_GEN_B', description: '方案B：极简冲击型封面文案', model: 'Gemini 2.5 Flash', x: 850, y: 600 },
+  { id: 'cover_bg', step: 8, label: '封面背景图', panelTitle: '封面背景画面描述', icon: Images, color: 'cyan', promptKey: 'COVER_BG_IMAGE', description: '生成无文字的封面背景图描述', model: 'Gemini 2.5 Flash', x: 850, y: 800 },
 ];
 
 const CONNECTIONS = [
@@ -177,8 +177,7 @@ const ProjectWorkspace: React.FC = () => {
   const [project, setProject] = useState<ProjectData | null>(null);
   const [loading, setLoading] = useState(true);
   
-  const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null); // Initialized to null for default collapsed state
-  // Changed to Set to allow concurrent generation indicators
+  const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null); 
   const [generatingNodes, setGeneratingNodes] = useState<Set<string>>(new Set());
   const [failedNodes, setFailedNodes] = useState<Set<string>>(new Set());
   const [prompts, setPrompts] = useState<Record<string, PromptTemplate>>({});
@@ -187,8 +186,8 @@ const ProjectWorkspace: React.FC = () => {
   const [showConfigModal, setShowConfigModal] = useState(false);
   const [customKey, setCustomKey] = useState('');
 
-  // Canvas State
-  const [transform, setTransform] = useState({ x: 0, y: 0, scale: 1 });
+  // Canvas State - Adjusted initial view to see top nodes
+  const [transform, setTransform] = useState({ x: 50, y: 300, scale: 0.85 });
   const [isDragging, setIsDragging] = useState(false);
   const canvasRef = useRef<HTMLDivElement>(null);
   const dragStartRef = useRef({ x: 0, y: 0 });
@@ -206,7 +205,6 @@ const ProjectWorkspace: React.FC = () => {
 
   // Update busy ref based on state
   useEffect(() => {
-      // Busy if loading, generating, dragging canvas, or user has a panel open (likely editing), or config modal open
       isBusyRef.current = loading || generatingNodes.size > 0 || isDragging || selectedNodeId !== null || showConfigModal;
   }, [loading, generatingNodes, isDragging, selectedNodeId, showConfigModal]);
 
@@ -280,7 +278,6 @@ const ProjectWorkspace: React.FC = () => {
                 }
             } else {
                 // If local project not found, try fetching once from cloud before giving up
-                // But don't navigate away yet
             }
 
             // 2. Cloud Sync (Background Pull - Single Project)
@@ -606,9 +603,27 @@ const ProjectWorkspace: React.FC = () => {
           return;
       }
 
-      const targets = ['titles', 'sb_text', 'summary', 'cover', 'cover_b', 'cover_bg'];
+      // Identify missing targets
+      const potentialTargets = ['titles', 'sb_text', 'summary', 'cover', 'cover_b', 'cover_bg'];
+      const targets = potentialTargets.filter(id => {
+          // Check if data exists for this node
+          switch(id) {
+              case 'titles': return !project.titles || project.titles.length === 0;
+              case 'sb_text': return !project.storyboard || project.storyboard.length === 0;
+              case 'summary': return !project.summary;
+              case 'cover': return !project.coverOptions || project.coverOptions.length === 0;
+              case 'cover_b': return !project.coverOptionsB || project.coverOptionsB.length === 0;
+              case 'cover_bg': return !project.coverBgImageDescription;
+              default: return false;
+          }
+      });
+
+      if (targets.length === 0) {
+          alert("检测到所有模块均已完成，无需再次生成。\n如需重新生成特定模块，请点击该模块上的“重新生成”按钮。");
+          return;
+      }
       
-      // Mark all as generating
+      // Mark selected as generating
       setGeneratingNodes(prev => {
           const next = new Set(prev);
           targets.forEach(t => next.add(t));
@@ -728,7 +743,7 @@ const ProjectWorkspace: React.FC = () => {
                         onClick={handleOneClickStart}
                         disabled={generatingNodes.size > 0 || !project.script}
                         className="flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-violet-600 to-indigo-600 text-white rounded-xl font-bold shadow-lg shadow-violet-500/20 hover:shadow-violet-500/40 hover:-translate-y-0.5 transition-all disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none disabled:shadow-none"
-                        title={!project.script ? "请先生成视频脚本" : "一键生成标题、分镜、简介与封面 (自动失败重试)"}
+                        title={!project.script ? "请先生成视频脚本" : "智能检测并生成剩余未完成的模块 (3-8号)"}
                     >
                         {generatingNodes.size > 0 && ['titles', 'sb_text', 'summary', 'cover', 'cover_b', 'cover_bg'].some(id => generatingNodes.has(id)) ? <Loader2 className="w-4 h-4 animate-spin" /> : <Rocket className="w-4 h-4" />}
                         一键启动
