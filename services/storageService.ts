@@ -1,5 +1,4 @@
 
-
 import { ProjectData, PromptTemplate, DEFAULT_PROMPTS, ProjectStatus, Inspiration } from '../types';
 
 // API Endpoints
@@ -12,6 +11,7 @@ const STORE_TOOLS = 'tools'; // New store
 const KEY_PROMPTS = 'lva_prompts'; 
 const KEY_LAST_UPLOAD = 'lva_last_upload_time';
 const KEY_LAST_LOCAL_CHANGE = 'lva_last_local_change_time';
+const KEY_PENDING_CHANGES = 'lva_pending_changes';
 
 // --- IndexedDB Helpers ---
 
@@ -112,15 +112,29 @@ const projectMutex = new Mutex();
 
 // --- Manual Sync Methods (D1 Bulk) ---
 
-export const trackChange = () => {
+export const getPendingChanges = (): string[] => {
+  try {
+    return JSON.parse(localStorage.getItem(KEY_PENDING_CHANGES) || '[]');
+  } catch { return []; }
+};
+
+export const trackChange = (source: string = 'unknown') => {
   localStorage.setItem(KEY_LAST_LOCAL_CHANGE, Date.now().toString());
+  
+  const pending = new Set(getPendingChanges());
+  pending.add(source);
+  localStorage.setItem(KEY_PENDING_CHANGES, JSON.stringify(Array.from(pending)));
+};
+
+const clearPendingChange = (source: string) => {
+  const pending = new Set(getPendingChanges());
+  pending.delete(source);
+  localStorage.setItem(KEY_PENDING_CHANGES, JSON.stringify(Array.from(pending)));
 };
 
 export const hasUnsavedChanges = (): boolean => {
-  const lastUpload = parseInt(localStorage.getItem(KEY_LAST_UPLOAD) || '0');
-  const lastChange = parseInt(localStorage.getItem(KEY_LAST_LOCAL_CHANGE) || '0');
-  // If we have changes newer than the last upload, return true
-  return lastChange > lastUpload;
+  const pending = getPendingChanges();
+  return pending.length > 0;
 };
 
 export const getLastUploadTime = (): string => {
@@ -173,6 +187,8 @@ export const uploadProjects = async (): Promise<void> => {
     const errData = await res.json().catch(() => ({}));
     throw new Error(errData.error || `Projects upload failed: ${res.statusText}`);
   }
+  
+  clearPendingChange('projects');
 };
 
 export const uploadInspirations = async (): Promise<void> => {
@@ -189,6 +205,8 @@ export const uploadInspirations = async (): Promise<void> => {
     const errData = await res.json().catch(() => ({}));
     throw new Error(errData.error || `Inspirations upload failed: ${res.statusText}`);
   }
+  
+  clearPendingChange('inspirations');
 };
 
 export const uploadPrompts = async (): Promise<void> => {
@@ -206,6 +224,8 @@ export const uploadPrompts = async (): Promise<void> => {
     const errData = await res.json().catch(() => ({}));
     throw new Error(errData.error || `Settings upload failed: ${res.statusText}`);
   }
+  
+  clearPendingChange('settings');
 };
 
 export const uploadTools = async (): Promise<void> => {
@@ -222,6 +242,8 @@ export const uploadTools = async (): Promise<void> => {
     const errData = await res.json().catch(() => ({}));
     throw new Error(errData.error || `Tools upload failed: ${res.statusText}`);
   }
+  
+  clearPendingChange('tools');
 };
 
 export const downloadAllData = async (): Promise<void> => {
@@ -256,6 +278,7 @@ export const downloadAllData = async (): Promise<void> => {
   updateLastUploadTime();
   // Also sync the local change time so it doesn't show as dirty immediately
   localStorage.setItem(KEY_LAST_LOCAL_CHANGE, Date.now().toString());
+  localStorage.setItem(KEY_PENDING_CHANGES, '[]');
 };
 
 // New Method: Fetch and update a SINGLE project from cloud (Lightweight)
@@ -355,7 +378,7 @@ export const saveProject = async (project: ProjectData): Promise<void> => {
     updatedAt: Date.now()
   };
   await dbPut(STORE_PROJECTS, payload);
-  trackChange();
+  trackChange('projects');
 };
 
 const checkProjectCompletion = (p: ProjectData): boolean => {
@@ -394,7 +417,7 @@ export const updateProject = async (id: string, updater: (current: ProjectData) 
       updated.updatedAt = Date.now();
       
       await dbPut(STORE_PROJECTS, updated);
-      trackChange();
+      trackChange('projects');
       return updated;
   });
 };
@@ -467,7 +490,7 @@ export const deleteProject = async (id: string): Promise<void> => {
     console.warn("Failed to delete project from D1", e);
   }
 
-  trackChange();
+  trackChange('projects');
 };
 
 // --- Prompts (Local Only) ---
@@ -484,7 +507,7 @@ export const getPrompts = async (): Promise<Record<string, PromptTemplate>> => {
 
 export const savePrompts = async (prompts: Record<string, PromptTemplate>): Promise<void> => {
   localStorage.setItem(KEY_PROMPTS, JSON.stringify(prompts));
-  trackChange();
+  trackChange('settings');
 };
 
 export const resetPrompts = async (): Promise<void> => {
@@ -503,7 +526,7 @@ export const getInspirations = async (): Promise<Inspiration[]> => {
 
 export const saveInspiration = async (item: Inspiration): Promise<void> => {
   await dbPut(STORE_INSPIRATIONS, item);
-  trackChange();
+  trackChange('inspirations');
 };
 
 export const deleteInspiration = async (id: string): Promise<void> => {
@@ -511,7 +534,7 @@ export const deleteInspiration = async (id: string): Promise<void> => {
   try {
     await fetch(`${API_BASE}/inspirations/${id}`, { method: 'DELETE' });
   } catch (e) {}
-  trackChange();
+  trackChange('inspirations');
 };
 
 // --- Tools Methods (Real-time Cloud Sync) ---
@@ -519,7 +542,7 @@ export const deleteInspiration = async (id: string): Promise<void> => {
 export const saveToolData = async (id: string, data: any): Promise<void> => {
     // 1. Save Local
     await dbPut(STORE_TOOLS, { id, data });
-    trackChange();
+    trackChange('tools');
 };
 
 export const uploadToolData = async (id: string, data: any): Promise<void> => {
@@ -537,6 +560,7 @@ export const uploadToolData = async (id: string, data: any): Promise<void> => {
     if (!res.ok) {
         throw new Error('Cloud save failed');
     }
+    clearPendingChange('tools');
 };
 
 export const fetchRemoteToolData = async <T>(id: string): Promise<T | null> => {
@@ -558,3 +582,4 @@ export const getToolData = async <T>(id: string): Promise<T | null> => {
         return null;
     }
 };
+
