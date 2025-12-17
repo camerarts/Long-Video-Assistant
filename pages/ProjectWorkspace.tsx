@@ -1303,28 +1303,41 @@ const ProjectWorkspace: React.FC = () => {
                                 <TableResultBox 
                                     headers={['序号', '左画面提示词', '右画面提示词', '操作']}
                                     data={tableData}
-                                    renderRow={(item: any, i: number) => (
-                                        <tr key={i} className="hover:bg-slate-50 group">
-                                            <td className="py-3 px-4 text-center text-xs font-bold text-slate-400 w-[5%] align-top pt-4">{i + 1}</td>
-                                            <td className="py-3 px-2 w-[45%] align-top">
-                                                <div className="text-[10px] text-slate-600 leading-relaxed font-mono bg-slate-50 p-2 rounded border border-slate-100 whitespace-pre-wrap">
-                                                    <span className="font-bold text-slate-400 block mb-1 text-[9px] uppercase tracking-wider">Left</span>
-                                                    {/* Clean potential leftover label if regex missed edge case */}
-                                                    {item.leftPrompt?.replace(/^(?:左画面(?:提示词)?|Left Prompt)[:：]\s*/i, '') || '-'}
-                                                </div>
-                                            </td>
-                                            <td className="py-3 px-2 w-[45%] align-top">
-                                                <div className="text-[10px] text-slate-600 leading-relaxed font-mono bg-slate-50 p-2 rounded border border-slate-100 whitespace-pre-wrap">
-                                                    <span className="font-bold text-slate-400 block mb-1 text-[9px] uppercase tracking-wider">Right</span>
-                                                    {/* Clean potential leftover label if regex missed edge case */}
-                                                    {item.rightPrompt?.replace(/^(?:右画面(?:提示词)?|Right Prompt)[:：]\s*/i, '') || '-'}
-                                                </div>
-                                            </td>
-                                            <td className="py-3 px-4 text-right w-[5%] align-top pt-4">
-                                                <RowCopyButton text={`Left: ${item.leftPrompt}\nRight: ${item.rightPrompt}`} />
-                                            </td>
-                                        </tr>
-                                    )}
+                                    renderRow={(item: any, i: number) => {
+                                        // Clean potential leftover label if regex missed edge case
+                                        const cleanLeft = item.leftPrompt?.replace(/^(?:左画面(?:提示词)?|Left Prompt)[:：]\s*/i, '') || '';
+                                        const cleanRight = item.rightPrompt?.replace(/^(?:右画面(?:提示词)?|Right Prompt)[:：]\s*/i, '') || '';
+
+                                        return (
+                                            <tr key={i} className="hover:bg-slate-50 group">
+                                                <td className="py-3 px-4 text-center text-xs font-bold text-slate-400 w-[5%] align-top pt-4">{i + 1}</td>
+                                                <td className="py-3 px-2 w-[40%] align-top">
+                                                    <div className="text-[10px] text-slate-600 leading-relaxed font-mono bg-slate-50 p-2 rounded border border-slate-100 whitespace-pre-wrap">
+                                                        <span className="font-bold text-slate-400 block mb-1 text-[9px] uppercase tracking-wider">Left</span>
+                                                        {cleanLeft || '-'}
+                                                    </div>
+                                                </td>
+                                                <td className="py-3 px-2 w-[40%] align-top">
+                                                    <div className="text-[10px] text-slate-600 leading-relaxed font-mono bg-slate-50 p-2 rounded border border-slate-100 whitespace-pre-wrap">
+                                                        <span className="font-bold text-slate-400 block mb-1 text-[9px] uppercase tracking-wider">Right</span>
+                                                        {cleanRight || '-'}
+                                                    </div>
+                                                </td>
+                                                <td className="py-3 px-4 text-right w-[15%] align-top pt-4">
+                                                    <div className="flex flex-col gap-2 items-end">
+                                                        <div className="flex items-center gap-2" title="复制左画面提示词">
+                                                            <span className="text-[9px] font-bold text-slate-300 uppercase tracking-wider">Left</span>
+                                                            <RowCopyButton text={cleanLeft} />
+                                                        </div>
+                                                        <div className="flex items-center gap-2" title="复制右画面提示词">
+                                                            <span className="text-[9px] font-bold text-slate-300 uppercase tracking-wider">Right</span>
+                                                            <RowCopyButton text={cleanRight} />
+                                                        </div>
+                                                    </div>
+                                                </td>
+                                            </tr>
+                                        );
+                                    }}
                                 />
                             );
                         })()}
