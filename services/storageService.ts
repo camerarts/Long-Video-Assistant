@@ -1,4 +1,5 @@
 
+
 import { ProjectData, PromptTemplate, DEFAULT_PROMPTS, ProjectStatus, Inspiration } from '../types';
 
 // API Endpoints
@@ -12,6 +13,7 @@ const KEY_PROMPTS = 'lva_prompts';
 const KEY_LAST_UPLOAD = 'lva_last_upload_time';
 const KEY_LAST_LOCAL_CHANGE = 'lva_last_local_change_time';
 const KEY_PENDING_CHANGES = 'lva_pending_changes';
+const KEY_R2_DOMAIN = 'lva_r2_domain'; // New key for R2 domain
 
 // --- IndexedDB Helpers ---
 
@@ -308,6 +310,35 @@ export const syncProject = async (id: string): Promise<ProjectData | null> => {
 
 // --- Image Operations (R2) ---
 
+export const getR2PublicDomain = () => localStorage.getItem(KEY_R2_DOMAIN) || '';
+export const setR2PublicDomain = (domain: string) => localStorage.setItem(KEY_R2_DOMAIN, domain);
+
+/**
+ * Resolves an image URL to a Public CDN URL if configured, 
+ * bypassing the slow /api/images proxy.
+ */
+export const resolveImageUrl = (url?: string) => {
+  if (!url) return '';
+  if (url.startsWith('data:')) return url;
+  if (url.startsWith('http')) return url;
+  
+  const domain = getR2PublicDomain();
+  if (!domain) return url; // Fallback to proxy if no domain configured
+  
+  // Pattern: /api/images/encoded_key
+  const match = url.match(/\/api\/images\/(.+)$/);
+  if (match && match[1]) {
+    const key = decodeURIComponent(match[1]); // e.g. "projectId/uuid.png"
+    // Normalize domain (remove trailing slash)
+    const normalizedDomain = domain.replace(/\/$/, '');
+    // Key usually doesn't start with slash because of how we store it, but safe to check
+    const normalizedKey = key.startsWith('/') ? key.substring(1) : key;
+    return `${normalizedDomain}/${normalizedKey}`;
+  }
+  
+  return url;
+};
+
 export const uploadImage = async (base64: string, projectId?: string): Promise<string> => {
   // Convert base64 to blob
   const byteString = atob(base64.split(',')[1]);
@@ -582,4 +613,3 @@ export const getToolData = async <T>(id: string): Promise<T | null> => {
         return null;
     }
 };
-
