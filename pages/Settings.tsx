@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { PromptTemplate, DEFAULT_PROMPTS } from '../types';
 import * as storage from '../services/storageService';
-import { Save, RefreshCw, AlertTriangle, ClipboardPaste, Check, Maximize2, X, Loader2, Copy } from 'lucide-react';
+import { Save, RefreshCw, AlertTriangle, ClipboardPaste, Check, Maximize2, X, Loader2, Copy, Globe, Database } from 'lucide-react';
 
 const Settings: React.FC = () => {
   const [prompts, setPrompts] = useState<Record<string, PromptTemplate>>({});
@@ -11,6 +11,9 @@ const Settings: React.FC = () => {
   const [message, setMessage] = useState<string | null>(null);
   const [expandedKey, setExpandedKey] = useState<string | null>(null);
   const [refreshTime, setRefreshTime] = useState('');
+  
+  // Config States
+  const [r2Domain, setR2Domain] = useState('');
   
   // Track modified prompts that haven't been saved
   const [dirtyKeys, setDirtyKeys] = useState<Set<string>>(new Set());
@@ -30,13 +33,14 @@ const Settings: React.FC = () => {
   ];
 
   useEffect(() => {
-    loadPrompts();
+    loadData();
   }, []);
 
-  const loadPrompts = async () => {
+  const loadData = async () => {
     const data = await storage.getPrompts();
     setPrompts(data);
     setRefreshTime(`刷新数据时间：${storage.getLastUploadTime()}`);
+    setR2Domain(storage.getR2PublicDomain());
   };
 
   const handleSaveModule = async (key: string) => {
@@ -45,19 +49,15 @@ const Settings: React.FC = () => {
     // 1. Save to Local Storage
     await storage.savePrompts(prompts);
     
-    // 2. Force Upload to Cloud immediately to prevent race condition/overwrite
-    // This ensures that the next download/sync receives this new version
+    // 2. Force Upload to Cloud immediately
     try {
         await storage.uploadPrompts();
         storage.updateLastUploadTime();
         setRefreshTime(`刷新数据时间：${storage.getLastUploadTime()}`);
     } catch (e) {
         console.error("Settings auto-sync failed:", e);
-        // We don't block the UI success message if local save worked, 
-        // but checking the console would reveal sync issues.
     }
     
-    // Clear dirty state for all, as the whole state is now persisted
     setDirtyKeys(new Set());
     
     setTimeout(() => {
@@ -65,6 +65,12 @@ const Settings: React.FC = () => {
       setMessage("配置已保存并同步！");
       setTimeout(() => setMessage(null), 3000);
     }, 500);
+  };
+
+  const handleSaveConfig = () => {
+      storage.setR2PublicDomain(r2Domain);
+      setMessage("系统配置已更新！");
+      setTimeout(() => setMessage(null), 3000);
   };
 
   const handlePromptChange = (key: string, value: string) => {
@@ -86,12 +92,10 @@ const Settings: React.FC = () => {
   };
 
   const handlePaste = async (key: string) => {
-    // Check if API is available
     if (!navigator.clipboard) {
       alert("您的浏览器不支持自动读取剪贴板，请点击文本框后使用 Ctrl+V (或 Cmd+V) 手动粘贴。");
       return;
     }
-
     try {
       const text = await navigator.clipboard.readText();
       if (text) {
@@ -104,7 +108,7 @@ const Settings: React.FC = () => {
       }
     } catch (err) {
       console.error('Failed to read clipboard contents: ', err);
-      alert("无法访问剪贴板。请确保您已允许浏览器访问剪贴板权限，或者直接在文本框中使用快捷键粘贴。");
+      alert("无法访问剪贴板。请手动粘贴。");
     }
   };
 
@@ -130,6 +134,48 @@ const Settings: React.FC = () => {
       )}
 
       <div className="space-y-6 md:space-y-10">
+        
+        {/* System Configuration Section */}
+        <div className="bg-white border border-slate-200 rounded-3xl p-6 md:p-8 shadow-sm">
+            <div className="flex items-center gap-3 mb-6">
+                <div className="w-10 h-10 bg-indigo-50 text-indigo-600 rounded-xl flex items-center justify-center">
+                    <Database className="w-5 h-5" />
+                </div>
+                <div>
+                    <h3 className="text-lg font-bold text-slate-800">存储配置 (Cloudflare R2)</h3>
+                    <p className="text-xs text-slate-400">配置图片资源的加载加速。</p>
+                </div>
+            </div>
+
+            <div className="space-y-4 max-w-2xl">
+                <div>
+                    <label className="text-sm font-bold text-slate-700 mb-2 flex items-center gap-2">
+                        <Globe className="w-4 h-4 text-slate-400" /> R2 公开访问域名 (Public Domain)
+                    </label>
+                    <div className="flex gap-3">
+                        <input 
+                            type="text" 
+                            value={r2Domain}
+                            onChange={(e) => setR2Domain(e.target.value)}
+                            placeholder="例如：https://pub-xxxx.r2.dev 或 https://images.yourdomain.com"
+                            className="flex-1 bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-sm focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none transition-all placeholder:text-slate-400 font-mono"
+                        />
+                        <button 
+                            onClick={handleSaveConfig}
+                            className="bg-indigo-600 text-white px-5 py-2.5 rounded-xl font-bold hover:bg-indigo-700 transition-colors shadow-lg shadow-indigo-500/20 text-sm whitespace-nowrap"
+                        >
+                            保存设置
+                        </button>
+                    </div>
+                    <p className="text-[10px] text-slate-400 mt-2 leading-relaxed">
+                        <span className="font-bold text-amber-500">重要：</span> 如果图片加载缓慢，请在此处配置 R2 存储桶的公开访问域名。
+                        配置后，应用将直接通过 CDN 加载图片，大幅提升速度。请确保该域名已在 Cloudflare R2 设置中绑定到您的存储桶。
+                    </p>
+                </div>
+            </div>
+        </div>
+
+        {/* Prompts Section */}
         <div className="bg-amber-50/50 border border-amber-100 p-5 rounded-xl flex gap-4 items-start shadow-sm">
             <div className="p-2 bg-amber-100 rounded-lg text-amber-600 flex-shrink-0">
                 <AlertTriangle className="w-5 h-5" />
@@ -148,17 +194,12 @@ const Settings: React.FC = () => {
             const prompt = prompts[key];
             if (!prompt) return null;
             const isDirty = dirtyKeys.has(key);
-
-            // Use system default for metadata (Name/Description) if available
-            // This ensures app updates to labels reflect immediately even if user has saved data,
-            // while preserving the user's custom template.
             const systemDef = DEFAULT_PROMPTS[key];
             const displayName = systemDef ? systemDef.name : prompt.name;
             const displayDesc = systemDef ? systemDef.description : prompt.description;
 
             return (
               <div key={key} className="bg-white border border-slate-100 rounded-3xl p-6 md:p-8 shadow-[0_2px_10px_-4px_rgba(0,0,0,0.05)] relative group hover:shadow-[0_20px_40px_-12px_rgba(0,0,0,0.1)] transition-all hover:-translate-y-1 flex flex-col">
-                
                 <div className="flex justify-between items-start mb-6">
                   <div>
                     <h3 className="text-lg md:text-xl font-bold text-slate-800 flex items-center gap-3">
@@ -177,11 +218,9 @@ const Settings: React.FC = () => {
                     <p className="text-xs font-medium text-slate-400 mt-1 pl-10">{displayDesc}</p>
                   </div>
                   <div className="flex flex-col items-end gap-3">
-                    {/* Key Tag */}
                     <span className="text-[10px] font-mono font-bold bg-slate-50 text-slate-400 px-2 py-1 rounded-md border border-slate-100 hidden sm:inline-block">
                         {key}
                     </span>
-                    {/* Paste Button */}
                     <button 
                         onClick={() => handlePaste(key)}
                         className="flex items-center gap-1.5 text-xs font-bold text-slate-500 hover:text-violet-600 transition-colors bg-white hover:bg-violet-50 px-3 py-1.5 rounded-lg border border-slate-200 hover:border-violet-200 shadow-sm"
