@@ -1,3 +1,5 @@
+
+
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { ProjectData, StoryboardFrame, PromptTemplate } from '../types';
@@ -233,9 +235,12 @@ const StoryboardImages: React.FC = () => {
 
   const handleDownload = (frame: StoryboardFrame) => {
       if (!frame.imageUrl) return;
+      // Use resolved URL for downloading to ensure speed
+      const url = storage.resolveImageUrl(frame.imageUrl);
       const link = document.createElement("a");
-      link.href = frame.imageUrl;
+      link.href = url;
       link.download = `scene_${frame.sceneNumber}_${project?.id.substring(0,4)}.png`;
+      link.target = "_blank"; // Open in new tab if cross-origin issues prevent direct download
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
@@ -267,9 +272,10 @@ const StoryboardImages: React.FC = () => {
                   const base64Data = frame.imageUrl.split(',')[1];
                   folder?.file(filename, base64Data, { base64: true });
               } else {
-                  // URL - Fetch blob
+                  // URL - Fetch blob using resolved CDN URL for speed
                   try {
-                    const response = await fetch(frame.imageUrl);
+                    const cdnUrl = storage.resolveImageUrl(frame.imageUrl);
+                    const response = await fetch(cdnUrl);
                     const blob = await response.blob();
                     folder?.file(filename, blob);
                   } catch (e) {
@@ -430,6 +436,8 @@ const StoryboardImages: React.FC = () => {
                             project.storyboard.map((frame) => {
                                 const isGenerating = generatingIds.has(frame.id);
                                 const hasImage = !!frame.imageUrl;
+                                // Use resolver to get optimized CDN URL
+                                const displayUrl = storage.resolveImageUrl(frame.imageUrl);
                                 
                                 return (
                                     <tr key={frame.id} className={`group hover:bg-slate-50/80 transition-colors ${frame.skipGeneration ? 'bg-slate-50/50' : ''}`}>
@@ -492,12 +500,14 @@ const StoryboardImages: React.FC = () => {
                                                         {hasImage ? (
                                                             <>
                                                                 <div 
-                                                                    onClick={() => setPreviewImage(frame.imageUrl!)}
+                                                                    onClick={() => setPreviewImage(displayUrl)}
                                                                     className="w-full h-full cursor-zoom-in group/img-zoom"
                                                                 >
                                                                     <img 
-                                                                        src={frame.imageUrl} 
+                                                                        src={displayUrl} 
                                                                         alt={`Scene ${frame.sceneNumber}`} 
+                                                                        loading="lazy"
+                                                                        decoding="async"
                                                                         className="w-full h-full object-cover transition-transform duration-700 group-hover/img-zoom:scale-105" 
                                                                     />
                                                                 </div>
